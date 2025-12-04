@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
-import { ServicePackage, Client } from '../types';
-import { PackageCheck, Plus, Search, Tag, Users } from 'lucide-react';
+import { ServicePackage, Client, Entry } from '../types';
+import { PackageCheck, Plus, Search, Tag, Users, CheckCircle } from 'lucide-react';
 import { SearchableSelect } from './SearchableSelect';
 
 const ServicePackages: React.FC = () => {
   const [packages, setPackages] = useState<ServicePackage[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
+  const [entries, setEntries] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -25,12 +26,14 @@ const ServicePackages: React.FC = () => {
   }, []);
 
   const loadData = async () => {
-    const [pkgData, options] = await Promise.all([
+    const [pkgData, options, entriesData] = await Promise.all([
       api.getPackages(),
-      api.getOptions()
+      api.getOptions(),
+      api.getEntries()
     ]);
     setPackages(pkgData);
     setClients(options.clients);
+    setEntries(entriesData);
   };
 
   const handleClientChange = (name: string) => {
@@ -67,13 +70,28 @@ const ServicePackages: React.FC = () => {
     }
   };
 
+  // Helper to calculate used services for a specific package
+  const getPackageUsage = (pkg: ServicePackage) => {
+      // Find entries for this client after package start date that are SERVICES
+      const used = entries.filter(e => 
+          e.clientName === pkg.clientName && 
+          new Date(e.date) >= new Date(pkg.startDate) &&
+          e.serviceType === 'SERVICE'
+      ).length;
+      
+      const remaining = Math.max(0, pkg.totalServices - used);
+      const isExpired = used >= pkg.totalServices;
+
+      return { used, remaining, isExpired };
+  };
+
   const filteredPackages = packages.filter(p => 
     p.clientName.toLowerCase().includes(searchTerm.toLowerCase()) || 
     p.packageName.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in duration-500">
       {/* Create Package Form */}
       <div className="lg:col-span-1">
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden sticky top-6">
@@ -176,15 +194,20 @@ const ServicePackages: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {filteredPackages.map(pkg => (
-                <div key={pkg.id} className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow relative overflow-hidden">
-                    <div className="absolute top-0 right-0 px-3 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-bl-xl">
-                        {pkg.status}
+            {filteredPackages.map(pkg => {
+                const stats = getPackageUsage(pkg);
+                return (
+                <div key={pkg.id} className={`p-5 rounded-2xl shadow-sm border border-slate-200 transition-all relative overflow-hidden bg-white
+                    ${stats.isExpired ? 'border-red-200' : 'hover:border-indigo-300'}`}>
+                    
+                    <div className={`absolute top-0 right-0 px-3 py-1 text-xs font-bold rounded-bl-xl
+                        ${stats.isExpired ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+                        {stats.isExpired ? 'EXPIRED' : 'ACTIVE'}
                     </div>
                     
                     <div className="flex items-start mb-3">
-                        <div className="p-2 bg-indigo-50 rounded-lg mr-3">
-                            <Tag className="w-6 h-6 text-indigo-600" />
+                        <div className={`p-2 rounded-lg mr-3 ${stats.isExpired ? 'bg-red-50' : 'bg-indigo-50'}`}>
+                            <Tag className={`w-6 h-6 ${stats.isExpired ? 'text-red-500' : 'text-indigo-600'}`} />
                         </div>
                         <div>
                             <h4 className="font-bold text-lg text-slate-800">{pkg.packageName}</h4>
@@ -194,14 +217,26 @@ const ServicePackages: React.FC = () => {
                         </div>
                     </div>
                     
+                    {/* Progress Bar */}
+                    <div className="mt-2 mb-4">
+                        <div className="flex justify-between text-xs font-bold mb-1">
+                            <span className="text-slate-500">Usage: {stats.used} / {pkg.totalServices}</span>
+                            <span className={stats.isExpired ? 'text-red-500' : 'text-indigo-600'}>
+                                {stats.remaining} Remaining
+                            </span>
+                        </div>
+                        <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
+                            <div 
+                                className={`h-2.5 rounded-full ${stats.isExpired ? 'bg-red-500' : 'bg-indigo-500'}`} 
+                                style={{ width: `${Math.min((stats.used / pkg.totalServices) * 100, 100)}%` }}
+                            ></div>
+                        </div>
+                    </div>
+                    
                     <div className="grid grid-cols-2 gap-2 text-sm mt-4 border-t border-slate-100 pt-4">
                         <div>
                             <span className="block text-slate-400 text-xs">Total Cost</span>
                             <span className="font-bold text-slate-800">₹{pkg.totalCost}</span>
-                        </div>
-                        <div>
-                            <span className="block text-slate-400 text-xs">Limit</span>
-                            <span className="font-bold text-slate-800">{pkg.totalServices} Times</span>
                         </div>
                          <div>
                             <span className="block text-slate-400 text-xs">Started</span>
@@ -209,7 +244,7 @@ const ServicePackages: React.FC = () => {
                         </div>
                     </div>
                 </div>
-            ))}
+            )})}
             
             {filteredPackages.length === 0 && (
                 <div className="col-span-full py-12 text-center text-slate-400 bg-white rounded-2xl border border-dashed border-slate-300">

@@ -1,31 +1,58 @@
 import { User, Role } from '../types';
-
-// Simulating the "LOGIN" Google Sheet data
-// In a real application, this data would be fetched from the Google Apps Script API
-const SHEET_USERS = [
-  { username: 'admin', password: 'admin', role: Role.ADMIN, department: 'Management' }, // Dev Admin
-  { username: 'user', password: 'user', role: Role.USER, department: 'Sales' },        // Dev User
-  { username: 'DEEPAK', password: 'DEEPAK123', role: Role.USER, department: 'MDO' }   // From User Screenshot
-];
+import { GOOGLE_SCRIPT_URL } from '../constants';
 
 export const authService = {
   login: async (username: string, password: string): Promise<User | null> => {
-    // Simulate Network Delay
-    await new Promise(resolve => setTimeout(resolve, 800));
+    let users: any[] = [];
     
-    // Find user in the "Sheet"
-    // Note: In a real app, this logic happens on the backend (Google Apps Script)
-    const foundUser = SHEET_USERS.find(
-      u => u.username === username && u.password === password
-    );
+    // 1. Try to fetch from Google Sheet
+    if (GOOGLE_SCRIPT_URL && GOOGLE_SCRIPT_URL.startsWith('http')) {
+        try {
+            // Assumes the Apps Script returns the LOGIN sheet data when action=getUsers or similar
+            // If you haven't implemented 'getUsers' in Apps Script, you can use a general 'getData' with sheet name
+            // For now, we assume standard GET request might return it or we use a specific action
+            const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getUsers`);
+            const data = await response.json();
+            if (Array.isArray(data)) {
+                users = data;
+            }
+        } catch (e) {
+            console.warn("Failed to fetch users from sheet, using fallback.");
+        }
+    }
+
+    // 2. Fallback / Mock Data (Matches your screenshot + Dev defaults)
+    if (users.length === 0) {
+        users = [
+             { username: 'admin', password: 'admin', role: 'ADMIN', department: 'Management' },
+             { username: 'DEEPAK', password: 'DEEPAK123', role: 'USER', department: 'MDO' },
+             { username: 'gulshan', password: '67890', role: 'admin', department: 'sales' } 
+        ];
+    }
+
+    // 3. Authenticate
+    const foundUser = users.find((u: any) => {
+        // Handle case insensitivity for username
+        const dbUser = String(u.username || u.USER_NAME || '').toLowerCase();
+        const inputUser = username.toLowerCase();
+        
+        // Handle password (convert to string in case Sheet returns number like 67890)
+        const dbPass = String(u.password || u.USER_PASSWORD || '');
+        const inputPass = String(password);
+
+        return dbUser === inputUser && dbPass === inputPass;
+    });
 
     if (foundUser) {
-      // Return User object without password
-      return {
-        username: foundUser.username,
-        role: foundUser.role,
-        department: foundUser.department
-      };
+        // Map sheet role string to Enum
+        const roleStr = String(foundUser.role || foundUser.ROLE || '').toUpperCase();
+        const role = roleStr === 'ADMIN' ? Role.ADMIN : Role.USER;
+
+        return {
+            username: foundUser.username || foundUser.USER_NAME,
+            role: role,
+            department: foundUser.department || foundUser.DEPARTMENT
+        };
     }
 
     return null;

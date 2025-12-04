@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { Client, Item, Technician, Entry, ServicePackage } from '../types';
-import { Save, AlertCircle, User, CreditCard, Scissors, Calendar, MapPin, RefreshCw, CheckCircle2, Ticket } from 'lucide-react';
+import { Save, AlertCircle, User, CreditCard, Scissors, Calendar, MapPin, RefreshCw, CheckCircle2, Ticket, FileDown, Printer } from 'lucide-react';
 import { SearchableSelect } from './SearchableSelect';
+import { generateInvoice } from '../utils/invoiceGenerator';
 
 const NewEntryForm: React.FC = () => {
   const [loading, setLoading] = useState(false);
@@ -14,7 +15,9 @@ const NewEntryForm: React.FC = () => {
   const [activePackage, setActivePackage] = useState<{
       package: ServicePackage,
       currentServiceNumber: number,
-      isExpired: boolean
+      usedCount: number,
+      isExpired: boolean,
+      remaining?: number
   } | null>(null);
 
   // Define initial state for full reset
@@ -37,6 +40,9 @@ const NewEntryForm: React.FC = () => {
   
   const [formData, setFormData] = useState<Partial<Entry>>(initialFormState);
   const [notification, setNotification] = useState<{msg: string, type: 'success' | 'error'} | null>(null);
+  
+  // State to hold the last successful entry to allow printing
+  const [lastSubmittedEntry, setLastSubmittedEntry] = useState<Entry | null>(null);
 
   useEffect(() => {
     const init = async () => {
@@ -56,8 +62,10 @@ const NewEntryForm: React.FC = () => {
   const handleClientChange = async (clientName: string) => {
     setActivePackage(null); // Reset package info on change
 
+    setFormData(prev => ({ ...prev, clientName: clientName }));
+
     if (!clientName) {
-         setFormData(prev => ({ ...prev, clientName: '', contactNo: '', address: '' }));
+         setFormData(prev => ({ ...prev, contactNo: '', address: '' }));
          return;
     }
 
@@ -66,15 +74,14 @@ const NewEntryForm: React.FC = () => {
     if (client) {
       setFormData(prev => ({
         ...prev,
-        clientName: client.name,
         contactNo: client.contact,
         address: client.address
       }));
     } else {
-      setFormData(prev => ({ ...prev, clientName: clientName, contactNo: '', address: '' }));
+      // If typing new, don't clear contact/address immediately if user wants to type them
     }
 
-    // 2. Check for Active Package
+    // 2. Check for Active Package (Debounce could be better, but direct call is okay for now)
     try {
         const pkgStatus = await api.checkClientPackage(clientName);
         if (pkgStatus) {
@@ -83,7 +90,6 @@ const NewEntryForm: React.FC = () => {
             setFormData(prev => ({ 
                 ...prev, 
                 numberOfService: pkgStatus.currentServiceNumber,
-                // If package exists, payment might be 0/Prepaid, but let's leave it to user to decide amount
             }));
         } else {
             setFormData(prev => ({ ...prev, numberOfService: 1 }));
@@ -97,6 +103,7 @@ const NewEntryForm: React.FC = () => {
     e.preventDefault();
     setLoading(true);
     setNotification(null);
+    setLastSubmittedEntry(null); // Reset last entry
 
     if (!formData.clientName || !formData.amount || !formData.technician) {
       setNotification({ msg: 'Please fill in all required fields (Client, Technician, Amount).', type: 'error' });
@@ -106,7 +113,10 @@ const NewEntryForm: React.FC = () => {
     }
 
     try {
-      await api.addEntry(formData as Entry);
+      const result = await api.addEntry(formData as Entry);
+      
+      // Store result for invoice generation
+      setLastSubmittedEntry(result as Entry);
       
       // Show success
       setNotification({ msg: 'Transaction recorded successfully!', type: 'success' });
@@ -120,8 +130,8 @@ const NewEntryForm: React.FC = () => {
       
       window.scrollTo(0,0);
       
-      // Hide notification after 3 seconds
-      setTimeout(() => setNotification(null), 3000);
+      // Hide notification after 5 seconds
+      setTimeout(() => setNotification(null), 5000);
 
     } catch (error) {
       setNotification({ msg: 'Failed to add entry. Please check your connection.', type: 'error' });
@@ -130,9 +140,8 @@ const NewEntryForm: React.FC = () => {
     }
   };
 
-  const clientOptions = clients.map(c => ({ label: c.name, value: c.name, subtext: c.contact }));
   const techOptions = technicians.map(t => ({ label: t.name, value: t.name }));
-  const patchSizes = items.filter(i => true);
+  const patchSizeOptions = items.map(i => ({ label: i.name, value: i.name, subtext: i.category }));
 
   // Helper styles
   const sectionHeaderStyle = "px-6 py-4 flex items-center justify-between";
@@ -162,12 +171,26 @@ const NewEntryForm: React.FC = () => {
         
         {/* Notification Banner */}
         {notification && (
-          <div className={`mb-6 p-4 rounded-xl border flex items-center shadow-lg transform transition-all scale-100 ${notification.type === 'success' ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
-            {notification.type === 'success' ? <CheckCircle2 className="w-6 h-6 mr-3 text-emerald-600" /> : <AlertCircle className="w-6 h-6 mr-3 text-red-600" />}
-            <div>
-                <h4 className="font-bold text-sm uppercase">{notification.type === 'success' ? 'Success' : 'Error'}</h4>
-                <p className="font-medium">{notification.msg}</p>
+          <div className={`mb-6 p-4 rounded-xl border flex flex-col md:flex-row items-start md:items-center justify-between shadow-lg transform transition-all scale-100 gap-4 ${notification.type === 'success' ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
+            <div className="flex items-center">
+                {notification.type === 'success' ? <CheckCircle2 className="w-6 h-6 mr-3 text-emerald-600" /> : <AlertCircle className="w-6 h-6 mr-3 text-red-600" />}
+                <div>
+                    <h4 className="font-bold text-sm uppercase">{notification.type === 'success' ? 'Success' : 'Error'}</h4>
+                    <p className="font-medium">{notification.msg}</p>
+                </div>
             </div>
+
+            {/* Print Button for NEW service types */}
+            {notification.type === 'success' && lastSubmittedEntry && lastSubmittedEntry.serviceType === 'NEW' && (
+                <button
+                    type="button"
+                    onClick={() => generateInvoice(lastSubmittedEntry)}
+                    className="flex items-center bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg font-bold text-sm shadow-md transition-all active:scale-95"
+                >
+                    <FileDown className="w-4 h-4 mr-2" />
+                    Download Invoice
+                </button>
+            )}
           </div>
         )}
 
@@ -191,33 +214,52 @@ const NewEntryForm: React.FC = () => {
                     </div>
                     <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="col-span-full">
-                            <SearchableSelect 
-                                label="CLIENT NAME"
-                                options={clientOptions}
+                            {/* Updated to Datalist for 'Select Existing or Type New' */}
+                            <label className={labelStyle}>Client Name <span className="text-red-500">*</span></label>
+                            <input
+                                list="client-options"
+                                type="text"
+                                name="clientName"
                                 value={formData.clientName || ''}
-                                onChange={handleClientChange}
-                                placeholder="Search Client..."
+                                onChange={(e) => handleClientChange(e.target.value)}
+                                className={`${inputBaseStyle} focus:ring-2 focus:ring-blue-500 focus:border-blue-500`}
+                                placeholder="Select Existing or Type New..."
                                 required
+                                autoComplete="off"
                             />
+                            <datalist id="client-options">
+                                {clients.map((c, idx) => (
+                                    <option key={idx} value={c.name}>{c.contact}</option>
+                                ))}
+                            </datalist>
                         </div>
                         
                         {/* PACKAGE ALERT BANNER */}
                         {activePackage && (
-                             <div className={`col-span-full rounded-xl border p-4 flex items-start gap-3 shadow-sm
+                             <div className={`col-span-full rounded-xl border p-4 flex items-start gap-3 shadow-sm transition-all duration-300
                                 ${activePackage.isExpired 
                                     ? 'bg-red-50 border-red-200 text-red-800' 
                                     : 'bg-indigo-50 border-indigo-200 text-indigo-900'}
                              `}>
-                                 <Ticket className="w-6 h-6 shrink-0 mt-0.5" />
-                                 <div>
-                                     <h4 className="font-bold text-lg">
-                                         {activePackage.isExpired ? 'PACKAGE EXPIRED' : activePackage.package.packageName}
-                                     </h4>
-                                     <p className="font-medium text-sm mt-1">
-                                         Service <span className="font-bold text-xl">{activePackage.currentServiceNumber}</span> of {activePackage.package.totalServices}
+                                 <div className={`p-2 rounded-lg ${activePackage.isExpired ? 'bg-red-100' : 'bg-indigo-100'}`}>
+                                     <Ticket className="w-6 h-6 shrink-0" />
+                                 </div>
+                                 <div className="flex-1">
+                                     <div className="flex justify-between items-center">
+                                         <h4 className="font-bold text-lg">
+                                             {activePackage.isExpired ? 'PACKAGE EXPIRED' : activePackage.package.packageName}
+                                         </h4>
+                                         {!activePackage.isExpired && (
+                                             <span className="bg-white/50 px-3 py-1 rounded-md text-sm font-black border border-indigo-100 shadow-sm">
+                                                 Remaining: {activePackage.remaining}
+                                             </span>
+                                         )}
+                                     </div>
+                                     <p className="font-medium text-sm mt-1 opacity-90">
+                                         This is Service <span className="font-bold text-lg">{activePackage.currentServiceNumber}</span> of {activePackage.package.totalServices}
                                      </p>
                                      {activePackage.isExpired && (
-                                         <p className="text-xs font-bold mt-1 uppercase tracking-wide">
+                                         <p className="text-xs font-bold mt-2 uppercase tracking-wide bg-red-100/50 p-1 rounded inline-block">
                                              Limit Exceeded. Please charge regular price or renew.
                                          </p>
                                      )}
@@ -229,10 +271,11 @@ const NewEntryForm: React.FC = () => {
                             <label className={labelStyle}>Contact Number</label>
                             <input
                                 type="text"
+                                name="contactNo"
                                 value={formData.contactNo || ''}
-                                readOnly
+                                onChange={handleChange}
                                 className={`${inputBaseStyle} focus:ring-2 focus:ring-blue-500 focus:border-blue-500`}
-                                placeholder="Auto-filled"
+                                placeholder="Client Contact"
                             />
                         </div>
                         <div>
@@ -240,10 +283,11 @@ const NewEntryForm: React.FC = () => {
                             <div className="relative">
                                 <input
                                     type="text"
+                                    name="address"
                                     value={formData.address || ''}
-                                    readOnly
+                                    onChange={handleChange}
                                     className={`${inputBaseStyle} pl-10 focus:ring-2 focus:ring-blue-500 focus:border-blue-500`}
-                                    placeholder="Auto-filled"
+                                    placeholder="Client Address"
                                 />
                                 <MapPin className="w-4 h-4 text-gray-400 absolute left-3 top-3.5" />
                             </div>
@@ -278,7 +322,7 @@ const NewEntryForm: React.FC = () => {
                             </select>
                         </div>
                         <div>
-                            <label className={labelStyle}>Transaction Date</label>
+                            <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5 ml-1">Transaction Date</label>
                             <input
                                 type="date"
                                 name="date"
@@ -308,18 +352,13 @@ const NewEntryForm: React.FC = () => {
 
                         {formData.serviceType === 'NEW' && (
                         <div className="animate-in fade-in slide-in-from-top-2 duration-300">
-                            <label className={labelStyle}>Patch Size</label>
-                             <select
-                                name="patchSize"
+                             <SearchableSelect 
+                                label="Patch Size"
+                                options={patchSizeOptions}
                                 value={formData.patchSize || ''}
-                                onChange={handleChange}
-                                className={`${inputBaseStyle} bg-yellow-50 border-yellow-200 focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400`}
-                                >
-                                <option value="">Select Patch Size</option>
-                                {patchSizes.map(item => (
-                                    <option key={item.code} value={item.name}>{item.name} ({item.category})</option>
-                                ))}
-                                </select>
+                                onChange={(val) => setFormData(prev => ({ ...prev, patchSize: val }))}
+                                placeholder="Select Patch Size..."
+                            />
                         </div>
                         )}
 

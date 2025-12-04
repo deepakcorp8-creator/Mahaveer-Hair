@@ -32,8 +32,9 @@ const AppointmentBooking: React.FC = () => {
     setClients(options.clients);
   };
 
-  const handleClientSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const client = clients.find(c => c.name === e.target.value);
+  const handleClientChange = (val: string) => {
+    setNewAppt(prev => ({ ...prev, clientName: val }));
+    const client = clients.find(c => c.name === val);
     if (client) {
       setNewAppt(prev => ({
         ...prev,
@@ -41,7 +42,8 @@ const AppointmentBooking: React.FC = () => {
         contact: client.contact
       }));
     } else {
-      setNewAppt(prev => ({ ...prev, clientName: e.target.value, contact: '' }));
+      // If manually typed and not found, keep contact if user typed it, or clear it?
+      // Typically keep clientName as typed, contact might need manual entry
     }
   };
 
@@ -143,14 +145,18 @@ const AppointmentBooking: React.FC = () => {
                 </div>
                 <div>
                 <label className="block text-sm font-medium text-gray-700">Client</label>
-                <select
+                <input
+                    list="appt-clients"
+                    type="text"
                     value={newAppt.clientName}
-                    onChange={handleClientSelect}
+                    onChange={e => handleClientChange(e.target.value)}
                     className="mt-1 w-full rounded-md border-gray-300 shadow-sm border p-2"
-                >
-                    <option value="">Select Existing or Type New</option>
-                    {clients.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
-                </select>
+                    placeholder="Select Existing or Type New"
+                    autoComplete="off"
+                />
+                <datalist id="appt-clients">
+                    {clients.map((c, i) => <option key={i} value={c.name}>{c.contact}</option>)}
+                </datalist>
                 </div>
                 <div>
                 <label className="block text-sm font-medium text-gray-700">Contact</label>

@@ -150,4 +150,4 @@ export const MOCK_PACKAGES: ServicePackage[] = [
     }
 ];
 
-export const GOOGLE_SCRIPT_URL = 'YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL';
+export const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby_beCjmepq0a5poZIu2PV7_5Nh72cHaM4lImwE9rJIo4DkVGrghKoH1gmTTrmyPik08Q/exec';

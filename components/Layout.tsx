@@ -10,7 +10,8 @@ import {
   BarChart3, 
   Menu,
   ChevronRight,
-  PackageCheck
+  PackageCheck,
+  FileText
 } from 'lucide-react';
 import { User, Role } from '../types';
 
@@ -26,18 +27,20 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
 
   if (!user) return <>{children}</>;
 
-  const menuItems = [
-    { path: '/', label: 'Dashboard', icon: LayoutDashboard },
-    { path: '/new-entry', label: 'New Entry', icon: PlusCircle },
-    { path: '/appointments', label: 'Bookings', icon: Calendar },
-    { path: '/clients', label: 'Clients', icon: Users },
-    { path: '/packages', label: 'Service Packages', icon: PackageCheck }, // New Item
-    { path: '/reports', label: 'Analysis', icon: BarChart3 },
+  // Define all possible menu items
+  const allMenuItems = [
+    { path: '/', label: 'Dashboard', icon: LayoutDashboard, roles: [Role.ADMIN] },
+    { path: '/new-entry', label: 'New Entry', icon: PlusCircle, roles: [Role.ADMIN, Role.USER] },
+    { path: '/daily-report', label: 'Today Report', icon: FileText, roles: [Role.ADMIN, Role.USER] },
+    { path: '/appointments', label: 'Bookings', icon: Calendar, roles: [Role.ADMIN, Role.USER] },
+    { path: '/packages', label: 'Service Packages', icon: PackageCheck, roles: [Role.ADMIN, Role.USER] },
+    { path: '/clients', label: 'Clients', icon: Users, roles: [Role.ADMIN] },
+    { path: '/reports', label: 'Analysis', icon: BarChart3, roles: [Role.ADMIN] },
+    { path: '/admin', label: 'Admin Panel', icon: Shield, roles: [Role.ADMIN] },
   ];
 
-  if (user.role === Role.ADMIN) {
-    menuItems.push({ path: '/admin', label: 'Admin Panel', icon: Shield });
-  }
+  // Filter items based on current user role
+  const menuItems = allMenuItems.filter(item => item.roles.includes(user.role));
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -61,11 +64,11 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
           <div className="p-8 pb-4">
             <div className="flex items-center space-x-3 mb-1">
                 {/* Updated Logo Logic */}
-                <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center overflow-hidden shadow-lg shadow-indigo-500/30">
+                <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center overflow-hidden shadow-lg shadow-indigo-500/30 p-0.5">
                      <img 
-                        src="https://i.ibb.co/LnhYqQJ/4wnd0f-Hr.png" 
+                        src="https://i.ibb.co/9mktdv75/LOGO-1080x1080.png" 
                         alt="Logo" 
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-contain"
                         onError={(e) => {
                             // Fallback if image fails
                             e.currentTarget.style.display = 'none';
@@ -77,7 +80,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
                 </div>
                 <h1 className="text-2xl font-bold tracking-tight text-white">Mahaveer</h1>
             </div>
-            <p className="text-xs text-slate-400 ml-14">Hair Solution Manager</p>
+            <p className="text-xs text-slate-400 ml-16">Hair Solution Manager</p>
           </div>
 
           <div className="px-6 py-2">
