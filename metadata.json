@@ -1,0 +1,5 @@
+{
+  "name": "Mahaveer Hair Solution",
+  "description": "A responsive web application for managing client records, appointments, and analytics backed by Google Sheets.",
+  "requestFramePermissions": []
+}
