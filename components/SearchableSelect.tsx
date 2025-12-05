@@ -39,10 +39,11 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Filter options based on search text
+  // Performance: Limit rendered options to top 50 to prevent lag on mobile
   const filteredOptions = options.filter(opt =>
-    opt.label.toLowerCase().includes(search.toLowerCase())
-  );
+    opt.label.toLowerCase().includes(search.toLowerCase()) || 
+    (opt.subtext && opt.subtext.includes(search))
+  ).slice(0, 50);
 
   const selectedOption = options.find(o => o.value === value);
 
@@ -54,7 +55,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
       <div
         className={`relative w-full cursor-pointer bg-gray-50/50 border rounded-xl transition-all duration-200 
         ${isOpen 
-            ? 'border-indigo-500 ring-1 ring-indigo-500/20 shadow-lg bg-white' 
+            ? 'border-indigo-500 ring-2 ring-indigo-500/20 shadow-lg bg-white' 
             : 'border-gray-200 hover:border-gray-300 hover:bg-white shadow-sm'
         }`}
         onClick={() => {
@@ -62,17 +63,23 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
         }}
       >
         <div className="flex items-center justify-between px-4 py-3 min-h-[48px]">
-            <span className={`block truncate ${!selectedOption ? 'text-gray-400' : 'text-gray-900 font-semibold'}`}>
-            {selectedOption ? selectedOption.label : placeholder}
-            </span>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col overflow-hidden">
+                <span className={`block truncate ${!selectedOption ? 'text-gray-400' : 'text-gray-900 font-bold'}`}>
+                    {selectedOption ? selectedOption.label : placeholder}
+                </span>
+                {selectedOption && selectedOption.subtext && (
+                    <span className="text-[10px] text-gray-500 font-medium truncate">{selectedOption.subtext}</span>
+                )}
+            </div>
+            
+            <div className="flex items-center gap-2 pl-2">
                  {selectedOption && (
                      <div 
                         onClick={(e) => {
                             e.stopPropagation();
                             onChange('');
                         }}
-                        className="p-1 hover:bg-gray-100 text-gray-400 hover:text-red-500 rounded-full cursor-pointer transition-colors"
+                        className="p-1 hover:bg-red-50 text-gray-300 hover:text-red-500 rounded-full cursor-pointer transition-colors"
                         title="Clear selection"
                      >
                          <X className="w-4 h-4" />
@@ -94,8 +101,8 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
                     <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
                     <input
                         type="text"
-                        className="w-full pl-9 pr-4 py-2 text-sm bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 text-gray-800 placeholder-gray-400 transition-all"
-                        placeholder="Type to search..."
+                        className="w-full pl-9 pr-4 py-2 text-sm bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 text-gray-800 placeholder-gray-400 transition-all font-medium"
+                        placeholder="Search name or number..."
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                         autoFocus
@@ -110,9 +117,9 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
                     filteredOptions.map((opt) => (
                     <div
                         key={opt.value}
-                        className={`px-3 py-2.5 text-sm cursor-pointer rounded-lg flex items-center justify-between transition-colors mb-0.5
+                        className={`px-3 py-2.5 text-sm cursor-pointer rounded-lg flex items-center justify-between transition-colors mb-0.5 border border-transparent
                         ${opt.value === value 
-                            ? 'bg-indigo-50 text-indigo-700 font-medium' 
+                            ? 'bg-indigo-50 text-indigo-700 border-indigo-100 shadow-sm' 
                             : 'text-gray-700 hover:bg-gray-50'}`}
                         onClick={() => {
                             onChange(opt.value);
@@ -121,7 +128,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
                         }}
                     >
                         <div className="flex flex-col">
-                             <span className={opt.value === value ? 'font-bold' : 'font-medium'}>{opt.label}</span>
+                             <span className={`text-sm ${opt.value === value ? 'font-bold' : 'font-semibold'}`}>{opt.label}</span>
                              {opt.subtext && <span className="text-xs text-gray-500 mt-0.5">{opt.subtext}</span>}
                         </div>
                         {opt.value === value && <Check className="w-4 h-4 text-indigo-600" />}
@@ -130,7 +137,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
                 ) : (
                     <div className="px-4 py-8 text-sm text-gray-400 text-center flex flex-col items-center">
                         <Search className="w-8 h-8 text-gray-200 mb-2" />
-                        No results found
+                        <span className="font-medium">No results found</span>
                     </div>
                 )}
             </div>
