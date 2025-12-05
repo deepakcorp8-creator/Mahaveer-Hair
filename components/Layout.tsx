@@ -11,7 +11,8 @@ import {
   Menu,
   ChevronRight,
   PackageCheck,
-  FileText
+  FileText,
+  History
 } from 'lucide-react';
 import { User, Role } from '../types';
 
@@ -29,18 +30,35 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
 
   // Define all possible menu items
   const allMenuItems = [
-    { path: '/', label: 'Dashboard', icon: LayoutDashboard, roles: [Role.ADMIN] },
-    { path: '/new-entry', label: 'New Entry', icon: PlusCircle, roles: [Role.ADMIN, Role.USER] },
-    { path: '/daily-report', label: 'Today Report', icon: FileText, roles: [Role.ADMIN] },
-    { path: '/appointments', label: 'Bookings', icon: Calendar, roles: [Role.ADMIN, Role.USER] },
-    { path: '/packages', label: 'Service Packages', icon: PackageCheck, roles: [Role.ADMIN, Role.USER] },
-    { path: '/clients', label: 'Clients', icon: Users, roles: [Role.ADMIN] },
-    { path: '/reports', label: 'Analysis', icon: BarChart3, roles: [Role.ADMIN] },
-    { path: '/admin', label: 'Admin Panel', icon: Shield, roles: [Role.ADMIN] },
+    { path: '/', label: 'Dashboard', icon: LayoutDashboard, adminOnly: true },
+    { path: '/new-entry', label: 'New Entry', icon: PlusCircle, adminOnly: false },
+    { path: '/daily-report', label: 'Today Report', icon: FileText, adminOnly: false },
+    { path: '/history', label: 'Client History', icon: History, adminOnly: false },
+    { path: '/appointments', label: 'Bookings', icon: Calendar, adminOnly: false },
+    { path: '/packages', label: 'Service Packages', icon: PackageCheck, adminOnly: false },
+    { path: '/clients', label: 'Clients', icon: Users, adminOnly: false }, 
+    { path: '/reports', label: 'Analysis', icon: BarChart3, adminOnly: true },
+    { path: '/admin', label: 'Admin Panel', icon: Shield, adminOnly: true },
   ];
 
-  // Filter items based on current user role
-  const menuItems = allMenuItems.filter(item => item.roles.includes(user.role));
+  const LOGO_URL = "https://i.ibb.co/hhB5D9r/MAHAVEER-Logo-1920x1080-1.png";
+
+  // Filter items based on permissions
+  const menuItems = allMenuItems.filter(item => {
+      // 1. Admin gets everything
+      if (user.role === Role.ADMIN) return true;
+
+      // 2. Strict Admin Only pages are always hidden for regular users
+      if (item.adminOnly) return false;
+
+      // 3. Check specific permissions
+      // Note: authService ensures user.permissions is populated with defaults if empty
+      if (user.permissions && user.permissions.includes(item.path)) {
+          return true;
+      }
+
+      return false;
+  });
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -54,42 +72,25 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
         />
       )}
 
-      {/* Sidebar - Dark Modern Theme */}
+      {/* Sidebar */}
       <aside className={`
         fixed lg:static inset-y-0 left-0 z-30 w-72 bg-slate-900 text-slate-100 shadow-2xl transform transition-transform duration-300 ease-in-out
         ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
       `}>
         <div className="flex flex-col h-full">
           {/* Logo Area */}
-          <div className="p-8 pb-4">
-            <div className="flex items-center space-x-3 mb-1">
-                {/* Updated Logo Logic with Better Fallback */}
-                <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center overflow-hidden shadow-lg shadow-indigo-500/30 p-0.5 relative group">
-                     <img 
-                        src="https://i.ibb.co/9mktdv75/LOGO-1080x1080.png" 
-                        alt="M" 
-                        className="w-full h-full object-contain transition-transform group-hover:scale-110"
-                        onError={(e) => {
-                            e.currentTarget.style.display = 'none';
-                            // Show fallback
-                            const parent = e.currentTarget.parentElement;
-                            if (parent) {
-                                parent.classList.add('bg-gradient-to-br', 'from-indigo-600', 'to-purple-600');
-                                const fallback = document.createElement('span');
-                                fallback.innerText = 'M';
-                                fallback.className = 'text-white font-black text-xl';
-                                parent.appendChild(fallback);
-                            }
-                        }} 
-                    />
-                </div>
-                <h1 className="text-2xl font-bold tracking-tight text-white">Mahaveer</h1>
-            </div>
-            <p className="text-xs text-slate-400 ml-16">Hair Solution Manager</p>
-          </div>
-
-          <div className="px-6 py-2">
-            <div className="h-px bg-slate-800 w-full"></div>
+          <div className="h-32 bg-white border-b border-slate-800 flex items-center justify-center p-4">
+             <div className="w-full h-full flex items-center justify-center overflow-hidden">
+                 <img 
+                    src={LOGO_URL}
+                    alt="Mahaveer Logo" 
+                    referrerPolicy="no-referrer"
+                    className="w-full h-full object-contain"
+                    onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                    }} 
+                />
+             </div>
           </div>
 
           {/* Navigation */}
@@ -118,11 +119,11 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
           <div className="p-4 border-t border-slate-800 bg-slate-900/50">
             <div className="bg-slate-800 rounded-xl p-3 flex items-center justify-between group hover:bg-slate-750 transition-colors">
               <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold shadow-md">
-                    {user.username.charAt(0).toUpperCase()}
+                <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold shadow-md uppercase">
+                    {user.username.charAt(0)}
                 </div>
-                <div className="flex flex-col">
-                  <span className="text-sm font-semibold text-white group-hover:text-indigo-200 transition-colors">{user.username}</span>
+                <div className="flex flex-col overflow-hidden">
+                  <span className="text-sm font-semibold text-white group-hover:text-indigo-200 transition-colors truncate w-24">{user.username}</span>
                   <span className="text-xs text-slate-400">{user.role}</span>
                 </div>
               </div>

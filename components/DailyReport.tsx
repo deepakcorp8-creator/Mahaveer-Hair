@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { Entry } from '../types';
-import { Calendar, Filter, FileText, UserPlus, Scissors, CreditCard, Search, Wallet, Smartphone, Landmark, AlertCircle } from 'lucide-react';
+import { Calendar, Filter, FileText, UserPlus, Scissors, CreditCard, Search, Wallet, Smartphone, Landmark, AlertCircle, RefreshCw } from 'lucide-react';
 
 const DailyReport: React.FC = () => {
   const [entries, setEntries] = useState<Entry[]>([]);
@@ -20,7 +20,8 @@ const DailyReport: React.FC = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      const data = await api.getEntries();
+      // Force refresh on manual load to ensure fresh data
+      const data = await api.getEntries(true);
       setEntries(data);
     } catch (e) {
       console.error(e);
@@ -68,7 +69,12 @@ const DailyReport: React.FC = () => {
       {/* Header & Date Picker */}
       <div className="flex flex-col md:flex-row justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
         <div>
-           <h2 className="text-2xl font-bold text-slate-800">Daily Report</h2>
+           <div className="flex items-center gap-2">
+               <h2 className="text-2xl font-bold text-slate-800">Daily Report</h2>
+               <button onClick={loadData} className="p-1.5 rounded-full hover:bg-slate-100 text-slate-400 hover:text-indigo-600 transition-colors" title="Refresh Data">
+                   <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+               </button>
+           </div>
            <p className="text-slate-500 text-sm">Overview of transactions and services.</p>
         </div>
         <div className="mt-4 md:mt-0 flex items-center bg-slate-50 border border-slate-200 rounded-lg p-1">

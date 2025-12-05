@@ -24,8 +24,9 @@ let DATA_CACHE: {
     lastFetch: {}
 };
 
-const CACHE_DURATION = 60 * 1000; // 1 minute cache for entries/appts
-const OPTIONS_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes for clients/items
+// Increased Cache Duration for speed
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minute cache for entries/appts
+const OPTIONS_CACHE_DURATION = 15 * 60 * 1000; // 15 minutes for clients/items
 
 export const api = {
   // --- OPTION HELPERS (Clients, Technicians, Items) ---
@@ -75,11 +76,12 @@ export const api = {
     DATA_CACHE.options = null;
     
     if (isLive) {
-        await fetch(GOOGLE_SCRIPT_URL, {
+        // Fire and forget - don't await
+        fetch(GOOGLE_SCRIPT_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify({ action: 'addClient', ...client })
-        });
+        }).catch(err => console.error("BG Sync Error", err));
     } else {
         MOCK_CLIENTS.push(client);
     }
@@ -93,24 +95,21 @@ export const api = {
     // Add to local cache immediately
     LOCAL_NEW_ENTRIES.push(newEntry as Entry);
     
-    // Invalidate main entries cache so next fetch gets fresh data
-    DATA_CACHE.entries = null;
+    // Invalidate main entries cache partially? No, just rely on the merge in getEntries
+    // DATA_CACHE.entries = null; // Don't nullify, just let getEntries merge it
 
     if (isLive) {
-      try {
-        await fetch(GOOGLE_SCRIPT_URL, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'text/plain;charset=utf-8', 
-          },
-          body: JSON.stringify({
-            action: 'addEntry',
-            ...entry
-          })
-        });
-      } catch (e) {
-        console.error("Error sending to sheet", e);
-      }
+      // OPTIMISTIC UI: Don't await the fetch. Let it run in background.
+      fetch(GOOGLE_SCRIPT_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'text/plain;charset=utf-8', 
+        },
+        body: JSON.stringify({
+          action: 'addEntry',
+          ...entry
+        })
+      }).catch(e => console.error("Error sending to sheet", e));
     } else {
         MOCK_ENTRIES.push(newEntry as Entry);
     }
@@ -137,7 +136,8 @@ export const api = {
             }
            } catch (e) {
              console.warn("Using mock entries due to fetch failure");
-             allEntries = [...MOCK_ENTRIES];
+             // If fetch fails, keep old cache if available
+             allEntries = DATA_CACHE.entries || [...MOCK_ENTRIES];
            }
         } else {
             allEntries = [...MOCK_ENTRIES];
@@ -149,6 +149,31 @@ export const api = {
     const uniqueLocal = LOCAL_NEW_ENTRIES.filter(e => !serverIds.has(e.id));
     
     return [...uniqueLocal, ...allEntries];
+  },
+
+  updateEntryStatus: async (id: string, status: string) => {
+    // 1. Update Local Cache
+    const localEntry = LOCAL_NEW_ENTRIES.find(e => e.id === id);
+    if(localEntry) localEntry.workStatus = status as any;
+
+    if(DATA_CACHE.entries) {
+        const cacheEntry = DATA_CACHE.entries.find(e => e.id === id);
+        if(cacheEntry) cacheEntry.workStatus = status as any;
+    }
+
+    // 2. Mock Data Update
+    const mockEntry = MOCK_ENTRIES.find(e => e.id === id);
+    if(mockEntry) mockEntry.workStatus = status as any;
+
+    // 3. Live Update (Fire & Forget)
+    if (isLive) {
+        fetch(GOOGLE_SCRIPT_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({ action: 'updateEntryStatus', id, status })
+        }).catch(e => console.error("BG Update Fail", e));
+    }
+    return true;
   },
 
   // --- APPOINTMENTS ---
@@ -170,7 +195,7 @@ export const api = {
             }
            } catch (e) {
              // Fallback
-             allAppts = [...MOCK_APPOINTMENTS];
+             allAppts = DATA_CACHE.appointments || [...MOCK_APPOINTMENTS];
            }
         } else {
              allAppts = [...MOCK_APPOINTMENTS];
@@ -189,14 +214,15 @@ export const api = {
     
     // Add to local cache immediately so it shows in UI
     LOCAL_NEW_APPOINTMENTS.push(newAppt as Appointment);
-    DATA_CACHE.appointments = null; // Invalidate cache
+    // DATA_CACHE.appointments = null; // Keep cache valid, just merge
 
     if (isLive) {
-        await fetch(GOOGLE_SCRIPT_URL, {
+        // Fire & Forget
+        fetch(GOOGLE_SCRIPT_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify({ action: 'addAppointment', ...appt })
-        });
+        }).catch(e => console.error("BG Appt Error", e));
     } else {
         MOCK_APPOINTMENTS.push(newAppt as Appointment);
     }
@@ -215,11 +241,12 @@ export const api = {
     }
 
     if (isLive) {
-        await fetch(GOOGLE_SCRIPT_URL, {
+        // Fire & Forget
+        fetch(GOOGLE_SCRIPT_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify({ action: 'updateAppointmentStatus', id, status })
-        });
+        }).catch(e => console.error("BG Appt Update Error", e));
     } else {
         const appt = MOCK_APPOINTMENTS.find(a => a.id === id);
         if (appt) appt.status = status;
@@ -254,15 +281,12 @@ export const api = {
       DATA_CACHE.packages = null; // Invalidate
       
       if (isLive) {
-        try {
-            await fetch(GOOGLE_SCRIPT_URL, {
+        // Fire & Forget
+        fetch(GOOGLE_SCRIPT_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'text/plain;charset=utf-8' },
             body: JSON.stringify({ action: 'addPackage', ...pkg })
-            });
-        } catch (error) {
-            console.error("Error saving package to sheet:", error);
-        }
+            }).catch(e => console.error("BG Pkg Error", e));
       }
       const newPkg = { ...pkg, id: Math.random().toString(36).substr(2, 9) };
       MOCK_PACKAGES.push(newPkg);
@@ -281,12 +305,10 @@ export const api = {
       
       if (!pkg) return null;
 
-      // 3. Count entries for this client since package start date
-      // We use getEntries() which now includes LOCAL_NEW_ENTRIES and Caching
+      // 3. Count entries
       const entries = await api.getEntries();
       
       const pkgStartDate = new Date(pkg.startDate);
-      // Reset time to start of day to ensure comparisons work for same-day entries
       pkgStartDate.setHours(0,0,0,0);
 
       const usedCount = entries.filter((e: any) => {
@@ -296,7 +318,8 @@ export const api = {
           return (
              e.clientName.trim().toLowerCase() === normalizedName && 
              entryDate >= pkgStartDate &&
-             e.serviceType === 'SERVICE' // Only count standard services
+             (e.serviceType === 'SERVICE') && 
+             (e.workStatus === 'DONE' || e.workStatus === 'PENDING_APPROVAL')
           );
       }).length;
 
@@ -319,7 +342,12 @@ export const api = {
           try {
               const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getUsers`);
               const data = await response.json();
-              if (Array.isArray(data)) return data;
+              if (Array.isArray(data)) {
+                  return data.map((u: any) => ({
+                      ...u,
+                      permissions: u.permissions ? u.permissions.split(',') : []
+                  }));
+              }
           } catch (e) {
               console.warn("Failed to fetch users", e);
           }
@@ -328,12 +356,19 @@ export const api = {
   },
 
   addUser: async (user: User & { password: string }) => {
+      // User management usually requires strict sync, so we can await this one
+      // or make it optimistic if needed, but safer to await admin actions.
+      const payload = {
+          ...user,
+          permissions: user.permissions ? user.permissions.join(',') : ''
+      };
+
       if (isLive) {
           try {
              await fetch(GOOGLE_SCRIPT_URL, {
                   method: 'POST',
                   headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                  body: JSON.stringify({ action: 'addUser', ...user })
+                  body: JSON.stringify({ action: 'addUser', ...payload })
              });
              return true;
           } catch (e) {
@@ -341,7 +376,7 @@ export const api = {
               return false;
           }
       }
-      return true; // Mock success
+      return true; 
   },
   
   deleteUser: async (username: string) => {

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { Client, Item, Technician, Entry, ServicePackage } from '../types';
-import { Save, AlertCircle, User, CreditCard, Scissors, Calendar, MapPin, RefreshCw, CheckCircle2, Ticket, FileDown, Printer } from 'lucide-react';
+import { Save, AlertCircle, User, CreditCard, Scissors, Calendar, MapPin, RefreshCw, CheckCircle2, Ticket, FileDown, Clock, Shield } from 'lucide-react';
 import { SearchableSelect } from './SearchableSelect';
 import { generateInvoice } from '../utils/invoiceGenerator';
 
@@ -23,7 +23,7 @@ const NewEntryForm: React.FC = () => {
   // Define initial state for full reset
   const initialFormState: Partial<Entry> = {
     date: new Date().toISOString().split('T')[0],
-    branch: 'BSP',
+    branch: 'RPR',
     serviceType: 'SERVICE',
     patchMethod: 'TAPING',
     paymentMethod: 'CASH',
@@ -39,7 +39,7 @@ const NewEntryForm: React.FC = () => {
   };
   
   const [formData, setFormData] = useState<Partial<Entry>>(initialFormState);
-  const [notification, setNotification] = useState<{msg: string, type: 'success' | 'error'} | null>(null);
+  const [notification, setNotification] = useState<{msg: string, type: 'success' | 'error' | 'warning'} | null>(null);
   
   // State to hold the last successful entry to allow printing
   const [lastSubmittedEntry, setLastSubmittedEntry] = useState<Entry | null>(null);
@@ -89,15 +89,21 @@ const NewEntryForm: React.FC = () => {
   const checkPackage = async (name: string) => {
      try {
         const pkgStatus = await api.checkClientPackage(name);
-        if (pkgStatus) {
+        if (pkgStatus && !pkgStatus.isExpired) {
             setActivePackage(pkgStatus);
             // Auto-set Service Number
             setFormData(prev => ({ 
                 ...prev, 
                 numberOfService: pkgStatus.currentServiceNumber,
+                // IMPORTANT: Package Service requires ADMIN APPROVAL
+                workStatus: 'PENDING_APPROVAL' 
             }));
+        } else if (pkgStatus && pkgStatus.isExpired) {
+             setActivePackage(pkgStatus);
+             setFormData(prev => ({ ...prev, workStatus: 'DONE' })); // Expired means regular paid service
         } else {
-            setFormData(prev => ({ ...prev, numberOfService: 1 }));
+            setActivePackage(null);
+            setFormData(prev => ({ ...prev, numberOfService: 1, workStatus: 'DONE' }));
         }
     } catch (e) {
         console.error("Error checking package", e);
@@ -110,21 +116,32 @@ const NewEntryForm: React.FC = () => {
     setNotification(null);
     setLastSubmittedEntry(null); // Reset last entry
 
-    if (!formData.clientName || !formData.amount || !formData.technician) {
-      setNotification({ msg: 'Please fill in all required fields (Client, Technician, Amount).', type: 'error' });
+    if (!formData.clientName || !formData.technician) {
+      setNotification({ msg: 'Please fill in all required fields (Client, Technician).', type: 'error' });
       setLoading(false);
       window.scrollTo(0,0);
       return;
     }
 
     try {
-      const result = await api.addEntry(formData as Entry);
+      // Force 'PENDING_APPROVAL' if active package is used
+      let finalData = { ...formData };
+      if (activePackage && !activePackage.isExpired) {
+          finalData.workStatus = 'PENDING_APPROVAL';
+      }
+
+      const result = await api.addEntry(finalData as Entry);
       
       // Store result for invoice generation
       setLastSubmittedEntry(result as Entry);
       
-      // Show success
-      setNotification({ msg: 'Transaction recorded successfully!', type: 'success' });
+      // Show success message logic
+      const isPending = finalData.workStatus === 'PENDING_APPROVAL';
+      
+      setNotification({ 
+          msg: isPending ? 'Service Recorded. Waiting for Admin Approval (Package).' : 'Transaction recorded successfully!', 
+          type: isPending ? 'warning' : 'success' 
+      });
       
       // FULL RESET of the form
       setFormData({
@@ -135,8 +152,8 @@ const NewEntryForm: React.FC = () => {
       
       window.scrollTo(0,0);
       
-      // Hide notification after 5 seconds
-      setTimeout(() => setNotification(null), 5000);
+      // Hide notification after 8 seconds
+      setTimeout(() => setNotification(null), 8000);
 
     } catch (error) {
       setNotification({ msg: 'Failed to add entry. Please check your connection.', type: 'error' });
@@ -176,11 +193,17 @@ const NewEntryForm: React.FC = () => {
         
         {/* Notification Banner */}
         {notification && (
-          <div className={`mb-6 p-4 rounded-xl border flex flex-col md:flex-row items-start md:items-center justify-between shadow-lg transform transition-all scale-100 gap-4 ${notification.type === 'success' ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
+          <div className={`mb-6 p-4 rounded-xl border flex flex-col md:flex-row items-start md:items-center justify-between shadow-lg transform transition-all scale-100 gap-4 
+            ${notification.type === 'success' ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 
+              notification.type === 'warning' ? 'bg-amber-50 border-amber-200 text-amber-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
             <div className="flex items-center">
-                {notification.type === 'success' ? <CheckCircle2 className="w-6 h-6 mr-3 text-emerald-600" /> : <AlertCircle className="w-6 h-6 mr-3 text-red-600" />}
+                {notification.type === 'success' && <CheckCircle2 className="w-6 h-6 mr-3 text-emerald-600" />}
+                {notification.type === 'warning' && <Shield className="w-6 h-6 mr-3 text-amber-600" />}
+                {notification.type === 'error' && <AlertCircle className="w-6 h-6 mr-3 text-red-600" />}
                 <div>
-                    <h4 className="font-bold text-sm uppercase">{notification.type === 'success' ? 'Success' : 'Error'}</h4>
+                    <h4 className="font-bold text-sm uppercase">
+                        {notification.type === 'success' ? 'Success' : notification.type === 'warning' ? 'Sent for Admin Approval' : 'Error'}
+                    </h4>
                     <p className="font-medium">{notification.msg}</p>
                 </div>
             </div>
@@ -220,23 +243,14 @@ const NewEntryForm: React.FC = () => {
                     <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="col-span-full">
                             {/* Updated to Datalist for 'Select Existing or Type New' */}
-                            <label className={labelStyle}>Client Name <span className="text-red-500">*</span></label>
-                            <input
-                                list="client-options"
-                                type="text"
-                                name="clientName"
+                            <SearchableSelect 
+                                label="Client Name"
+                                options={clients.map(c => ({ label: c.name, value: c.name, subtext: c.contact }))}
                                 value={formData.clientName || ''}
-                                onChange={(e) => handleClientChange(e.target.value)}
-                                className={`${inputBaseStyle} focus:ring-2 focus:ring-blue-500 focus:border-blue-500`}
+                                onChange={handleClientChange}
                                 placeholder="Select Existing or Type New..."
                                 required
-                                autoComplete="off"
                             />
-                            <datalist id="client-options">
-                                {clients.map((c, idx) => (
-                                    <option key={idx} value={c.name}>{c.contact}</option>
-                                ))}
-                            </datalist>
                         </div>
                         
                         {/* PACKAGE ALERT BANNER */}
@@ -244,9 +258,9 @@ const NewEntryForm: React.FC = () => {
                              <div className={`col-span-full rounded-xl border p-4 flex items-start gap-3 shadow-sm transition-all duration-300
                                 ${activePackage.isExpired 
                                     ? 'bg-red-50 border-red-200 text-red-800' 
-                                    : 'bg-indigo-50 border-indigo-200 text-indigo-900'}
+                                    : 'bg-amber-50 border-amber-200 text-amber-900'}
                              `}>
-                                 <div className={`p-2 rounded-lg ${activePackage.isExpired ? 'bg-red-100' : 'bg-indigo-100'}`}>
+                                 <div className={`p-2 rounded-lg ${activePackage.isExpired ? 'bg-red-100' : 'bg-amber-100'}`}>
                                      <Ticket className="w-6 h-6 shrink-0" />
                                  </div>
                                  <div className="flex-1">
@@ -255,7 +269,7 @@ const NewEntryForm: React.FC = () => {
                                              {activePackage.isExpired ? 'PACKAGE EXPIRED' : activePackage.package.packageName}
                                          </h4>
                                          {!activePackage.isExpired && (
-                                             <span className="bg-white/50 px-3 py-1 rounded-md text-sm font-black border border-indigo-100 shadow-sm">
+                                             <span className="bg-white/50 px-3 py-1 rounded-md text-sm font-black border border-amber-200 shadow-sm">
                                                  Remaining: {activePackage.remaining}
                                              </span>
                                          )}
@@ -263,9 +277,13 @@ const NewEntryForm: React.FC = () => {
                                      <p className="font-medium text-sm mt-1 opacity-90">
                                          This is Service <span className="font-bold text-lg">{activePackage.currentServiceNumber}</span> of {activePackage.package.totalServices}
                                      </p>
-                                     {activePackage.isExpired && (
+                                     {activePackage.isExpired ? (
                                          <p className="text-xs font-bold mt-2 uppercase tracking-wide bg-red-100/50 p-1 rounded inline-block">
                                              Limit Exceeded. Please charge regular price or renew.
+                                         </p>
+                                     ) : (
+                                         <p className="text-xs font-bold mt-2 uppercase tracking-wide bg-amber-100/50 p-1 rounded inline-block text-amber-800">
+                                             NOTE: This entry will require ADMIN APPROVAL.
                                          </p>
                                      )}
                                  </div>
@@ -316,15 +334,22 @@ const NewEntryForm: React.FC = () => {
                     <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                             <label className={labelStyle}>Branch</label>
-                            <select
-                                name="branch"
-                                value={formData.branch}
-                                onChange={handleChange}
-                                className={`${inputBaseStyle} focus:ring-2 focus:ring-violet-500 focus:border-violet-500`}
-                            >
-                                <option value="BSP">BSP</option>
-                                <option value="RPR">RPR</option>
-                            </select>
+                            <div className="flex gap-3 mt-1">
+                                {['RPR', 'JDP'].map((b) => (
+                                    <button
+                                        type="button"
+                                        key={b}
+                                        onClick={() => setFormData(prev => ({ ...prev, branch: b as any }))}
+                                        className={`flex-1 py-3 rounded-xl border font-bold text-sm transition-all
+                                            ${formData.branch === b 
+                                                ? 'bg-violet-600 text-white border-violet-700 shadow-md transform scale-105' 
+                                                : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50 hover:border-gray-300'
+                                            }`}
+                                    >
+                                        {b}
+                                    </button>
+                                ))}
+                            </div>
                         </div>
                         <div>
                             <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5 ml-1">Transaction Date</label>
@@ -483,14 +508,18 @@ const NewEntryForm: React.FC = () => {
                             className={`w-full group flex items-center justify-center py-4 px-6 rounded-xl shadow-xl text-base font-bold text-white transition-all transform duration-200
                                 ${loading 
                                     ? 'bg-gray-400 cursor-not-allowed' 
-                                    : 'bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 hover:scale-[1.02] hover:shadow-indigo-200'}`}
+                                    : activePackage && !activePackage.isExpired 
+                                        ? 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600'
+                                        : 'bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 hover:scale-[1.02] hover:shadow-indigo-200'}`}
                         >
                             {loading ? (
                                 <RefreshCw className="w-5 h-5 mr-2 animate-spin" />
+                            ) : activePackage && !activePackage.isExpired ? (
+                                <Shield className="w-5 h-5 mr-2" />
                             ) : (
                                 <Save className="w-5 h-5 mr-2 group-hover:animate-pulse" />
                             )}
-                            {loading ? 'Processing...' : 'COMPLETE TRANSACTION'}
+                            {loading ? 'Processing...' : (activePackage && !activePackage.isExpired ? 'SEND FOR ADMIN APPROVAL' : 'COMPLETE TRANSACTION')}
                         </button>
                      </div>
                 </div>

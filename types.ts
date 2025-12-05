@@ -1,3 +1,4 @@
+
 export enum Role {
   ADMIN = 'ADMIN',
   USER = 'USER'
@@ -7,6 +8,7 @@ export interface User {
   username: string;
   role: Role;
   department?: string;
+  permissions?: string[]; // Array of paths allowed e.g. ['/new-entry', '/daily-report']
 }
 
 export interface Client {
@@ -24,11 +26,11 @@ export interface Entry {
   clientName: string;
   contactNo: string;
   address: string;
-  branch: 'BSP' | 'RPR';
+  branch: 'BSP' | 'RPR' | 'JDP';
   serviceType: 'SERVICE' | 'NEW' | 'DEMO' | 'MUNDAN';
   patchMethod: 'TAPING' | 'BONDING' | 'CLIPPING' | '';
   technician: string;
-  workStatus: 'PENDING' | 'DONE' | 'FOLLOWUP';
+  workStatus: 'PENDING' | 'DONE' | 'FOLLOWUP' | 'PENDING_APPROVAL' | 'REJECTED';
   amount: number;
   paymentMethod: 'UPI' | 'CASH' | 'CARD' | 'PENDING';
   remark: string;
@@ -41,6 +43,7 @@ export interface Appointment {
   date: string;
   clientName: string;
   contact: string;
+  address: string;
   note: string;
   status: 'PENDING' | 'FOLLOWUP' | 'CLOSED';
 }

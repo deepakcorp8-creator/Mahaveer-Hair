@@ -14,6 +14,8 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const LOGO_URL = "https://i.ibb.co/hhB5D9r/MAHAVEER-Logo-1920x1080-1.png";
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -83,17 +85,18 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
          <div className="max-w-md w-full bg-white lg:bg-transparent rounded-3xl lg:rounded-none shadow-2xl lg:shadow-none p-8 lg:p-0 relative z-10">
             
             <div className="text-center lg:text-left mb-10">
-               <div className="mx-auto lg:mx-0 w-20 h-20 bg-indigo-50 rounded-2xl flex items-center justify-center mb-6 shadow-sm border border-indigo-100 overflow-hidden relative group">
+               <div className="mx-auto lg:mx-0 w-24 h-24 bg-indigo-50 rounded-2xl flex items-center justify-center mb-6 shadow-sm border border-indigo-100 overflow-hidden relative group">
                   <img 
-                    src="https://i.ibb.co/9mktdv75/LOGO-1080x1080.png" 
+                    src={LOGO_URL}
                     alt="Logo" 
+                    referrerPolicy="no-referrer"
                     className="w-full h-full object-contain p-1"
                     onError={(e) => {
                         e.currentTarget.style.display = 'none';
                         // Show fallback
                         const parent = e.currentTarget.parentElement;
                         if (parent) {
-                            parent.className = 'mx-auto lg:mx-0 w-20 h-20 bg-gradient-to-tr from-indigo-600 to-purple-600 rounded-2xl flex items-center justify-center mb-6 shadow-md';
+                            parent.className = 'mx-auto lg:mx-0 w-24 h-24 bg-gradient-to-tr from-indigo-600 to-purple-600 rounded-2xl flex items-center justify-center mb-6 shadow-md';
                             const fallback = document.createElement('span');
                             fallback.innerText = 'M';
                             fallback.className = 'text-white font-black text-4xl';
@@ -180,14 +183,9 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
 
             </form>
 
-             {/* Footer / Demo Creds */}
+             {/* Footer */}
              <div className="mt-8 pt-6 border-t border-slate-100 text-center">
-                 <p className="text-xs text-slate-400 mb-3 font-semibold uppercase tracking-wider">Developed by Deepak Sahu</p>
-                 <div className="inline-flex items-center justify-center px-4 py-2 bg-slate-50 rounded-lg border border-slate-100">
-                    <span className="text-xs font-mono text-slate-500">
-                        Demo: <strong className="text-slate-800">admin</strong> / <strong className="text-slate-800">admin</strong>
-                    </span>
-                 </div>
+                 <p className="text-xs text-slate-500 mb-1 font-semibold uppercase tracking-wider">Powered by <span className="text-slate-900 font-bold">Gulshan Sahu</span></p>
              </div>
          </div>
       </div>

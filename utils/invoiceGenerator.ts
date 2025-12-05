@@ -7,6 +7,9 @@ export const generateInvoice = (entry: Entry) => {
     return;
   }
 
+  // Logo URL
+  const LOGO_URL = "https://i.ibb.co/hhB5D9r/MAHAVEER-Logo-1920x1080-1.png";
+
   // Current Date for the Invoice Print Date
   const printDate = new Date().toLocaleDateString('en-IN', {
     day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
@@ -215,9 +218,10 @@ export const generateInvoice = (entry: Entry) => {
         <header class="header">
           <div class="logo-section">
             <img 
-                src="https://i.ibb.co/9mktdv75/LOGO-1080x1080.png" 
+                src="${LOGO_URL}" 
                 alt="Logo" 
                 class="logo-img" 
+                referrerpolicy="no-referrer"
                 onerror="this.style.display='none'; document.getElementById('logo-fallback').style.display='block';"
             />
             <div id="logo-fallback" class="logo-text-fallback">M</div>

@@ -21,9 +21,8 @@ function doGet(e) {
      return getUsers(ss);
   }
 
-  // Fallback for appointments if needed, currently empty array
   if (action == 'getAppointments') {
-      return response([]);
+      return getAppointments(ss);
   }
 
   return response({error: "Invalid action"});
@@ -71,6 +70,21 @@ function doPost(e) {
     return response({status: "success"});
   }
 
+  if (action == 'updateEntryStatus') {
+    const sheet = ss.getSheetByName("DATA BASE");
+    if (!sheet) return response({error: "Sheet 'DATA BASE' not found"});
+    
+    // We assume ID is 'row_X' where X is the row number
+    try {
+        const rowId = parseInt(data.id.split('_')[1]);
+        // Work Status is column I (9th column)
+        sheet.getRange(rowId, 9).setValue(data.status);
+        return response({status: "success"});
+    } catch(e) {
+        return response({error: "Failed to update status"});
+    }
+  }
+
   if (action == 'addClient') {
       const sheet = ss.getSheetByName("CLIENT MASTER");
       if (sheet) {
@@ -90,7 +104,6 @@ function doPost(e) {
       const sheet = ss.getSheetByName("LOGIN");
       if (!sheet) return response({error: "Sheet 'LOGIN' not found"});
       
-      // Check if user already exists
       const users = sheet.getDataRange().getValues();
       const exists = users.some(row => row[0].toString().toLowerCase() === data.username.toLowerCase());
       if (exists) {
@@ -101,7 +114,8 @@ function doPost(e) {
           data.username,
           data.password,
           data.role,
-          data.department
+          data.department,
+          data.permissions
       ]);
       return response({status: "success"});
   }
@@ -115,11 +129,59 @@ function doPost(e) {
       
       for (let i = 0; i < values.length; i++) {
           if (values[i][0].toString() === data.username) {
-              sheet.deleteRow(i + 1); // Row index is 1-based
+              sheet.deleteRow(i + 1);
               return response({status: "success"});
           }
       }
       return response({error: "User not found"});
+  }
+
+  // --- APPOINTMENT ACTIONS (Updated to match APPOINTMNET Sheet) ---
+  if (action == 'addAppointment') {
+    const sheet = ss.getSheetByName("APPOINTMNET");
+    if (!sheet) return response({error: "Sheet 'APPOINTMNET' not found"});
+    
+    // Generate simple ID based on timestamp
+    const id = 'appt_' + new Date().getTime();
+    
+    // Mapping to Sheet Columns:
+    // A: S.No (ID)
+    // B: Date
+    // C: Name
+    // D: Contacts
+    // E: Address (User provided)
+    // F: Note
+    // G: Done (Status)
+
+    sheet.appendRow([
+      id,              // S.No
+      data.date,       // Date
+      data.clientName, // Name
+      data.contact,    // Contacts
+      data.address,    // Address (From frontend)
+      data.note,       // Note
+      data.status      // Done (Status: PENDING, CLOSED, etc.)
+    ]);
+    
+    return response({status: "success", id: id});
+  }
+
+  if (action == 'updateAppointmentStatus') {
+    const sheet = ss.getSheetByName("APPOINTMNET");
+    if (!sheet) return response({error: "Sheet 'APPOINTMNET' not found"});
+    
+    const dataRange = sheet.getDataRange();
+    const values = dataRange.getValues();
+    
+    // Find row by ID (Column A)
+    for (let i = 1; i < values.length; i++) {
+        if (values[i][0] == data.id) {
+            // Update "Done" Column (G -> 7th Column)
+            sheet.getRange(i + 1, 7).setValue(data.status);
+            return response({status: "success"});
+        }
+    }
+    return response({error: "Appointment not found"});
   }
   
   return response({error: "Unknown action"});
@@ -130,13 +192,9 @@ function doPost(e) {
 function getEntries(ss) {
     const sheet = ss.getSheetByName("DATA BASE");
     if (!sheet || sheet.getLastRow() <= 1) return response([]);
-
-    // Get all data from Row 2 to Last Row, Columns 1 to 13 (A to M)
     const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 13).getValues();
-    
-    // Map array to JSON based on your sheet columns
     const entries = data.map((row, index) => ({
-      id: 'row_' + (index + 2), // generate a unique ID based on row number
+      id: 'row_' + (index + 2),
       date: formatDate(row[0]),
       clientName: row[1],
       contactNo: row[2],
@@ -151,15 +209,32 @@ function getEntries(ss) {
       remark: row[11],
       numberOfService: row[12]
     }));
-
-    // Return most recent first
     return response(entries.reverse());
+}
+
+function getAppointments(ss) {
+    const sheet = ss.getSheetByName("APPOINTMNET");
+    if (!sheet || sheet.getLastRow() <= 1) return response([]);
+
+    // Fetch up to Column G (7)
+    const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 7).getValues();
+    
+    const appointments = data.map((row) => ({
+      id: row[0],         // A: S.No
+      date: formatDate(row[1]), // B: Date
+      clientName: row[2], // C: Name
+      contact: row[3],    // D: Contacts
+      address: row[4],    // E: Address
+      note: row[5],       // F: Note
+      status: row[6] || 'PENDING' // G: Done (Status)
+    }));
+    
+    return response(appointments);
 }
 
 function getPackages(ss) {
     const sheet = ss.getSheetByName("PACKAG PLAN");
     if (!sheet || sheet.getLastRow() <= 1) return response([]);
-
     const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 5).getValues();
     const packages = data.map((row, index) => ({
       id: 'pkg_' + index,
@@ -171,7 +246,6 @@ function getPackages(ss) {
       totalServices: row[4],
       status: 'ACTIVE'
     }));
-
     return response(packages);
 }
 
@@ -218,13 +292,13 @@ function getOptions(ss) {
 function getUsers(ss) {
     const sheet = ss.getSheetByName("LOGIN");
     if (!sheet || sheet.getLastRow() <= 1) return response([]);
-
-    const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 4).getValues();
+    const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 5).getValues();
     const users = data.map(row => ({
         username: row[0],
         password: row[1],
         role: row[2],
-        department: row[3]
+        department: row[3],
+        permissions: row[4]
     }));
     return response(users);
 }
@@ -236,7 +310,6 @@ function response(data) {
 function formatDate(date) {
   if (!date) return "";
   try {
-    // Handle Google Sheet date objects
     const d = new Date(date);
     d.setHours(12); 
     return d.toISOString().split('T')[0];

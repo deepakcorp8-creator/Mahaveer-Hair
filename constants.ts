@@ -130,11 +130,11 @@ export const MOCK_ENTRIES: Entry[] = [
 ];
 
 export const MOCK_APPOINTMENTS: Appointment[] = [
-  { id: '101', date: '2025-05-05', clientName: 'Manish Gupta', contact: '9584801901', note: 'Checkup', status: 'PENDING' },
-  { id: '102', date: '2025-05-06', clientName: 'Rakesh Sahu', contact: '5544332211', note: 'Inquiry for new patch', status: 'FOLLOWUP' },
-  { id: '103', date: '2025-05-07', clientName: 'Suresh Patel', contact: '9123456780', note: 'Maintenance', status: 'PENDING' },
-  { id: '104', date: '2025-12-04', clientName: 'Sita Verma', contact: '7778889990', note: 'KAL AYEGI', status: 'PENDING' },
-  { id: '105', date: '2025-12-25', clientName: 'Vikram Yadav', contact: '7766554433', note: 'AUNGA BOLA HAI', status: 'CLOSED' },
+  { id: '101', date: '2025-05-05', clientName: 'Manish Gupta', contact: '9584801901', address: 'Umaiyara', note: 'Checkup', status: 'PENDING' },
+  { id: '102', date: '2025-05-06', clientName: 'Rakesh Sahu', contact: '5544332211', address: 'Raigarh', note: 'Inquiry for new patch', status: 'FOLLOWUP' },
+  { id: '103', date: '2025-05-07', clientName: 'Suresh Patel', contact: '9123456780', address: 'Jagdalpur', note: 'Maintenance', status: 'PENDING' },
+  { id: '104', date: '2025-12-04', clientName: 'Sita Verma', contact: '7778889990', address: 'Raipur', note: 'KAL AYEGI', status: 'PENDING' },
+  { id: '105', date: '2025-12-25', clientName: 'Vikram Yadav', contact: '7766554433', address: 'Durg', note: 'AUNGA BOLA HAI', status: 'CLOSED' },
 ];
 
 export const MOCK_PACKAGES: ServicePackage[] = [
@@ -150,4 +150,4 @@ export const MOCK_PACKAGES: ServicePackage[] = [
     }
 ];
 
-export const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby_beCjmepq0a5poZIu2PV7_5Nh72cHaM4lImwE9rJIo4DkVGrghKoH1gmTTrmyPik08Q/exec';
+export const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw2-wmq9kXnfHMmOgoJZ5mmlnt5ZOk0seNCmXBStoQrtLfJepJECK48MP-CXxC_GXRu7w/exec';

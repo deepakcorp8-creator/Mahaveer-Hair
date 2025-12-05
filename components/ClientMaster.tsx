@@ -29,9 +29,10 @@ const ClientMaster: React.FC = () => {
     loadClients();
   };
 
+  // FIX: Cast properties to string to ensure .includes() works correctly on all data types
   const filteredClients = clients.filter(c => 
-    c.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    c.contact.includes(searchTerm)
+    (c.name || '').toLowerCase().includes(searchTerm.toLowerCase()) || 
+    String(c.contact || '').includes(searchTerm)
   );
 
   return (

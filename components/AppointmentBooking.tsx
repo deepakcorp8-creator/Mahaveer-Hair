@@ -17,6 +17,7 @@ const AppointmentBooking: React.FC = () => {
     date: new Date().toISOString().split('T')[0],
     clientName: '',
     contact: '',
+    address: '',
     note: '',
     status: 'PENDING'
   });
@@ -46,11 +47,12 @@ const AppointmentBooking: React.FC = () => {
       setNewAppt(prev => ({
         ...prev,
         clientName: client.name,
-        contact: client.contact
+        contact: client.contact,
+        address: client.address
       }));
     } else {
        // Handle case where user clears selection
-       setNewAppt(prev => ({ ...prev, clientName: val, contact: '' }));
+       setNewAppt(prev => ({ ...prev, clientName: val, contact: '', address: '' }));
     }
   };
 
@@ -62,7 +64,7 @@ const AppointmentBooking: React.FC = () => {
         await api.addAppointment(newAppt as Appointment);
         
         // Immediate UI Update before fetch
-        setNewAppt(prev => ({ ...prev, clientName: '', contact: '', note: '' }));
+        setNewAppt(prev => ({ ...prev, clientName: '', contact: '', address: '', note: '' }));
         
         // Refresh list
         await loadData();
@@ -90,9 +92,15 @@ const AppointmentBooking: React.FC = () => {
 
   const filteredAppointments = appointments.filter(a => {
       const matchesStatus = statusFilter === 'ALL' ? true : a.status === statusFilter;
+      // FIX: Ensure values are strings before calling toLowerCase or includes
+      const clientNameSafe = (a.clientName || '').toLowerCase();
+      const contactSafe = String(a.contact || '');
+      const searchSafe = searchFilter.toLowerCase();
+      
       const matchesSearch = searchFilter === '' ? true : 
-        a.clientName.toLowerCase().includes(searchFilter.toLowerCase()) || 
-        a.contact.includes(searchFilter);
+        clientNameSafe.includes(searchSafe) || 
+        contactSafe.includes(searchFilter);
+        
       return matchesStatus && matchesSearch;
   });
 
@@ -161,7 +169,7 @@ const AppointmentBooking: React.FC = () => {
                          {/* Replaced Standard Input with Mobile Friendly SearchableSelect */}
                          <SearchableSelect 
                             label="Client"
-                            options={clients.map(c => ({ label: c.name, value: c.name, subtext: c.contact }))}
+                            options={clients.map(c => ({ label: c.name, value: c.name, subtext: String(c.contact) }))}
                             value={newAppt.clientName || ''}
                             onChange={handleClientChange}
                             placeholder="Select Client..."
@@ -177,6 +185,17 @@ const AppointmentBooking: React.FC = () => {
                             onChange={e => setNewAppt({...newAppt, contact: e.target.value})}
                             className="w-full rounded-xl border-gray-200 border bg-gray-50/50 px-4 py-3 text-gray-900 shadow-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 transition-all"
                             placeholder="Phone number"
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5 ml-1">Address</label>
+                        <input
+                            type="text"
+                            value={newAppt.address}
+                            onChange={e => setNewAppt({...newAppt, address: e.target.value})}
+                            className="w-full rounded-xl border-gray-200 border bg-gray-50/50 px-4 py-3 text-gray-900 shadow-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 transition-all"
+                            placeholder="Address (City/Area)"
                         />
                     </div>
 
@@ -254,6 +273,9 @@ const AppointmentBooking: React.FC = () => {
                             <td className="px-6 py-4">
                                 <div className="font-bold text-gray-900 text-base">{appt.clientName}</div>
                                 <div className="text-gray-500 text-xs font-medium">{appt.contact}</div>
+                                {appt.address && (
+                                    <div className="text-indigo-500 text-xs mt-1">{appt.address}</div>
+                                )}
                             </td>
                             <td className="px-6 py-4 text-gray-600 max-w-xs truncate">{appt.note || '-'}</td>
                             <td className="px-6 py-4">
