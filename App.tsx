@@ -12,14 +12,25 @@ import Login from './components/Login';
 import { User, Role } from './types';
 
 function App() {
-  const [user, setUser] = useState<User | null>(null);
+  // Initialize user state from localStorage to persist session across refreshes
+  const [user, setUser] = useState<User | null>(() => {
+    try {
+      const savedUser = localStorage.getItem('mahaveer_user');
+      return savedUser ? JSON.parse(savedUser) : null;
+    } catch (e) {
+      console.error("Failed to parse user from local storage", e);
+      return null;
+    }
+  });
 
   const handleLogin = (loggedInUser: User) => {
     setUser(loggedInUser);
+    localStorage.setItem('mahaveer_user', JSON.stringify(loggedInUser));
   };
 
   const handleLogout = () => {
     setUser(null);
+    localStorage.removeItem('mahaveer_user');
   };
 
   if (!user) {
@@ -37,7 +48,13 @@ function App() {
           />
           
           <Route path="/new-entry" element={<NewEntryForm />} />
-          <Route path="/daily-report" element={<DailyReport />} />
+          
+          {/* Protect Daily Report */}
+          <Route 
+            path="/daily-report" 
+            element={user.role === Role.ADMIN ? <DailyReport /> : <Navigate to="/new-entry" />} 
+          />
+          
           <Route path="/appointments" element={<AppointmentBooking />} />
           <Route path="/packages" element={<ServicePackages />} /> 
           

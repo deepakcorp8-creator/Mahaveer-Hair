@@ -31,7 +31,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
   const allMenuItems = [
     { path: '/', label: 'Dashboard', icon: LayoutDashboard, roles: [Role.ADMIN] },
     { path: '/new-entry', label: 'New Entry', icon: PlusCircle, roles: [Role.ADMIN, Role.USER] },
-    { path: '/daily-report', label: 'Today Report', icon: FileText, roles: [Role.ADMIN, Role.USER] },
+    { path: '/daily-report', label: 'Today Report', icon: FileText, roles: [Role.ADMIN] },
     { path: '/appointments', label: 'Bookings', icon: Calendar, roles: [Role.ADMIN, Role.USER] },
     { path: '/packages', label: 'Service Packages', icon: PackageCheck, roles: [Role.ADMIN, Role.USER] },
     { path: '/clients', label: 'Clients', icon: Users, roles: [Role.ADMIN] },

@@ -46,6 +46,7 @@ const NewEntryForm: React.FC = () => {
 
   useEffect(() => {
     const init = async () => {
+      // Fetch options once on mount
       const options = await api.getOptions();
       setClients(options.clients);
       setTechnicians(options.technicians);
@@ -59,31 +60,35 @@ const NewEntryForm: React.FC = () => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleClientChange = async (clientName: string) => {
-    setActivePackage(null); // Reset package info on change
-
+  const handleClientChange = (clientName: string) => {
+    // 1. Immediate UI update
     setFormData(prev => ({ ...prev, clientName: clientName }));
+    setActivePackage(null);
 
     if (!clientName) {
-         setFormData(prev => ({ ...prev, contactNo: '', address: '' }));
          return;
     }
 
-    // 1. Get Client Details
-    const client = await api.getClientDetails(clientName);
+    // 2. Find client in LOCAL state (Don't call API here, it's too slow)
+    const client = clients.find(c => c.name.toLowerCase() === clientName.toLowerCase());
+    
     if (client) {
       setFormData(prev => ({
         ...prev,
+        clientName: clientName, // Keep casing from input or match? keeping input allows correction
         contactNo: client.contact,
         address: client.address
       }));
-    } else {
-      // If typing new, don't clear contact/address immediately if user wants to type them
-    }
 
-    // 2. Check for Active Package (Debounce could be better, but direct call is okay for now)
-    try {
-        const pkgStatus = await api.checkClientPackage(clientName);
+      // 3. Only check package if we found a valid existing client
+      // Debounce this if needed, but for now calling it only when a valid client is matched is safer
+      checkPackage(client.name);
+    } 
+  };
+  
+  const checkPackage = async (name: string) => {
+     try {
+        const pkgStatus = await api.checkClientPackage(name);
         if (pkgStatus) {
             setActivePackage(pkgStatus);
             // Auto-set Service Number
@@ -97,7 +102,7 @@ const NewEntryForm: React.FC = () => {
     } catch (e) {
         console.error("Error checking package", e);
     }
-  };
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

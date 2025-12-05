@@ -4,28 +4,59 @@ import { MOCK_CLIENTS, MOCK_ENTRIES, MOCK_APPOINTMENTS, MOCK_ITEMS, MOCK_TECHNIC
 // Helper to check if we have a valid URL
 const isLive = GOOGLE_SCRIPT_URL && GOOGLE_SCRIPT_URL.startsWith('http');
 
-// Local cache to store entries added in the current session for immediate feedback
-// This prevents the lag where Google Sheet hasn't updated yet but we need to calculate limits
+// --- LOCAL CACHE & STATE MANAGEMENT ---
+// 1. Temporary storage for items added in this session (shows up immediately)
 const LOCAL_NEW_ENTRIES: Entry[] = [];
+const LOCAL_NEW_APPOINTMENTS: Appointment[] = [];
+
+// 2. Data Cache to prevent "Slow" performance (prevents fetching on every keystroke)
+let DATA_CACHE: {
+    options: any | null;
+    packages: ServicePackage[] | null;
+    entries: Entry[] | null;
+    appointments: Appointment[] | null;
+    lastFetch: { [key: string]: number };
+} = {
+    options: null,
+    packages: null,
+    entries: null,
+    appointments: null,
+    lastFetch: {}
+};
+
+const CACHE_DURATION = 60 * 1000; // 1 minute cache for entries/appts
+const OPTIONS_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes for clients/items
 
 export const api = {
-  getOptions: async () => {
+  // --- OPTION HELPERS (Clients, Technicians, Items) ---
+  getOptions: async (forceRefresh = false) => {
+    // Return cached if valid
+    const now = Date.now();
+    if (!forceRefresh && DATA_CACHE.options && (now - (DATA_CACHE.lastFetch['options'] || 0) < OPTIONS_CACHE_DURATION)) {
+        return DATA_CACHE.options;
+    }
+
     if (isLive) {
       try {
         const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getOptions`);
         const data = await response.json();
         if (data && data.clients) {
-            return {
+            const result = {
                 clients: data.clients,
                 technicians: data.technicians || MOCK_TECHNICIANS,
                 items: data.items || MOCK_ITEMS
             };
+            // Update Cache
+            DATA_CACHE.options = result;
+            DATA_CACHE.lastFetch['options'] = now;
+            return result;
         }
       } catch (e) {
-        console.warn("Failed to fetch from Google Sheet, falling back to mock data", e);
+        console.warn("Failed to fetch options, using mock/cache", e);
       }
     }
-    // Fallback
+    
+    // Fallback or Initial Mock
     return {
       clients: MOCK_CLIENTS,
       technicians: MOCK_TECHNICIANS,
@@ -34,16 +65,36 @@ export const api = {
   },
 
   getClientDetails: async (name: string) => {
-    // In a real app, you might want to fetch this fresh, but filtering the list is faster for UX
+    // Optimized: Use cache instead of fetching
     const options = await api.getOptions();
     return options.clients.find((c: any) => c.name.toLowerCase() === name.toLowerCase());
   },
 
+  addClient: async (client: Client) => {
+    // Invalidate Cache
+    DATA_CACHE.options = null;
+    
+    if (isLive) {
+        await fetch(GOOGLE_SCRIPT_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ action: 'addClient', ...client })
+        });
+    } else {
+        MOCK_CLIENTS.push(client);
+    }
+    return client;
+  },
+
+  // --- ENTRIES ---
   addEntry: async (entry: Omit<Entry, 'id'>) => {
     const newEntry = { ...entry, id: 'temp_' + Date.now() + Math.random().toString(36).substr(2, 5) };
     
     // Add to local cache immediately
     LOCAL_NEW_ENTRIES.push(newEntry as Entry);
+    
+    // Invalidate main entries cache so next fetch gets fresh data
+    DATA_CACHE.entries = null;
 
     if (isLive) {
       try {
@@ -59,101 +110,139 @@ export const api = {
         });
       } catch (e) {
         console.error("Error sending to sheet", e);
-        // We still keep it in local cache so UI doesn't break
       }
     } else {
-        // Mock mode
         MOCK_ENTRIES.push(newEntry as Entry);
     }
 
     return newEntry;
   },
 
-  getEntries: async () => {
+  getEntries: async (forceRefresh = false) => {
     let allEntries: Entry[] = [];
+    const now = Date.now();
 
-    if (isLive) {
-       try {
-        const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getEntries`);
-        const data = await response.json();
-        if (Array.isArray(data)) {
-            allEntries = data;
-        }
-       } catch (e) {
-         console.warn("Using mock entries due to fetch failure");
-         allEntries = [...MOCK_ENTRIES];
-       }
+    // Check Cache
+    if (!forceRefresh && DATA_CACHE.entries && (now - (DATA_CACHE.lastFetch['entries'] || 0) < CACHE_DURATION)) {
+        allEntries = DATA_CACHE.entries;
     } else {
-        allEntries = [...MOCK_ENTRIES];
+        if (isLive) {
+           try {
+            const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getEntries`);
+            const data = await response.json();
+            if (Array.isArray(data)) {
+                allEntries = data;
+                DATA_CACHE.entries = data;
+                DATA_CACHE.lastFetch['entries'] = now;
+            }
+           } catch (e) {
+             console.warn("Using mock entries due to fetch failure");
+             allEntries = [...MOCK_ENTRIES];
+           }
+        } else {
+            allEntries = [...MOCK_ENTRIES];
+        }
     }
 
-    // Merge with local new entries (simple deduplication could be added if needed, 
-    // but relying on the fact that sheet fetch might not have them yet)
-    // We filter out any local entries that might have made it to the server list (unlikely with temp IDs but good practice)
+    // Merge with local new entries
     const serverIds = new Set(allEntries.map(e => e.id));
     const uniqueLocal = LOCAL_NEW_ENTRIES.filter(e => !serverIds.has(e.id));
     
     return [...uniqueLocal, ...allEntries];
   },
 
-  addClient: async (client: Client) => {
-    if (isLive) {
-        await fetch(GOOGLE_SCRIPT_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({ action: 'addClient', ...client })
-        });
-    }
-    MOCK_CLIENTS.push(client);
-    return client;
-  },
+  // --- APPOINTMENTS ---
+  getAppointments: async (forceRefresh = false) => {
+    let allAppts: Appointment[] = [];
+    const now = Date.now();
 
-  getAppointments: async () => {
-    if (isLive) {
-       try {
-        const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getAppointments`);
-        const data = await response.json();
-        if (Array.isArray(data)) return data;
-       } catch (e) {
-         // Fallback
-       }
+    if (!forceRefresh && DATA_CACHE.appointments && (now - (DATA_CACHE.lastFetch['appointments'] || 0) < CACHE_DURATION)) {
+        allAppts = DATA_CACHE.appointments;
+    } else {
+        if (isLive) {
+           try {
+            const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getAppointments`);
+            const data = await response.json();
+            if (Array.isArray(data)) {
+                allAppts = data;
+                DATA_CACHE.appointments = data;
+                DATA_CACHE.lastFetch['appointments'] = now;
+            }
+           } catch (e) {
+             // Fallback
+             allAppts = [...MOCK_APPOINTMENTS];
+           }
+        } else {
+             allAppts = [...MOCK_APPOINTMENTS];
+        }
     }
-    return [...MOCK_APPOINTMENTS];
+
+    // Merge Local Appointments
+    const serverIds = new Set(allAppts.map(a => a.id));
+    const uniqueLocal = LOCAL_NEW_APPOINTMENTS.filter(a => !serverIds.has(a.id));
+    
+    return [...uniqueLocal, ...allAppts];
   },
 
   addAppointment: async (appt: Omit<Appointment, 'id'>) => {
+    const newAppt = { ...appt, id: 'temp_' + Date.now() + Math.random().toString(36).substr(2, 5) };
+    
+    // Add to local cache immediately so it shows in UI
+    LOCAL_NEW_APPOINTMENTS.push(newAppt as Appointment);
+    DATA_CACHE.appointments = null; // Invalidate cache
+
     if (isLive) {
         await fetch(GOOGLE_SCRIPT_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify({ action: 'addAppointment', ...appt })
         });
+    } else {
+        MOCK_APPOINTMENTS.push(newAppt as Appointment);
     }
-    const newAppt = { ...appt, id: Math.random().toString(36).substr(2, 9) };
-    MOCK_APPOINTMENTS.push(newAppt);
+    
     return newAppt;
   },
   
   updateAppointmentStatus: async (id: string, status: Appointment['status']) => {
+    // Update local caches immediately
+    const localEntry = LOCAL_NEW_APPOINTMENTS.find(a => a.id === id);
+    if(localEntry) localEntry.status = status;
+
+    if(DATA_CACHE.appointments) {
+        const cacheEntry = DATA_CACHE.appointments.find(a => a.id === id);
+        if(cacheEntry) cacheEntry.status = status;
+    }
+
     if (isLive) {
         await fetch(GOOGLE_SCRIPT_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify({ action: 'updateAppointmentStatus', id, status })
         });
+    } else {
+        const appt = MOCK_APPOINTMENTS.find(a => a.id === id);
+        if (appt) appt.status = status;
     }
-    const appt = MOCK_APPOINTMENTS.find(a => a.id === id);
-    if (appt) appt.status = status;
-    return appt;
+    return { id, status };
   },
 
   // --- PACKAGE METHODS ---
-  getPackages: async () => {
+  getPackages: async (forceRefresh = false) => {
+      const now = Date.now();
+      if (!forceRefresh && DATA_CACHE.packages && (now - (DATA_CACHE.lastFetch['packages'] || 0) < CACHE_DURATION)) {
+          return DATA_CACHE.packages;
+      }
+
       if (isLive) {
           try {
               const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getPackages`);
               const data = await response.json();
-              if (Array.isArray(data)) return data;
+              if (Array.isArray(data)) {
+                  DATA_CACHE.packages = data;
+                  DATA_CACHE.lastFetch['packages'] = now;
+                  return data;
+              }
           } catch (e) {
               console.warn("Failed to fetch packages", e);
           }
@@ -162,6 +251,8 @@ export const api = {
   },
 
   addPackage: async (pkg: Omit<ServicePackage, 'id'>) => {
+      DATA_CACHE.packages = null; // Invalidate
+      
       if (isLive) {
         try {
             await fetch(GOOGLE_SCRIPT_URL, {
@@ -182,7 +273,7 @@ export const api = {
       if (!clientName) return null;
       const normalizedName = clientName.trim().toLowerCase();
 
-      // 1. Fetch latest packages
+      // 1. Fetch latest packages (Use Cache!)
       const packages = await api.getPackages();
       
       // 2. Find active package
@@ -191,7 +282,7 @@ export const api = {
       if (!pkg) return null;
 
       // 3. Count entries for this client since package start date
-      // We use getEntries() which now includes LOCAL_NEW_ENTRIES
+      // We use getEntries() which now includes LOCAL_NEW_ENTRIES and Caching
       const entries = await api.getEntries();
       
       const pkgStartDate = new Date(pkg.startDate);
