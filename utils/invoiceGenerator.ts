@@ -53,6 +53,19 @@ export const generateInvoice = (entry: Entry) => {
           width: 80px;
           height: 80px;
           object-fit: contain;
+          display: block;
+        }
+        .logo-text-fallback {
+          display: none;
+          width: 80px;
+          height: 80px;
+          background: #4f46e5;
+          color: white;
+          font-weight: 800;
+          font-size: 40px;
+          text-align: center;
+          line-height: 80px;
+          border-radius: 12px;
         }
         .company-name {
           font-size: 24px;
@@ -201,7 +214,13 @@ export const generateInvoice = (entry: Entry) => {
         <!-- Header -->
         <header class="header">
           <div class="logo-section">
-            <img src="https://i.ibb.co/9mktdv75/LOGO-1080x1080.png" alt="Logo" class="logo-img" />
+            <img 
+                src="https://i.ibb.co/9mktdv75/LOGO-1080x1080.png" 
+                alt="Logo" 
+                class="logo-img" 
+                onerror="this.style.display='none'; document.getElementById('logo-fallback').style.display='block';"
+            />
+            <div id="logo-fallback" class="logo-text-fallback">M</div>
             <div>
               <div class="company-name">Mahaveer Hair Solution</div>
               <div class="company-details">Vyapar Vihar, Bilaspur, Chhattisgarh</div>

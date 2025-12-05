@@ -63,18 +63,23 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
           {/* Logo Area */}
           <div className="p-8 pb-4">
             <div className="flex items-center space-x-3 mb-1">
-                {/* Updated Logo Logic */}
-                <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center overflow-hidden shadow-lg shadow-indigo-500/30 p-0.5">
+                {/* Updated Logo Logic with Better Fallback */}
+                <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center overflow-hidden shadow-lg shadow-indigo-500/30 p-0.5 relative group">
                      <img 
                         src="https://i.ibb.co/9mktdv75/LOGO-1080x1080.png" 
-                        alt="Logo" 
-                        className="w-full h-full object-contain"
+                        alt="M" 
+                        className="w-full h-full object-contain transition-transform group-hover:scale-110"
                         onError={(e) => {
-                            // Fallback if image fails
                             e.currentTarget.style.display = 'none';
-                            e.currentTarget.parentElement!.innerText = 'M';
-                            e.currentTarget.parentElement!.style.color = '#4f46e5';
-                            e.currentTarget.parentElement!.style.fontWeight = 'bold';
+                            // Show fallback
+                            const parent = e.currentTarget.parentElement;
+                            if (parent) {
+                                parent.classList.add('bg-gradient-to-br', 'from-indigo-600', 'to-purple-600');
+                                const fallback = document.createElement('span');
+                                fallback.innerText = 'M';
+                                fallback.className = 'text-white font-black text-xl';
+                                parent.appendChild(fallback);
+                            }
                         }} 
                     />
                 </div>

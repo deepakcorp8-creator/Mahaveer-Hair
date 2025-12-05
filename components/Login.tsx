@@ -83,11 +83,23 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
          <div className="max-w-md w-full bg-white lg:bg-transparent rounded-3xl lg:rounded-none shadow-2xl lg:shadow-none p-8 lg:p-0 relative z-10">
             
             <div className="text-center lg:text-left mb-10">
-               <div className="mx-auto lg:mx-0 w-20 h-20 bg-indigo-50 rounded-2xl flex items-center justify-center mb-6 shadow-sm border border-indigo-100">
+               <div className="mx-auto lg:mx-0 w-20 h-20 bg-indigo-50 rounded-2xl flex items-center justify-center mb-6 shadow-sm border border-indigo-100 overflow-hidden relative group">
                   <img 
                     src="https://i.ibb.co/9mktdv75/LOGO-1080x1080.png" 
                     alt="Logo" 
                     className="w-full h-full object-contain p-1"
+                    onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                        // Show fallback
+                        const parent = e.currentTarget.parentElement;
+                        if (parent) {
+                            parent.className = 'mx-auto lg:mx-0 w-20 h-20 bg-gradient-to-tr from-indigo-600 to-purple-600 rounded-2xl flex items-center justify-center mb-6 shadow-md';
+                            const fallback = document.createElement('span');
+                            fallback.innerText = 'M';
+                            fallback.className = 'text-white font-black text-4xl';
+                            parent.appendChild(fallback);
+                        }
+                    }} 
                   />
                </div>
                <h2 className="text-3xl font-bold text-slate-900 tracking-tight">Welcome Back</h2>
