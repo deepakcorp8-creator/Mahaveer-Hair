@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { Entry, Client } from '../types';
-import { History, Calendar, CreditCard, User, FileText, CheckCircle2, Clock, XCircle, Shield } from 'lucide-react';
+import { History, Calendar, CreditCard, User, FileText, CheckCircle2, Clock, XCircle, Shield, Filter, RotateCcw } from 'lucide-react';
 import { SearchableSelect } from './SearchableSelect';
 
 const ClientHistory: React.FC = () => {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [selectedClient, setSelectedClient] = useState<string>('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -25,19 +27,29 @@ const ClientHistory: React.FC = () => {
     setLoading(false);
   };
 
-  // Filter entries for the selected client
+  // Filter entries for the selected client AND date range
   const clientHistory = entries
     .filter(e => e.clientName.toLowerCase() === selectedClient.toLowerCase())
+    .filter(e => {
+        // String comparison works for YYYY-MM-DD
+        if (startDate && e.date < startDate) return false;
+        if (endDate && e.date > endDate) return false;
+        return true;
+    })
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()); // Latest first
 
-  // Calculate Stats
+  // Calculate Stats based on FILTERED history
   const totalVisits = clientHistory.length;
-  // Calculate total spend (exclude rejected or pending approval if needed, but usually history shows raw totals)
   const totalSpend = clientHistory
     .filter(e => e.workStatus !== 'REJECTED')
     .reduce((sum, e) => sum + Number(e.amount), 0);
     
   const matchedClientInfo = clients.find(c => c.name.toLowerCase() === selectedClient.toLowerCase());
+
+  const clearDates = () => {
+      setStartDate('');
+      setEndDate('');
+  };
 
   const getStatusBadge = (status: string) => {
       switch(status) {
@@ -63,14 +75,49 @@ const ClientHistory: React.FC = () => {
             </div>
         </div>
 
-        <div className="max-w-xl">
-             <SearchableSelect 
-                label="Search Client by Name or Number"
-                options={clients.map(c => ({ label: c.name, value: c.name, subtext: c.contact }))}
-                value={selectedClient}
-                onChange={setSelectedClient}
-                placeholder="Type to search..."
-            />
+        <div className="flex flex-col lg:flex-row gap-6 items-end">
+            <div className="w-full lg:flex-1">
+                 <SearchableSelect 
+                    label="Search Client by Name"
+                    options={clients.map(c => ({ label: c.name, value: c.name, subtext: c.contact }))}
+                    value={selectedClient}
+                    onChange={setSelectedClient}
+                    placeholder="Type client name..."
+                />
+            </div>
+            
+            {/* Date Filters */}
+            <div className="w-full lg:w-auto flex flex-col md:flex-row gap-4 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1 ml-1">From Date</label>
+                    <input 
+                        type="date" 
+                        value={startDate}
+                        onChange={(e) => setStartDate(e.target.value)}
+                        className="w-full md:w-40 px-3 py-2 rounded-lg border border-slate-200 text-sm font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"
+                    />
+                </div>
+                <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1 ml-1">To Date</label>
+                    <input 
+                        type="date" 
+                        value={endDate}
+                        onChange={(e) => setEndDate(e.target.value)}
+                        className="w-full md:w-40 px-3 py-2 rounded-lg border border-slate-200 text-sm font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"
+                    />
+                </div>
+                <div className="flex items-end">
+                    {(startDate || endDate) && (
+                        <button 
+                            onClick={clearDates}
+                            className="px-3 py-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Clear Dates"
+                        >
+                            <RotateCcw className="w-5 h-5" />
+                        </button>
+                    )}
+                </div>
+            </div>
         </div>
       </div>
 
@@ -94,7 +141,9 @@ const ClientHistory: React.FC = () => {
                         <Calendar className="w-6 h-6" />
                     </div>
                     <div>
-                        <p className="text-xs font-bold text-slate-500 uppercase">Total Visits</p>
+                        <p className="text-xs font-bold text-slate-500 uppercase">
+                            {startDate || endDate ? 'Visits in Period' : 'Total Visits'}
+                        </p>
                         <h3 className="text-2xl font-black text-slate-900">{totalVisits}</h3>
                     </div>
                 </div>
@@ -104,7 +153,9 @@ const ClientHistory: React.FC = () => {
                         <CreditCard className="w-6 h-6" />
                     </div>
                     <div>
-                        <p className="text-xs font-bold text-slate-500 uppercase">Lifetime Value</p>
+                        <p className="text-xs font-bold text-slate-500 uppercase">
+                            {startDate || endDate ? 'Revenue in Period' : 'Lifetime Value'}
+                        </p>
                         <h3 className="text-2xl font-black text-slate-900">₹{totalSpend.toLocaleString()}</h3>
                     </div>
                 </div>
@@ -112,8 +163,13 @@ const ClientHistory: React.FC = () => {
 
             {/* Timeline / History List */}
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                <div className="px-6 py-4 border-b border-slate-100 bg-slate-50">
+                <div className="px-6 py-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
                     <h3 className="font-bold text-slate-700">Service Timeline</h3>
+                    {(startDate || endDate) && (
+                         <span className="text-xs font-bold bg-indigo-100 text-indigo-700 px-2 py-1 rounded border border-indigo-200">
+                             Filtered View
+                         </span>
+                    )}
                 </div>
                 
                 {clientHistory.length > 0 ? (
@@ -168,8 +224,13 @@ const ClientHistory: React.FC = () => {
                     </div>
                 ) : (
                     <div className="p-12 text-center text-slate-400">
-                        <FileText className="w-12 h-12 mx-auto mb-3 opacity-20" />
-                        <p>No history found for this client.</p>
+                        <Filter className="w-12 h-12 mx-auto mb-3 opacity-20" />
+                        <p>No records found for this period.</p>
+                        {(startDate || endDate) && (
+                            <button onClick={clearDates} className="mt-2 text-indigo-600 text-sm font-bold hover:underline">
+                                Clear Filters
+                            </button>
+                        )}
                     </div>
                 )}
             </div>
