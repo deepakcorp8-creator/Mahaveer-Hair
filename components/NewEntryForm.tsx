@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { Client, Item, Technician, Entry, ServicePackage } from '../types';
-import { Save, AlertCircle, User, CreditCard, Scissors, Calendar, MapPin, RefreshCw, CheckCircle2, Ticket, FileDown, Clock, Shield } from 'lucide-react';
+import { Save, AlertCircle, User, CreditCard, Scissors, Calendar, MapPin, RefreshCw, CheckCircle2, Ticket, FileDown, ShieldCheck } from 'lucide-react';
 import { SearchableSelect } from './SearchableSelect';
 import { generateInvoice } from '../utils/invoiceGenerator';
 
@@ -69,19 +69,18 @@ const NewEntryForm: React.FC = () => {
          return;
     }
 
-    // 2. Find client in LOCAL state (Don't call API here, it's too slow)
+    // 2. Find client in LOCAL state
     const client = clients.find(c => c.name.toLowerCase() === clientName.toLowerCase());
     
     if (client) {
       setFormData(prev => ({
         ...prev,
-        clientName: clientName, // Keep casing from input or match? keeping input allows correction
+        clientName: clientName, 
         contactNo: client.contact,
         address: client.address
       }));
 
-      // 3. Only check package if we found a valid existing client
-      // Debounce this if needed, but for now calling it only when a valid client is matched is safer
+      // 3. Check package if we found a valid existing client
       checkPackage(client.name);
     } 
   };
@@ -91,12 +90,11 @@ const NewEntryForm: React.FC = () => {
         const pkgStatus = await api.checkClientPackage(name);
         if (pkgStatus && !pkgStatus.isExpired) {
             setActivePackage(pkgStatus);
-            // Auto-set Service Number
+            // Auto-set Service Number and set to DONE (Direct Submit)
             setFormData(prev => ({ 
                 ...prev, 
                 numberOfService: pkgStatus.currentServiceNumber,
-                // IMPORTANT: Package Service requires ADMIN APPROVAL
-                workStatus: 'PENDING_APPROVAL' 
+                workStatus: 'DONE' 
             }));
         } else if (pkgStatus && pkgStatus.isExpired) {
              setActivePackage(pkgStatus);
@@ -124,23 +122,16 @@ const NewEntryForm: React.FC = () => {
     }
 
     try {
-      // Force 'PENDING_APPROVAL' if active package is used
-      let finalData = { ...formData };
-      if (activePackage && !activePackage.isExpired) {
-          finalData.workStatus = 'PENDING_APPROVAL';
-      }
-
-      const result = await api.addEntry(finalData as Entry);
+      const result = await api.addEntry(formData as Entry);
       
       // Store result for invoice generation
       setLastSubmittedEntry(result as Entry);
       
-      // Show success message logic
-      const isPending = finalData.workStatus === 'PENDING_APPROVAL';
+      const isPackage = activePackage && !activePackage.isExpired;
       
       setNotification({ 
-          msg: isPending ? 'Service Recorded. Waiting for Admin Approval (Package).' : 'Transaction recorded successfully!', 
-          type: isPending ? 'warning' : 'success' 
+          msg: isPackage ? 'Package Service Recorded Successfully!' : 'Transaction recorded successfully!', 
+          type: 'success' 
       });
       
       // FULL RESET of the form
@@ -197,19 +188,17 @@ const NewEntryForm: React.FC = () => {
             ${notification.type === 'success' ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 
               notification.type === 'warning' ? 'bg-amber-50 border-amber-200 text-amber-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
             <div className="flex items-center">
-                {notification.type === 'success' && <CheckCircle2 className="w-6 h-6 mr-3 text-emerald-600" />}
-                {notification.type === 'warning' && <Shield className="w-6 h-6 mr-3 text-amber-600" />}
-                {notification.type === 'error' && <AlertCircle className="w-6 h-6 mr-3 text-red-600" />}
+                {notification.type === 'success' ? <CheckCircle2 className="w-6 h-6 mr-3 text-emerald-600" /> : <AlertCircle className="w-6 h-6 mr-3 text-red-600" />}
                 <div>
                     <h4 className="font-bold text-sm uppercase">
-                        {notification.type === 'success' ? 'Success' : notification.type === 'warning' ? 'Sent for Admin Approval' : 'Error'}
+                        {notification.type === 'success' ? 'Success' : 'Error'}
                     </h4>
                     <p className="font-medium">{notification.msg}</p>
                 </div>
             </div>
 
-            {/* Print Button for NEW service types */}
-            {notification.type === 'success' && lastSubmittedEntry && lastSubmittedEntry.serviceType === 'NEW' && (
+            {/* Print Button */}
+            {notification.type === 'success' && lastSubmittedEntry && (
                 <button
                     type="button"
                     onClick={() => generateInvoice(lastSubmittedEntry)}
@@ -258,9 +247,9 @@ const NewEntryForm: React.FC = () => {
                              <div className={`col-span-full rounded-xl border p-4 flex items-start gap-3 shadow-sm transition-all duration-300
                                 ${activePackage.isExpired 
                                     ? 'bg-red-50 border-red-200 text-red-800' 
-                                    : 'bg-amber-50 border-amber-200 text-amber-900'}
+                                    : 'bg-emerald-50 border-emerald-200 text-emerald-900'}
                              `}>
-                                 <div className={`p-2 rounded-lg ${activePackage.isExpired ? 'bg-red-100' : 'bg-amber-100'}`}>
+                                 <div className={`p-2 rounded-lg ${activePackage.isExpired ? 'bg-red-100' : 'bg-emerald-100'}`}>
                                      <Ticket className="w-6 h-6 shrink-0" />
                                  </div>
                                  <div className="flex-1">
@@ -269,7 +258,7 @@ const NewEntryForm: React.FC = () => {
                                              {activePackage.isExpired ? 'PACKAGE EXPIRED' : activePackage.package.packageName}
                                          </h4>
                                          {!activePackage.isExpired && (
-                                             <span className="bg-white/50 px-3 py-1 rounded-md text-sm font-black border border-amber-200 shadow-sm">
+                                             <span className="bg-white/50 px-3 py-1 rounded-md text-sm font-black border border-emerald-200 shadow-sm">
                                                  Remaining: {activePackage.remaining}
                                              </span>
                                          )}
@@ -282,8 +271,8 @@ const NewEntryForm: React.FC = () => {
                                              Limit Exceeded. Please charge regular price or renew.
                                          </p>
                                      ) : (
-                                         <p className="text-xs font-bold mt-2 uppercase tracking-wide bg-amber-100/50 p-1 rounded inline-block text-amber-800">
-                                             NOTE: This entry will require ADMIN APPROVAL.
+                                         <p className="text-xs font-bold mt-2 uppercase tracking-wide bg-emerald-100/50 p-1 rounded inline-block text-emerald-800">
+                                             Active Package Found - Auto Applied
                                          </p>
                                      )}
                                  </div>
@@ -509,17 +498,17 @@ const NewEntryForm: React.FC = () => {
                                 ${loading 
                                     ? 'bg-gray-400 cursor-not-allowed' 
                                     : activePackage && !activePackage.isExpired 
-                                        ? 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600'
+                                        ? 'bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700'
                                         : 'bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 hover:scale-[1.02] hover:shadow-indigo-200'}`}
                         >
                             {loading ? (
                                 <RefreshCw className="w-5 h-5 mr-2 animate-spin" />
                             ) : activePackage && !activePackage.isExpired ? (
-                                <Shield className="w-5 h-5 mr-2" />
+                                <ShieldCheck className="w-5 h-5 mr-2" />
                             ) : (
                                 <Save className="w-5 h-5 mr-2 group-hover:animate-pulse" />
                             )}
-                            {loading ? 'Processing...' : (activePackage && !activePackage.isExpired ? 'SEND FOR ADMIN APPROVAL' : 'COMPLETE TRANSACTION')}
+                            {loading ? 'Processing...' : (activePackage && !activePackage.isExpired ? 'SUBMIT PACKAGE ENTRY' : 'COMPLETE TRANSACTION')}
                         </button>
                      </div>
                 </div>

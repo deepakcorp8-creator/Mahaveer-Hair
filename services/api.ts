@@ -369,21 +369,25 @@ export const api = {
       
       if (!pkg) return null;
 
-      // 3. Count entries
+      // 3. Count entries STRICTLY
       const entries = await api.getEntries();
       
       const pkgStartDate = new Date(pkg.startDate);
-      pkgStartDate.setHours(0,0,0,0);
+      pkgStartDate.setHours(0,0,0,0); // Midnight start
 
       const usedCount = entries.filter((e: any) => {
+          // Normalize Entry Name
+          const entryName = (e.clientName || '').trim().toLowerCase();
+          
+          // Normalize Entry Date
           const entryDate = new Date(e.date);
           entryDate.setHours(0,0,0,0);
           
           return (
-             e.clientName.trim().toLowerCase() === normalizedName && 
-             entryDate >= pkgStartDate &&
+             entryName === normalizedName && 
+             entryDate >= pkgStartDate && // Logic: Entry Date must be >= Package Start Date
              (e.serviceType === 'SERVICE') && 
-             (e.workStatus === 'DONE' || e.workStatus === 'PENDING_APPROVAL')
+             (e.workStatus === 'DONE') // Only count COMPLETED services
           );
       }).length;
 

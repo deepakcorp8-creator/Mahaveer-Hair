@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { ServicePackage, Client, Entry, Role, User } from '../types';
-import { PackageCheck, Plus, Search, Tag, Users, CheckCircle, Ticket, XCircle, Clock, Pencil, Save, X, Trash2 } from 'lucide-react';
+import { PackageCheck, Plus, Search, User as UserIcon, CheckCircle, Ticket, Clock, Pencil, Save, X, Trash2, ShieldAlert } from 'lucide-react';
 import { SearchableSelect } from './SearchableSelect';
 
 const ServicePackages: React.FC = () => {
@@ -49,7 +49,7 @@ const ServicePackages: React.FC = () => {
     const entriesData = await api.getEntries();
     setEntries(entriesData);
     
-    // Filter pending approvals
+    // Filter pending approvals (Should be rare now, but kept for legacy)
     setPendingApprovals(entriesData.filter(e => e.workStatus === 'PENDING_APPROVAL'));
   };
 
@@ -107,16 +107,6 @@ const ServicePackages: React.FC = () => {
           setLoading(false);
       }
   };
-
-  const handleEntryApproval = async (id: string, action: 'APPROVE' | 'REJECT') => {
-      if(window.confirm(`Are you sure you want to ${action} this usage request?`)) {
-          setLoading(true);
-          const newStatus = action === 'APPROVE' ? 'DONE' : 'REJECTED';
-          await api.updateEntryStatus(id, newStatus);
-          await loadData();
-          setLoading(false);
-      }
-  };
   
   const handlePackageApproval = async (id: string, action: 'APPROVE' | 'REJECT') => {
       const isDelete = action === 'REJECT';
@@ -130,7 +120,6 @@ const ServicePackages: React.FC = () => {
               if (isDelete) {
                   await api.deletePackage(id);
               } else {
-                  // HERE: Sending 'APPROVED' as requested
                   await api.updatePackageStatus(id, 'APPROVED');
               }
               // Delay for sheet update propagation
@@ -147,12 +136,23 @@ const ServicePackages: React.FC = () => {
 
   // Helper to calculate used services for a specific package
   const getPackageUsage = (pkg: ServicePackage) => {
-      const used = entries.filter(e => 
-          e.clientName === pkg.clientName && 
-          new Date(e.date) >= new Date(pkg.startDate) &&
-          e.serviceType === 'SERVICE' &&
-          (e.workStatus === 'DONE')
-      ).length;
+      // Robust comparison to match API logic
+      const pkgName = (pkg.clientName || '').trim().toLowerCase();
+      const pkgStart = new Date(pkg.startDate);
+      pkgStart.setHours(0,0,0,0);
+
+      const used = entries.filter(e => {
+          const entryName = (e.clientName || '').trim().toLowerCase();
+          const entryDate = new Date(e.date);
+          entryDate.setHours(0,0,0,0);
+          
+          return (
+              entryName === pkgName && 
+              entryDate >= pkgStart && // Date must be greater than or equal to start date
+              e.serviceType === 'SERVICE' &&
+              e.workStatus === 'DONE'
+          );
+      }).length;
       
       const remaining = Math.max(0, pkg.totalServices - used);
       const isExpired = used >= pkg.totalServices;
@@ -170,10 +170,12 @@ const ServicePackages: React.FC = () => {
       
       {/* Create Package Form */}
       <div className="lg:col-span-1">
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 sticky top-6">
-            <div className="px-6 py-4 bg-indigo-50 border-b border-indigo-100 flex items-center rounded-t-2xl">
-                <PackageCheck className="w-5 h-5 text-indigo-600 mr-2" />
-                <h3 className="font-bold text-indigo-900">Create New Package</h3>
+        <div className="bg-white rounded-2xl shadow-lg shadow-indigo-100 border border-slate-200 sticky top-6 overflow-hidden">
+            <div className="px-6 py-5 bg-gradient-to-r from-indigo-600 to-purple-600 flex items-center justify-between">
+                <div className="flex items-center text-white">
+                    <PackageCheck className="w-5 h-5 mr-2" />
+                    <h3 className="font-bold text-lg">New Package</h3>
+                </div>
             </div>
             
             <form onSubmit={handleSubmit} className="p-6 space-y-5">
@@ -253,73 +255,9 @@ const ServicePackages: React.FC = () => {
         </div>
       </div>
 
-      {/* Main Content Area: Approvals & List */}
+      {/* Main Content Area: Packages List */}
       <div className="lg:col-span-2 space-y-8">
         
-        {/* PENDING APPROVALS SECTION (SERVICE USAGE) */}
-        {pendingApprovals.length > 0 && (
-            <div className="bg-white rounded-2xl shadow-md border border-amber-200 overflow-hidden">
-                <div className="px-6 py-4 bg-amber-50 border-b border-amber-100 flex justify-between items-center">
-                    <div className="flex items-center">
-                        <div className="p-2 bg-amber-100 rounded-lg text-amber-600 mr-3">
-                            <Ticket className="w-5 h-5" />
-                        </div>
-                        <div>
-                            <h3 className="font-bold text-lg text-amber-900">Pending Usage Approvals</h3>
-                            <p className="text-xs text-amber-700">Service requests requiring authorization</p>
-                        </div>
-                    </div>
-                    <span className="bg-amber-600 text-white text-xs font-bold px-3 py-1 rounded-full">
-                        {pendingApprovals.length} Request(s)
-                    </span>
-                </div>
-                
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left text-sm text-gray-600">
-                        <thead className="bg-amber-50/50 text-amber-800 uppercase font-bold text-xs">
-                            <tr>
-                                <th className="px-6 py-3">Date</th>
-                                <th className="px-6 py-3">Client</th>
-                                <th className="px-6 py-3">Details</th>
-                                <th className="px-6 py-3 text-right">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-amber-50">
-                            {pendingApprovals.map((entry) => (
-                                <tr key={entry.id} className="hover:bg-amber-50/30 transition-colors">
-                                    <td className="px-6 py-4 font-medium">{entry.date}</td>
-                                    <td className="px-6 py-4">
-                                        <div className="font-bold text-gray-900">{entry.clientName}</div>
-                                        <div className="text-xs text-gray-500">Service #{entry.numberOfService}</div>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <div>{entry.technician}</div>
-                                        <div className="text-xs text-gray-500">{entry.branch} • {entry.patchMethod}</div>
-                                    </td>
-                                    <td className="px-6 py-4 text-right">
-                                        <div className="flex justify-end gap-2">
-                                            <button 
-                                                onClick={() => handleEntryApproval(entry.id, 'APPROVE')}
-                                                className="flex items-center px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-lg hover:bg-emerald-100 font-bold text-xs border border-emerald-200 transition-colors"
-                                            >
-                                                <CheckCircle className="w-4 h-4 mr-1.5" /> Approve
-                                            </button>
-                                            <button 
-                                                onClick={() => handleEntryApproval(entry.id, 'REJECT')}
-                                                className="flex items-center px-3 py-1.5 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 font-bold text-xs border border-red-200 transition-colors"
-                                            >
-                                                <XCircle className="w-4 h-4 mr-1.5" /> Reject
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        )}
-
         {/* PACKAGES LIST */}
         <div className="space-y-6">
             <div className="flex items-center justify-between">
@@ -329,14 +267,14 @@ const ServicePackages: React.FC = () => {
                     <input 
                         type="text" 
                         placeholder="Search package..." 
-                        className="pl-9 pr-4 py-2 rounded-lg border border-slate-300 focus:outline-none focus:border-indigo-500"
+                        className="pl-9 pr-4 py-2 rounded-lg border border-slate-300 focus:outline-none focus:border-indigo-500 bg-white shadow-sm"
                         value={searchTerm}
                         onChange={e => setSearchTerm(e.target.value)}
                     />
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 {filteredPackages.map(pkg => {
                     const stats = getPackageUsage(pkg);
                     const isPending = pkg.status === 'PENDING' || !pkg.status;
@@ -344,114 +282,104 @@ const ServicePackages: React.FC = () => {
                     const statusText = pkg.status || 'PENDING';
                     
                     return (
-                    <div key={pkg.id} className={`p-5 rounded-2xl shadow-sm border transition-all relative overflow-hidden bg-white flex flex-col justify-between
-                        ${isPending 
-                            ? 'border-amber-400 bg-amber-50 ring-2 ring-amber-100' 
-                            : stats.isExpired 
-                                ? 'border-red-200' 
-                                : 'border-slate-200 hover:border-indigo-300'}`}>
-                        
-                        {/* Status Badge */}
-                        <div className={`absolute top-0 right-0 px-3 py-1 text-xs font-bold rounded-bl-xl shadow-sm z-10
-                            ${isPending ? 'bg-amber-400 text-white' 
-                            : stats.isExpired ? 'bg-red-100 text-red-700' 
-                            : isApproved ? 'bg-emerald-500 text-white' : 'bg-gray-100 text-gray-700'}`}>
-                            {statusText}
-                        </div>
-                        
-                        <div>
-                            {/* Header */}
-                            <div className="flex items-start mb-3 mt-2 justify-between">
-                                <div className="flex items-start">
-                                    <div className={`p-2 rounded-lg mr-3 shadow-sm ${isPending ? 'bg-white text-amber-600' : stats.isExpired ? 'bg-red-50 text-red-500' : 'bg-indigo-50 text-indigo-600'}`}>
-                                        <Tag className="w-6 h-6" />
-                                    </div>
-                                    <div>
-                                        <h4 className="font-bold text-lg text-slate-800 leading-tight">{pkg.packageName}</h4>
-                                        <div className="flex items-center text-sm text-slate-500 mt-1 font-medium">
-                                            <Users className="w-3 h-3 mr-1" /> {pkg.clientName}
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                {/* Edit Button (Visible to Admin always, even if pending) */}
-                                {currentUser?.role === Role.ADMIN && (
-                                    <button 
-                                        onClick={() => {
-                                            setEditingPackage(pkg);
-                                            setIsEditModalOpen(true);
-                                        }}
-                                        className="text-slate-400 hover:text-indigo-600 p-1.5 hover:bg-slate-100 rounded-full transition-colors"
-                                        title="Edit Package"
-                                    >
-                                        <Pencil className="w-4 h-4" />
-                                    </button>
-                                )}
-                            </div>
-                            
-                            {/* Active Content: Progress Bar */}
-                            {!isPending && (
-                            <div className="mt-4 mb-4">
-                                <div className="flex justify-between text-xs font-bold mb-1">
-                                    <span className="text-slate-500">Usage: {stats.used} / {pkg.totalServices}</span>
-                                    <span className={stats.isExpired ? 'text-red-500' : 'text-indigo-600'}>
-                                        {stats.remaining} Remaining
-                                    </span>
-                                </div>
-                                <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
-                                    <div 
-                                        className={`h-2.5 rounded-full ${stats.isExpired ? 'bg-red-500' : 'bg-indigo-500'}`} 
-                                        style={{ width: `${Math.min((stats.used / pkg.totalServices) * 100, 100)}%` }}
-                                    ></div>
-                                </div>
-                            </div>
-                            )}
-                            
-                            {/* Pending Content: Notice */}
-                            {isPending && (
-                                <div className="mt-2 mb-4 p-2 bg-amber-100/50 rounded-lg text-xs text-amber-800 font-medium">
-                                    <p>Waiting for Admin Approval</p>
-                                </div>
-                            )}
-                            
-                            {/* Footer Stats */}
-                            <div className="grid grid-cols-2 gap-2 text-sm mt-2 border-t border-slate-100 pt-3">
-                                <div>
-                                    <span className="block text-slate-400 text-xs uppercase font-bold">Total Cost</span>
-                                    <span className="font-bold text-slate-800">₹{pkg.totalCost}</span>
-                                </div>
-                                <div>
-                                    <span className="block text-slate-400 text-xs uppercase font-bold">Started</span>
-                                    <span className="font-medium text-slate-800">{pkg.startDate}</span>
-                                </div>
-                            </div>
-                        </div>
+                    <div key={pkg.id} className="group relative bg-white rounded-2xl p-6 shadow-sm border border-slate-200 hover:shadow-xl transition-all duration-300 overflow-hidden">
+                      {/* Decorative Background Blob */}
+                      <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-110"></div>
 
-                        {/* Approval Actions for ADMIN */}
-                        {isPending && currentUser?.role === Role.ADMIN && (
-                            <div className="mt-4 pt-3 border-t border-amber-200 flex gap-2">
-                                <button
-                                    onClick={() => handlePackageApproval(pkg.id, 'APPROVE')}
-                                    disabled={loading}
-                                    className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white py-2 rounded-lg font-bold text-sm flex items-center justify-center transition-colors shadow-sm disabled:opacity-50"
-                                >
-                                    <CheckCircle className="w-4 h-4 mr-1.5" /> Approve
-                                </button>
-                                <button
-                                    onClick={() => handlePackageApproval(pkg.id, 'REJECT')}
-                                    disabled={loading}
-                                    className="flex-1 bg-white hover:bg-red-50 text-red-600 border border-red-200 py-2 rounded-lg font-bold text-sm flex items-center justify-center transition-colors shadow-sm disabled:opacity-50"
-                                >
-                                    <Trash2 className="w-4 h-4 mr-1.5" /> Reject
-                                </button>
-                            </div>
-                        )}
-                        
-                        {isPending && currentUser?.role !== Role.ADMIN && (
-                             <div className="mt-4 pt-3 border-t border-amber-300 text-center text-xs font-bold text-amber-700 flex items-center justify-center bg-amber-100/50 rounded-b-lg -mx-5 -mb-5 pb-5">
-                                 <Clock className="w-3 h-3 mr-1" /> Pending Admin Action
+                      {/* Header Section */}
+                      <div className="relative flex justify-between items-start mb-4">
+                        <div className="flex gap-4">
+                          <div className={`w-12 h-12 rounded-xl flex items-center justify-center shadow-sm ${isPending ? 'bg-amber-100 text-amber-600' : 'bg-indigo-100 text-indigo-600'}`}>
+                            {isPending ? <Clock className="w-6 h-6" /> : <PackageCheck className="w-6 h-6" />}
+                          </div>
+                          <div>
+                             <h3 className="font-bold text-lg text-slate-800 leading-tight">{pkg.packageName}</h3>
+                             <div className="flex items-center text-sm text-slate-500 font-medium mt-1">
+                                <UserIcon className="w-3.5 h-3.5 mr-1.5" />
+                                {pkg.clientName}
                              </div>
-                        )}
+                          </div>
+                        </div>
+                        {/* Status Badge */}
+                        <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide border shadow-sm ${
+                            isPending ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                            isApproved ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                            stats.isExpired ? 'bg-red-50 text-red-700 border-red-200' :
+                            'bg-slate-50 text-slate-600 border-slate-200'
+                        }`}>
+                            {statusText}
+                        </span>
+                      </div>
+
+                      {/* Progress Section (Only if Active/Approved) */}
+                      {!isPending && (
+                          <div className="mb-6 relative z-10">
+                              <div className="flex justify-between text-xs font-bold text-slate-500 mb-2">
+                                  <span>Progress</span>
+                                  <span>{stats.used} / {pkg.totalServices} Services</span>
+                              </div>
+                              <div className="h-3 w-full bg-slate-100 rounded-full overflow-hidden shadow-inner">
+                                 <div 
+                                    className={`h-full rounded-full transition-all duration-700 ease-out ${stats.isExpired ? 'bg-red-500' : 'bg-gradient-to-r from-indigo-500 to-purple-500'}`} 
+                                    style={{width: `${Math.min((stats.used / pkg.totalServices) * 100, 100)}%`}}
+                                 ></div>
+                              </div>
+                              <div className={`mt-2 text-right text-xs font-bold ${stats.isExpired ? 'text-red-500' : 'text-indigo-600'}`}>
+                                  {stats.isExpired ? 'Limit Reached' : `${stats.remaining} Visits Remaining`}
+                              </div>
+                          </div>
+                      )}
+
+                      {/* Pending Actions */}
+                      {isPending && (
+                          <div className="bg-amber-50/50 rounded-xl p-4 border border-amber-100 mb-4 relative z-10">
+                              <p className="text-xs text-amber-800 font-medium mb-3 flex items-center justify-center">
+                                  <ShieldAlert className="w-3.5 h-3.5 mr-1.5" />
+                                  Admin Approval Required
+                              </p>
+                              {currentUser?.role === Role.ADMIN ? (
+                                 <div className="flex gap-2">
+                                     <button className="flex-1 bg-white border border-emerald-200 text-emerald-700 hover:bg-emerald-50 py-2 rounded-lg text-xs font-bold shadow-sm transition-colors flex items-center justify-center" onClick={() => handlePackageApproval(pkg.id, 'APPROVE')}>
+                                        <CheckCircle className="w-3 h-3 mr-1" /> Approve
+                                     </button>
+                                     <button className="flex-1 bg-white border border-red-200 text-red-700 hover:bg-red-50 py-2 rounded-lg text-xs font-bold shadow-sm transition-colors flex items-center justify-center" onClick={() => handlePackageApproval(pkg.id, 'REJECT')}>
+                                        <Trash2 className="w-3 h-3 mr-1" /> Reject
+                                     </button>
+                                 </div>
+                              ) : (
+                                  <div className="text-center text-xs text-slate-400 font-medium italic">
+                                      Waiting for administrator action...
+                                  </div>
+                              )}
+                          </div>
+                      )}
+
+                      {/* Footer Info */}
+                      <div className="flex items-center justify-between pt-4 border-t border-slate-100 relative z-10">
+                          <div className="flex flex-col">
+                              <span className="text-[10px] uppercase font-bold text-slate-400">Total Cost</span>
+                              <span className="text-sm font-bold text-slate-700">₹{pkg.totalCost}</span>
+                          </div>
+                           <div className="flex flex-col text-right">
+                              <span className="text-[10px] uppercase font-bold text-slate-400">Start Date</span>
+                              <span className="text-sm font-bold text-slate-700">{pkg.startDate}</span>
+                          </div>
+                      </div>
+                      
+                      {/* Admin Edit Action */}
+                      {currentUser?.role === Role.ADMIN && (
+                        <button 
+                            onClick={() => {
+                                setEditingPackage(pkg);
+                                setIsEditModalOpen(true);
+                            }}
+                            className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-all bg-white p-2 rounded-lg shadow-md text-slate-400 hover:text-indigo-600 hover:scale-110 z-20"
+                            title="Edit Package"
+                        >
+                            <Pencil className="w-4 h-4" />
+                        </button>
+                      )}
+
                     </div>
                 )})}
                 
