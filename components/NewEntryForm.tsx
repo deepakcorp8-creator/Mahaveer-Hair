@@ -228,8 +228,8 @@ const NewEntryForm: React.FC = () => {
             <div className="lg:col-span-8 space-y-8">
                 
                 {/* 1. Client Card (Blue Theme) */}
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow">
-                    <div className={`${sectionHeaderStyle} bg-blue-50/50 border-b border-blue-100 border-t-4 border-t-blue-500`}>
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                    <div className={`${sectionHeaderStyle} bg-blue-50/50 border-b border-blue-100 border-t-4 border-t-blue-500 rounded-t-2xl`}>
                         <div className="flex items-center">
                             <div className="p-2 bg-blue-100 rounded-lg mr-3 shadow-sm">
                                 <User className="w-5 h-5 text-blue-600" />
@@ -319,8 +319,8 @@ const NewEntryForm: React.FC = () => {
                 </div>
 
                 {/* 2. Service Card (Violet Theme) */}
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow">
-                    <div className={`${sectionHeaderStyle} bg-violet-50/50 border-b border-violet-100 border-t-4 border-t-violet-500`}>
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                    <div className={`${sectionHeaderStyle} bg-violet-50/50 border-b border-violet-100 border-t-4 border-t-violet-500 rounded-t-2xl`}>
                         <div className="flex items-center">
                             <div className="p-2 bg-violet-100 rounded-lg mr-3 shadow-sm">
                                 <Scissors className="w-5 h-5 text-violet-600" />
@@ -446,8 +446,8 @@ const NewEntryForm: React.FC = () => {
             {/* Right Column (Payment) */}
             <div className="lg:col-span-4 space-y-8">
                 {/* 3. Payment Card (Emerald Theme) */}
-                <div className="bg-white rounded-2xl shadow-lg shadow-emerald-50 border border-emerald-100 overflow-hidden sticky top-6">
-                    <div className={`${sectionHeaderStyle} bg-emerald-50/50 border-b border-emerald-100 border-t-4 border-t-emerald-500`}>
+                <div className="bg-white rounded-2xl shadow-lg shadow-emerald-50 border border-emerald-100 sticky top-6">
+                    <div className={`${sectionHeaderStyle} bg-emerald-50/50 border-b border-emerald-100 border-t-4 border-t-emerald-500 rounded-t-2xl`}>
                         <div className="flex items-center">
                             <div className="p-2 bg-emerald-100 rounded-lg mr-3 shadow-sm">
                                 <CreditCard className="w-5 h-5 text-emerald-600" />

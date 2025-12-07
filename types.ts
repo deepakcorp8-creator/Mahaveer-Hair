@@ -74,5 +74,5 @@ export interface ServicePackage {
   totalCost: number;
   totalServices: number;
   startDate: string;
-  status: 'ACTIVE' | 'EXPIRED' | 'COMPLETED';
+  status: 'APPROVED' | 'ACTIVE' | 'EXPIRED' | 'COMPLETED' | 'PENDING' | 'REJECTED';
 }

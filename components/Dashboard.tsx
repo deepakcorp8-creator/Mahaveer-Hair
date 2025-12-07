@@ -55,21 +55,23 @@ const Dashboard: React.FC = () => {
   const sortedEntries = [...entries].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   const salesData = sortedEntries.reduce((acc: any[], curr) => {
     const found = acc.find(item => item.date === curr.date);
+    const amount = Number(curr.amount || 0); // Safe cast to number
     if (found) {
-      found.amount += curr.amount;
+      found.amount += amount;
     } else {
-      acc.push({ date: curr.date, amount: curr.amount });
+      acc.push({ date: curr.date, amount: amount });
     }
     return acc;
   }, []);
 
   const technicianPerformance = entries.reduce((acc: any[], curr) => {
     const found = acc.find(item => item.name === curr.technician);
+    const amount = Number(curr.amount || 0); // Safe cast to number
     if (found) {
       found.clients += 1;
-      found.revenue += curr.amount;
+      found.revenue += amount;
     } else {
-      acc.push({ name: curr.technician, clients: 1, revenue: curr.amount });
+      acc.push({ name: curr.technician, clients: 1, revenue: amount });
     }
     return acc;
   }, []);

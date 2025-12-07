@@ -1,5 +1,5 @@
 // COPY THIS CODE INTO YOUR GOOGLE APPS SCRIPT EDITOR
-// (Extensions > Apps Script in your Google Sheet)
+// REMEMBER TO DEPLOY AS "NEW VERSION"
 
 function doGet(e) {
   const action = e.parameter.action;
@@ -33,8 +33,10 @@ function doPost(e) {
   const data = JSON.parse(e.postData.contents);
   const action = data.action;
 
+  // --- PACKAGE ACTIONS ---
+
   if (action == 'addPackage') {
-    const sheet = ss.getSheetByName("PACKAG PLAN");
+    const sheet = getPackageSheet(ss);
     if (!sheet) return response({error: "Sheet 'PACKAG PLAN' not found"});
     
     sheet.appendRow([
@@ -42,11 +44,66 @@ function doPost(e) {
       data.clientName,
       data.packageName,
       data.totalCost,
-      data.totalServices
+      data.totalServices,
+      data.status || 'PENDING' 
     ]);
     
     return response({status: "success", message: "Package added"});
   }
+
+  if (action == 'updatePackageStatus') {
+    const sheet = getPackageSheet(ss);
+    if (!sheet) return response({error: "Sheet not found"});
+    
+    try {
+        // ID format expected: "row_12" where 12 is the actual spreadsheet row number
+        const rowId = parseInt(data.id.split('_')[1]);
+        if (isNaN(rowId) || rowId < 2) return response({error: "Invalid Row ID"});
+
+        // Column 6 is F (Status)
+        sheet.getRange(rowId, 6).setValue(data.status); 
+        return response({status: "success"});
+    } catch(e) {
+        return response({error: "Error: " + e.message});
+    }
+  }
+
+  if (action == 'deletePackage') {
+    const sheet = getPackageSheet(ss);
+    if (!sheet) return response({error: "Sheet not found"});
+
+    try {
+        const rowId = parseInt(data.id.split('_')[1]);
+        if (isNaN(rowId) || rowId < 2) return response({error: "Invalid Row ID"});
+
+        sheet.deleteRow(rowId);
+        return response({status: "success"});
+    } catch(e) {
+        return response({error: "Error: " + e.message});
+    }
+  }
+
+  if (action == 'editPackage') {
+    const sheet = getPackageSheet(ss);
+    if (!sheet) return response({error: "Sheet not found"});
+
+    try {
+        const rowId = parseInt(data.id.split('_')[1]);
+        if (isNaN(rowId) || rowId < 2) return response({error: "Invalid Row ID"});
+        
+        // Update columns A, C, D, E (Indexes 1, 3, 4, 5)
+        sheet.getRange(rowId, 1).setValue(data.startDate);
+        sheet.getRange(rowId, 3).setValue(data.packageName);
+        sheet.getRange(rowId, 4).setValue(data.totalCost);
+        sheet.getRange(rowId, 5).setValue(data.totalServices);
+
+        return response({status: "success"});
+    } catch(e) {
+        return response({error: "Error: " + e.message});
+    }
+  }
+
+  // --- OTHER ACTIONS ---
 
   if (action == 'addEntry') {
     const sheet = ss.getSheetByName("DATA BASE");
@@ -74,10 +131,9 @@ function doPost(e) {
     const sheet = ss.getSheetByName("DATA BASE");
     if (!sheet) return response({error: "Sheet 'DATA BASE' not found"});
     
-    // We assume ID is 'row_X' where X is the row number
     try {
+        // ID format: "row_12"
         const rowId = parseInt(data.id.split('_')[1]);
-        // Work Status is column I (9th column)
         sheet.getRange(rowId, 9).setValue(data.status);
         return response({status: "success"});
     } catch(e) {
@@ -126,9 +182,10 @@ function doPost(e) {
       
       const dataRange = sheet.getDataRange();
       const values = dataRange.getValues();
+      const targetUser = data.username.toString().trim().toLowerCase();
       
       for (let i = 0; i < values.length; i++) {
-          if (values[i][0].toString() === data.username) {
+          if (values[i][0].toString().trim().toLowerCase() === targetUser) {
               sheet.deleteRow(i + 1);
               return response({status: "success"});
           }
@@ -136,31 +193,20 @@ function doPost(e) {
       return response({error: "User not found"});
   }
 
-  // --- APPOINTMENT ACTIONS (Updated to match APPOINTMNET Sheet) ---
   if (action == 'addAppointment') {
     const sheet = ss.getSheetByName("APPOINTMNET");
     if (!sheet) return response({error: "Sheet 'APPOINTMNET' not found"});
     
-    // Generate simple ID based on timestamp
     const id = 'appt_' + new Date().getTime();
     
-    // Mapping to Sheet Columns:
-    // A: S.No (ID)
-    // B: Date
-    // C: Name
-    // D: Contacts
-    // E: Address (User provided)
-    // F: Note
-    // G: Done (Status)
-
     sheet.appendRow([
-      id,              // S.No
-      data.date,       // Date
-      data.clientName, // Name
-      data.contact,    // Contacts
-      data.address,    // Address (From frontend)
-      data.note,       // Note
-      data.status      // Done (Status: PENDING, CLOSED, etc.)
+      id,              
+      data.date,       
+      data.clientName, 
+      data.contact,    
+      data.address,    
+      data.note,       
+      data.status      
     ]);
     
     return response({status: "success", id: id});
@@ -173,10 +219,8 @@ function doPost(e) {
     const dataRange = sheet.getDataRange();
     const values = dataRange.getValues();
     
-    // Find row by ID (Column A)
     for (let i = 1; i < values.length; i++) {
         if (values[i][0] == data.id) {
-            // Update "Done" Column (G -> 7th Column)
             sheet.getRange(i + 1, 7).setValue(data.status);
             return response({status: "success"});
         }
@@ -187,7 +231,33 @@ function doPost(e) {
   return response({error: "Unknown action"});
 }
 
-// --- Helpers ---
+// --- HELPER TO FIND SHEET WITH TYPO TOLERANCE ---
+function getPackageSheet(ss) {
+    var sheet = ss.getSheetByName("PACKAG PLAN");
+    if (!sheet) sheet = ss.getSheetByName("PACKAGE PLAN"); 
+    return sheet;
+}
+
+function getPackages(ss) {
+    const sheet = getPackageSheet(ss);
+    if (!sheet || sheet.getLastRow() <= 1) return response([]);
+    
+    const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 6).getValues();
+    
+    // Map with EXACT ROW NUMBER
+    // Data starts at Row 2. So Index 0 = Row 2.
+    const packages = data.map((row, index) => ({
+      id: 'row_' + (index + 2), 
+      startDate: formatDate(row[0]),
+      clientName: row[1],
+      contact: '',
+      packageName: row[2],
+      totalCost: row[3],
+      totalServices: row[4],
+      status: row[5] || 'PENDING' 
+    }));
+    return response(packages);
+}
 
 function getEntries(ss) {
     const sheet = ss.getSheetByName("DATA BASE");
@@ -216,37 +286,19 @@ function getAppointments(ss) {
     const sheet = ss.getSheetByName("APPOINTMNET");
     if (!sheet || sheet.getLastRow() <= 1) return response([]);
 
-    // Fetch up to Column G (7)
     const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 7).getValues();
     
     const appointments = data.map((row) => ({
-      id: row[0],         // A: S.No
-      date: formatDate(row[1]), // B: Date
-      clientName: row[2], // C: Name
-      contact: row[3],    // D: Contacts
-      address: row[4],    // E: Address
-      note: row[5],       // F: Note
-      status: row[6] || 'PENDING' // G: Done (Status)
+      id: row[0],         
+      date: formatDate(row[1]), 
+      clientName: row[2], 
+      contact: row[3],    
+      address: row[4],    
+      note: row[5],       
+      status: row[6] || 'PENDING' 
     }));
     
     return response(appointments);
-}
-
-function getPackages(ss) {
-    const sheet = ss.getSheetByName("PACKAG PLAN");
-    if (!sheet || sheet.getLastRow() <= 1) return response([]);
-    const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 5).getValues();
-    const packages = data.map((row, index) => ({
-      id: 'pkg_' + index,
-      startDate: formatDate(row[0]),
-      clientName: row[1],
-      contact: '',
-      packageName: row[2],
-      totalCost: row[3],
-      totalServices: row[4],
-      status: 'ACTIVE'
-    }));
-    return response(packages);
 }
 
 function getOptions(ss) {

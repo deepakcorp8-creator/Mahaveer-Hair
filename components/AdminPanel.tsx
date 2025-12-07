@@ -68,11 +68,20 @@ const AdminPanel: React.FC = () => {
     setLoading(false);
   };
 
-  const handleDeleteUser = async (username: string) => {
-      if(window.confirm(`Are you sure you want to delete user ${username}?`)) {
+  const handleDeleteUser = async (e: React.MouseEvent, username: string) => {
+      e.preventDefault();
+      e.stopPropagation(); // Stop any parent events
+      
+      if (!username) return;
+
+      if(window.confirm(`Are you sure you want to delete user "${username}"? This action cannot be undone.`)) {
           setLoading(true);
-          await api.deleteUser(username);
-          await loadData();
+          const success = await api.deleteUser(username);
+          if (success) {
+             await loadData();
+          } else {
+             alert("Failed to delete user. Please check if the script is properly deployed.");
+          }
           setLoading(false);
       }
   };
@@ -238,9 +247,11 @@ const AdminPanel: React.FC = () => {
                                 </td>
                                 <td className="px-6 py-4 text-right">
                                     <button 
-                                        onClick={() => handleDeleteUser(u.username)}
-                                        className="text-red-400 hover:text-red-600 p-1"
+                                        type="button"
+                                        onClick={(e) => handleDeleteUser(e, u.username)}
+                                        className="text-red-400 hover:text-red-600 p-2 hover:bg-red-50 rounded-lg transition-all"
                                         title="Remove User"
+                                        disabled={loading}
                                     >
                                         <Trash2 className="w-4 h-4" />
                                     </button>
