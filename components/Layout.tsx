@@ -52,7 +52,6 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
       if (item.adminOnly) return false;
 
       // 3. Check specific permissions
-      // Note: authService ensures user.permissions is populated with defaults if empty
       if (user.permissions && user.permissions.includes(item.path)) {
           return true;
       }
@@ -74,27 +73,26 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
 
       {/* Sidebar */}
       <aside className={`
-        fixed lg:static inset-y-0 left-0 z-30 w-72 bg-slate-900 text-slate-100 shadow-2xl transform transition-transform duration-300 ease-in-out
+        fixed lg:static inset-y-0 left-0 z-30 w-72 bg-slate-900 text-slate-100 shadow-2xl transform transition-transform duration-300 ease-in-out flex flex-col
         ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
       `}>
-        <div className="flex flex-col h-full">
-          {/* Logo Area */}
-          <div className="h-32 bg-white border-b border-slate-800 flex items-center justify-center p-4">
-             <div className="w-full h-full flex items-center justify-center overflow-hidden">
+        {/* LOGO AREA - Maximized Visibility */}
+        <div className="p-6 border-b border-slate-800 bg-slate-900 flex justify-center items-center shrink-0">
+             <div className="w-full bg-white rounded-2xl p-2 shadow-xl shadow-black/20 transform hover:scale-[1.02] transition-transform duration-300 overflow-hidden border border-slate-700/30">
                  <img 
                     src={LOGO_URL}
                     alt="Mahaveer Logo" 
                     referrerPolicy="no-referrer"
-                    className="w-full h-full object-contain"
+                    className="w-full h-auto object-contain max-h-20" 
                     onError={(e) => {
                         e.currentTarget.style.display = 'none';
                     }} 
                 />
              </div>
-          </div>
+        </div>
 
-          {/* Navigation */}
-          <nav className="flex-1 overflow-y-auto py-4 px-4 space-y-1">
+        {/* Navigation */}
+        <nav className="flex-1 overflow-y-auto py-4 px-4 space-y-1 scrollbar-thin scrollbar-thumb-slate-700">
               {menuItems.map((item) => (
                 <Link
                   key={item.path}
@@ -113,10 +111,10 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
                   {isActive(item.path) && <ChevronRight className="w-4 h-4 text-indigo-200" />}
                 </Link>
               ))}
-          </nav>
+        </nav>
 
-          {/* User Profile Footer */}
-          <div className="p-4 border-t border-slate-800 bg-slate-900/50">
+        {/* User Profile Footer */}
+        <div className="p-4 border-t border-slate-800 bg-slate-900/50 shrink-0">
             <div className="bg-slate-800 rounded-xl p-3 flex items-center justify-between group hover:bg-slate-750 transition-colors">
               <div className="flex items-center space-x-3">
                 <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold shadow-md uppercase">
@@ -135,7 +133,6 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
                 <LogOut className="w-5 h-5" />
               </button>
             </div>
-          </div>
         </div>
       </aside>
 
@@ -149,7 +146,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
           >
             <Menu className="w-6 h-6" />
           </button>
-          <span className="font-semibold text-slate-800">Mahaveer</span>
+          <span className="font-bold text-slate-800 text-lg">Mahaveer</span>
           <div className="w-6" />
         </header>
 

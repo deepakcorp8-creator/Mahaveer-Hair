@@ -11,7 +11,6 @@ const NewEntryForm: React.FC = () => {
   const [technicians, setTechnicians] = useState<Technician[]>([]);
   const [items, setItems] = useState<Item[]>([]);
   
-  // Package State
   const [activePackage, setActivePackage] = useState<{
       package: ServicePackage,
       currentServiceNumber: number,
@@ -20,7 +19,6 @@ const NewEntryForm: React.FC = () => {
       remaining?: number
   } | null>(null);
 
-  // Define initial state for full reset
   const initialFormState: Partial<Entry> = {
     date: new Date().toISOString().split('T')[0],
     branch: 'RPR',
@@ -40,13 +38,10 @@ const NewEntryForm: React.FC = () => {
   
   const [formData, setFormData] = useState<Partial<Entry>>(initialFormState);
   const [notification, setNotification] = useState<{msg: string, type: 'success' | 'error' | 'warning'} | null>(null);
-  
-  // State to hold the last successful entry to allow printing
   const [lastSubmittedEntry, setLastSubmittedEntry] = useState<Entry | null>(null);
 
   useEffect(() => {
     const init = async () => {
-      // Fetch options once on mount
       const options = await api.getOptions();
       setClients(options.clients);
       setTechnicians(options.technicians);
@@ -61,15 +56,11 @@ const NewEntryForm: React.FC = () => {
   };
 
   const handleClientChange = (clientName: string) => {
-    // 1. Immediate UI update
     setFormData(prev => ({ ...prev, clientName: clientName }));
     setActivePackage(null);
 
-    if (!clientName) {
-         return;
-    }
+    if (!clientName) return;
 
-    // 2. Find client in LOCAL state
     const client = clients.find(c => c.name.toLowerCase() === clientName.toLowerCase());
     
     if (client) {
@@ -79,8 +70,6 @@ const NewEntryForm: React.FC = () => {
         contactNo: client.contact,
         address: client.address
       }));
-
-      // 3. Check package if we found a valid existing client
       checkPackage(client.name);
     } 
   };
@@ -90,7 +79,6 @@ const NewEntryForm: React.FC = () => {
         const pkgStatus = await api.checkClientPackage(name);
         if (pkgStatus && !pkgStatus.isExpired) {
             setActivePackage(pkgStatus);
-            // Auto-set Service Number and set to DONE (Direct Submit)
             setFormData(prev => ({ 
                 ...prev, 
                 numberOfService: pkgStatus.currentServiceNumber,
@@ -98,7 +86,7 @@ const NewEntryForm: React.FC = () => {
             }));
         } else if (pkgStatus && pkgStatus.isExpired) {
              setActivePackage(pkgStatus);
-             setFormData(prev => ({ ...prev, workStatus: 'DONE' })); // Expired means regular paid service
+             setFormData(prev => ({ ...prev, workStatus: 'DONE' }));
         } else {
             setActivePackage(null);
             setFormData(prev => ({ ...prev, numberOfService: 1, workStatus: 'DONE' }));
@@ -112,7 +100,7 @@ const NewEntryForm: React.FC = () => {
     e.preventDefault();
     setLoading(true);
     setNotification(null);
-    setLastSubmittedEntry(null); // Reset last entry
+    setLastSubmittedEntry(null);
 
     if (!formData.clientName || !formData.technician) {
       setNotification({ msg: 'Please fill in all required fields (Client, Technician).', type: 'error' });
@@ -123,29 +111,19 @@ const NewEntryForm: React.FC = () => {
 
     try {
       const result = await api.addEntry(formData as Entry);
-      
-      // Store result for invoice generation
       setLastSubmittedEntry(result as Entry);
-      
       const isPackage = activePackage && !activePackage.isExpired;
-      
       setNotification({ 
           msg: isPackage ? 'Package Service Recorded Successfully!' : 'Transaction recorded successfully!', 
           type: 'success' 
       });
-      
-      // FULL RESET of the form
       setFormData({
           ...initialFormState, 
-          date: formData.date // Keep the date as user might be entering multiple for same day
+          date: formData.date 
       });
       setActivePackage(null);
-      
       window.scrollTo(0,0);
-      
-      // Hide notification after 8 seconds
       setTimeout(() => setNotification(null), 8000);
-
     } catch (error) {
       setNotification({ msg: 'Failed to add entry. Please check your connection.', type: 'error' });
     } finally {
@@ -156,55 +134,55 @@ const NewEntryForm: React.FC = () => {
   const techOptions = technicians.map(t => ({ label: t.name, value: t.name }));
   const patchSizeOptions = items.map(i => ({ label: i.name, value: i.name, subtext: i.category }));
 
-  // Helper styles
-  const sectionHeaderStyle = "px-6 py-4 flex items-center justify-between";
-  const labelStyle = "block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5 ml-1";
-  const inputBaseStyle = "w-full rounded-xl border-gray-200 border bg-gray-50/50 px-4 py-3 text-gray-900 shadow-sm transition-all duration-200 focus:bg-white";
+  // 3D Card Class
+  const cardClass = "bg-white rounded-3xl shadow-[0_15px_35px_-5px_rgba(0,0,0,0.1)] border border-white/50 relative overflow-hidden backdrop-blur-md transition-all duration-300 hover:shadow-[0_20px_40px_-5px_rgba(0,0,0,0.12)] hover:-translate-y-1";
+  
+  // 3D Input Class (Recessed look)
+  const inputClass = "w-full rounded-2xl border-none bg-slate-100/50 px-4 py-3.5 text-gray-900 shadow-[inset_0_2px_4px_rgba(0,0,0,0.06)] ring-1 ring-slate-900/5 focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all font-semibold placeholder:font-normal placeholder:text-slate-400";
+  const labelClass = "block text-xs font-bold uppercase tracking-widest text-slate-500 mb-2 ml-1";
 
   return (
     <div className="max-w-6xl mx-auto pb-20">
-      {/* Page Header */}
-      <div className="mb-8 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-3xl p-8 text-white shadow-xl shadow-indigo-200 relative overflow-hidden">
-         <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-5 rounded-full -mr-16 -mt-16 blur-3xl"></div>
-         <div className="absolute bottom-0 left-0 w-48 h-48 bg-white opacity-5 rounded-full -ml-10 -mb-10 blur-2xl"></div>
-         
-         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
-                <h1 className="text-3xl font-extrabold tracking-tight mb-2">New Transaction</h1>
-                <p className="text-indigo-100 font-medium opacity-90">Create a new service entry and generate billing.</p>
-            </div>
-            <div className="flex items-center bg-white/10 backdrop-blur-md rounded-xl px-4 py-2 border border-white/20">
-                <Calendar className="w-5 h-5 mr-2 text-indigo-100" />
-                <span className="font-semibold">{new Date().toDateString()}</span>
+      
+      {/* 3D Floating Header */}
+      <div className="mb-10 relative group">
+         <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-[2rem] blur-xl opacity-40 transform group-hover:scale-[1.02] transition-transform duration-500"></div>
+         <div className="relative bg-gradient-to-r from-indigo-600 to-purple-600 rounded-[2rem] p-8 text-white shadow-2xl overflow-hidden">
+            <div className="absolute top-0 right-0 w-80 h-80 bg-white opacity-5 rounded-full -mr-20 -mt-20 blur-3xl"></div>
+            <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <h1 className="text-4xl font-black tracking-tight mb-2 drop-shadow-md">New Transaction</h1>
+                    <p className="text-indigo-100 font-medium text-lg opacity-90">Create a new service entry and generate billing.</p>
+                </div>
+                <div className="flex items-center bg-white/10 backdrop-blur-md rounded-2xl px-5 py-3 border border-white/20 shadow-inner">
+                    <Calendar className="w-5 h-5 mr-3 text-indigo-100" />
+                    <span className="font-bold text-lg">{new Date().toDateString()}</span>
+                </div>
             </div>
          </div>
       </div>
 
       <form onSubmit={handleSubmit} className="animate-in fade-in slide-in-from-bottom-4 duration-500">
         
-        {/* Notification Banner */}
         {notification && (
-          <div className={`mb-6 p-4 rounded-xl border flex flex-col md:flex-row items-start md:items-center justify-between shadow-lg transform transition-all scale-100 gap-4 
-            ${notification.type === 'success' ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 
-              notification.type === 'warning' ? 'bg-amber-50 border-amber-200 text-amber-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
+          <div className={`mb-8 p-4 rounded-2xl border flex flex-col md:flex-row items-center justify-between shadow-xl gap-4 
+            ${notification.type === 'success' ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
             <div className="flex items-center">
-                {notification.type === 'success' ? <CheckCircle2 className="w-6 h-6 mr-3 text-emerald-600" /> : <AlertCircle className="w-6 h-6 mr-3 text-red-600" />}
+                {notification.type === 'success' ? <CheckCircle2 className="w-8 h-8 mr-4 text-emerald-600" /> : <AlertCircle className="w-8 h-8 mr-4 text-red-600" />}
                 <div>
-                    <h4 className="font-bold text-sm uppercase">
+                    <h4 className="font-black text-lg">
                         {notification.type === 'success' ? 'Success' : 'Error'}
                     </h4>
                     <p className="font-medium">{notification.msg}</p>
                 </div>
             </div>
-
-            {/* Print Button */}
             {notification.type === 'success' && lastSubmittedEntry && (
                 <button
                     type="button"
                     onClick={() => generateInvoice(lastSubmittedEntry)}
-                    className="flex items-center bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg font-bold text-sm shadow-md transition-all active:scale-95"
+                    className="flex items-center bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-xl font-bold text-sm shadow-lg shadow-emerald-500/30 transition-all active:scale-95 hover:-translate-y-0.5"
                 >
-                    <FileDown className="w-4 h-4 mr-2" />
+                    <FileDown className="w-5 h-5 mr-2" />
                     Download Invoice
                 </button>
             )}
@@ -213,126 +191,110 @@ const NewEntryForm: React.FC = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
             
-            {/* Left Column (Client & Service) */}
             <div className="lg:col-span-8 space-y-8">
                 
-                {/* 1. Client Card (Blue Theme) */}
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-                    <div className={`${sectionHeaderStyle} bg-blue-50/50 border-b border-blue-100 border-t-4 border-t-blue-500 rounded-t-2xl`}>
-                        <div className="flex items-center">
-                            <div className="p-2 bg-blue-100 rounded-lg mr-3 shadow-sm">
-                                <User className="w-5 h-5 text-blue-600" />
-                            </div>
-                            <div>
-                                <h3 className="text-lg font-bold text-gray-800">Client Details</h3>
-                                <p className="text-xs text-blue-500 font-medium">Customer Information</p>
-                            </div>
+                {/* 1. Client Card (3D) */}
+                <div className={cardClass}>
+                    <div className="px-8 py-6 bg-gradient-to-r from-blue-50 to-white border-b border-blue-100 flex items-center">
+                        <div className="p-3 bg-white rounded-2xl mr-4 shadow-md shadow-blue-100">
+                            <User className="w-6 h-6 text-blue-600" />
+                        </div>
+                        <div>
+                            <h3 className="text-xl font-black text-slate-800">Client Details</h3>
+                            <p className="text-sm text-blue-500 font-bold">Customer Information</p>
                         </div>
                     </div>
                     <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="col-span-full">
-                            {/* Updated to Datalist for 'Select Existing or Type New' */}
                             <SearchableSelect 
                                 label="Client Name"
                                 options={clients.map(c => ({ label: c.name, value: c.name, subtext: c.contact }))}
                                 value={formData.clientName || ''}
                                 onChange={handleClientChange}
-                                placeholder="Select Existing or Type New..."
+                                placeholder="Search Client..."
                                 required
                             />
                         </div>
                         
-                        {/* PACKAGE ALERT BANNER */}
                         {activePackage && (
-                             <div className={`col-span-full rounded-xl border p-4 flex items-start gap-3 shadow-sm transition-all duration-300
+                             <div className={`col-span-full rounded-2xl border-2 p-5 flex items-start gap-4 shadow-lg transition-all duration-300 transform hover:scale-[1.01]
                                 ${activePackage.isExpired 
-                                    ? 'bg-red-50 border-red-200 text-red-800' 
-                                    : 'bg-emerald-50 border-emerald-200 text-emerald-900'}
+                                    ? 'bg-red-50 border-red-200' 
+                                    : 'bg-emerald-50 border-emerald-200'}
                              `}>
-                                 <div className={`p-2 rounded-lg ${activePackage.isExpired ? 'bg-red-100' : 'bg-emerald-100'}`}>
-                                     <Ticket className="w-6 h-6 shrink-0" />
+                                 <div className={`p-3 rounded-xl shadow-sm ${activePackage.isExpired ? 'bg-red-100 text-red-600' : 'bg-emerald-100 text-emerald-600'}`}>
+                                     <Ticket className="w-8 h-8" />
                                  </div>
                                  <div className="flex-1">
-                                     <div className="flex justify-between items-center">
-                                         <h4 className="font-bold text-lg">
+                                     <div className="flex justify-between items-center mb-1">
+                                         <h4 className={`font-black text-xl ${activePackage.isExpired ? 'text-red-900' : 'text-emerald-900'}`}>
                                              {activePackage.isExpired ? 'PACKAGE EXPIRED' : activePackage.package.packageName}
                                          </h4>
                                          {!activePackage.isExpired && (
-                                             <span className="bg-white/50 px-3 py-1 rounded-md text-sm font-black border border-emerald-200 shadow-sm">
+                                             <span className="bg-white/80 backdrop-blur px-4 py-1.5 rounded-lg text-sm font-black border border-emerald-200 shadow-sm text-emerald-700">
                                                  Remaining: {activePackage.remaining}
                                              </span>
                                          )}
                                      </div>
-                                     <p className="font-medium text-sm mt-1 opacity-90">
-                                         This is Service <span className="font-bold text-lg">{activePackage.currentServiceNumber}</span> of {activePackage.package.totalServices}
+                                     <p className={`font-medium ${activePackage.isExpired ? 'text-red-700' : 'text-emerald-700'}`}>
+                                         Service <span className="font-black text-lg mx-1">{activePackage.currentServiceNumber}</span> of {activePackage.package.totalServices}
                                      </p>
-                                     {activePackage.isExpired ? (
-                                         <p className="text-xs font-bold mt-2 uppercase tracking-wide bg-red-100/50 p-1 rounded inline-block">
-                                             Limit Exceeded. Please charge regular price or renew.
-                                         </p>
-                                     ) : (
-                                         <p className="text-xs font-bold mt-2 uppercase tracking-wide bg-emerald-100/50 p-1 rounded inline-block text-emerald-800">
-                                             Active Package Found - Auto Applied
-                                         </p>
-                                     )}
                                  </div>
                              </div>
                         )}
 
                         <div>
-                            <label className={labelStyle}>Contact Number</label>
+                            <label className={labelClass}>Contact Number</label>
                             <input
                                 type="text"
                                 name="contactNo"
                                 value={formData.contactNo || ''}
                                 onChange={handleChange}
-                                className={`${inputBaseStyle} focus:ring-2 focus:ring-blue-500 focus:border-blue-500`}
-                                placeholder="Client Contact"
+                                className={inputClass}
+                                placeholder="9876543210"
                             />
                         </div>
                         <div>
-                            <label className={labelStyle}>Address</label>
+                            <label className={labelClass}>Address</label>
                             <div className="relative">
                                 <input
                                     type="text"
                                     name="address"
                                     value={formData.address || ''}
                                     onChange={handleChange}
-                                    className={`${inputBaseStyle} pl-10 focus:ring-2 focus:ring-blue-500 focus:border-blue-500`}
-                                    placeholder="Client Address"
+                                    className={`${inputClass} pl-11`}
+                                    placeholder="City/Area"
                                 />
-                                <MapPin className="w-4 h-4 text-gray-400 absolute left-3 top-3.5" />
+                                <MapPin className="w-5 h-5 text-slate-400 absolute left-4 top-4" />
                             </div>
                         </div>
                     </div>
                 </div>
 
-                {/* 2. Service Card (Violet Theme) */}
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-                    <div className={`${sectionHeaderStyle} bg-violet-50/50 border-b border-violet-100 border-t-4 border-t-violet-500 rounded-t-2xl`}>
-                        <div className="flex items-center">
-                            <div className="p-2 bg-violet-100 rounded-lg mr-3 shadow-sm">
-                                <Scissors className="w-5 h-5 text-violet-600" />
-                            </div>
-                            <div>
-                                <h3 className="text-lg font-bold text-gray-800">Service Data</h3>
-                                <p className="text-xs text-violet-500 font-medium">Work & Technician</p>
-                            </div>
+                {/* 2. Service Card (3D) */}
+                <div className={cardClass}>
+                    <div className="px-8 py-6 bg-gradient-to-r from-violet-50 to-white border-b border-violet-100 flex items-center">
+                        <div className="p-3 bg-white rounded-2xl mr-4 shadow-md shadow-violet-100">
+                            <Scissors className="w-6 h-6 text-violet-600" />
+                        </div>
+                        <div>
+                            <h3 className="text-xl font-black text-slate-800">Service Data</h3>
+                            <p className="text-sm text-violet-500 font-bold">Work & Technician</p>
                         </div>
                     </div>
                     <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
-                            <label className={labelStyle}>Branch</label>
-                            <div className="flex gap-3 mt-1">
+                            <label className={labelClass}>Branch</label>
+                            <div className="flex gap-4 p-1 bg-slate-100/50 rounded-2xl">
                                 {['RPR', 'JDP'].map((b) => (
                                     <button
                                         type="button"
                                         key={b}
                                         onClick={() => setFormData(prev => ({ ...prev, branch: b as any }))}
-                                        className={`flex-1 py-3 rounded-xl border font-bold text-sm transition-all
+                                        className={`flex-1 py-3 rounded-xl font-bold text-sm transition-all duration-200
                                             ${formData.branch === b 
-                                                ? 'bg-violet-600 text-white border-violet-700 shadow-md transform scale-105' 
-                                                : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50 hover:border-gray-300'
+                                                ? 'bg-violet-600 text-white shadow-lg shadow-violet-500/30 transform scale-105' 
+                                                : 'text-slate-500 hover:bg-white hover:text-slate-700'
                                             }`}
                                     >
                                         {b}
@@ -341,32 +303,35 @@ const NewEntryForm: React.FC = () => {
                             </div>
                         </div>
                         <div>
-                            <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5 ml-1">Transaction Date</label>
+                            <label className={labelClass}>Transaction Date</label>
                             <input
                                 type="date"
                                 name="date"
                                 value={formData.date}
                                 onChange={handleChange}
-                                className={`${inputBaseStyle} focus:ring-2 focus:ring-violet-500 focus:border-violet-500`}
+                                className={inputClass}
                                 required
                             />
                         </div>
 
-                         <div className="md:col-span-2 border-t border-dashed border-gray-200 my-2"></div>
+                         <div className="md:col-span-2 h-px bg-slate-100 my-2"></div>
 
                         <div>
-                            <label className={labelStyle}>Service Type</label>
-                            <select
-                                name="serviceType"
-                                value={formData.serviceType}
-                                onChange={handleChange}
-                                className={`${inputBaseStyle} focus:ring-2 focus:ring-violet-500 focus:border-violet-500 font-semibold`}
-                            >
-                                <option value="SERVICE">SERVICE</option>
-                                <option value="NEW">NEW</option>
-                                <option value="DEMO">DEMO</option>
-                                <option value="MUNDAN">MUNDAN</option>
-                            </select>
+                            <label className={labelClass}>Service Type</label>
+                            <div className="relative">
+                                <select
+                                    name="serviceType"
+                                    value={formData.serviceType}
+                                    onChange={handleChange}
+                                    className={`${inputClass} appearance-none cursor-pointer`}
+                                >
+                                    <option value="SERVICE">SERVICE</option>
+                                    <option value="NEW">NEW</option>
+                                    <option value="DEMO">DEMO</option>
+                                    <option value="MUNDAN">MUNDAN</option>
+                                </select>
+                                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">▼</div>
+                            </div>
                         </div>
 
                         {formData.serviceType === 'NEW' && (
@@ -382,22 +347,25 @@ const NewEntryForm: React.FC = () => {
                         )}
 
                         <div>
-                            <label className={labelStyle}>Patch Method</label>
-                            <select
-                                name="patchMethod"
-                                value={formData.patchMethod}
-                                onChange={handleChange}
-                                className={`${inputBaseStyle} focus:ring-2 focus:ring-violet-500 focus:border-violet-500`}
-                            >
-                                <option value="TAPING">TAPING</option>
-                                <option value="BONDING">BONDING</option>
-                                <option value="CLIPPING">CLIPPING</option>
-                            </select>
+                            <label className={labelClass}>Patch Method</label>
+                            <div className="relative">
+                                <select
+                                    name="patchMethod"
+                                    value={formData.patchMethod}
+                                    onChange={handleChange}
+                                    className={`${inputClass} appearance-none cursor-pointer`}
+                                >
+                                    <option value="TAPING">TAPING</option>
+                                    <option value="BONDING">BONDING</option>
+                                    <option value="CLIPPING">CLIPPING</option>
+                                </select>
+                                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">▼</div>
+                            </div>
                         </div>
                         
                          <div className="md:col-span-2">
                              <SearchableSelect 
-                                label="TECHNICIAN ASSIGNED"
+                                label="Technician Assigned"
                                 options={techOptions}
                                 value={formData.technician || ''}
                                 onChange={(val) => setFormData(prev => ({ ...prev, technician: val }))}
@@ -407,54 +375,51 @@ const NewEntryForm: React.FC = () => {
                         </div>
                         
                         <div>
-                            <label className={labelStyle}>Number of Service</label>
+                            <label className={labelClass}>Number of Service</label>
                             <input
                                 type="number"
                                 name="numberOfService"
                                 value={formData.numberOfService}
                                 onChange={handleChange}
-                                className={`${inputBaseStyle} focus:ring-2 focus:ring-violet-500 focus:border-violet-500 font-semibold`}
+                                className={inputClass}
                             />
                         </div>
                         
                          <div className="md:col-span-2">
-                            <label className={labelStyle}>Remarks / Notes</label>
+                            <label className={labelClass}>Remarks / Notes</label>
                             <textarea
                                 name="remark"
                                 value={formData.remark}
                                 onChange={handleChange}
                                 rows={2}
-                                className={`${inputBaseStyle} focus:ring-2 focus:ring-violet-500 focus:border-violet-500`}
-                                placeholder="Any additional details..."
+                                className={inputClass}
+                                placeholder="Additional details..."
                             ></textarea>
                         </div>
                     </div>
                 </div>
             </div>
 
-            {/* Right Column (Payment) */}
             <div className="lg:col-span-4 space-y-8">
-                {/* 3. Payment Card (Emerald Theme) */}
-                <div className="bg-white rounded-2xl shadow-lg shadow-emerald-50 border border-emerald-100 sticky top-6">
-                    <div className={`${sectionHeaderStyle} bg-emerald-50/50 border-b border-emerald-100 border-t-4 border-t-emerald-500 rounded-t-2xl`}>
-                        <div className="flex items-center">
-                            <div className="p-2 bg-emerald-100 rounded-lg mr-3 shadow-sm">
-                                <CreditCard className="w-5 h-5 text-emerald-600" />
-                            </div>
-                            <h3 className="text-lg font-bold text-gray-800">Payment</h3>
+                {/* 3. Payment Card (3D) */}
+                <div className={`${cardClass} sticky top-6 bg-gradient-to-br from-white to-emerald-50/30`}>
+                    <div className="px-8 py-6 bg-gradient-to-r from-emerald-50 to-white border-b border-emerald-100 flex items-center">
+                        <div className="p-3 bg-white rounded-2xl mr-4 shadow-md shadow-emerald-100">
+                            <CreditCard className="w-6 h-6 text-emerald-600" />
                         </div>
+                        <h3 className="text-xl font-black text-slate-800">Payment</h3>
                     </div>
                      <div className="p-6 space-y-8">
-                         <div className="bg-emerald-50 rounded-2xl p-6 border border-emerald-100 text-center">
-                            <label className="text-emerald-800 font-bold text-xs uppercase tracking-wider mb-2 block">Total Amount</label>
+                         <div className="bg-white rounded-3xl p-8 border border-emerald-100 text-center shadow-[inset_0_2px_10px_rgba(0,0,0,0.03)]">
+                            <label className="text-emerald-800 font-black text-xs uppercase tracking-widest mb-4 block">Total Payable Amount</label>
                             <div className="relative flex justify-center items-center">
-                                <span className="text-emerald-500 text-3xl font-bold mr-2">₹</span>
+                                <span className="text-emerald-500 text-4xl font-black mr-2">₹</span>
                                 <input
                                     type="number"
                                     name="amount"
                                     value={formData.amount}
                                     onChange={handleChange}
-                                    className="w-40 bg-transparent text-4xl font-black text-gray-800 text-center border-b-2 border-emerald-300 focus:border-emerald-600 focus:outline-none placeholder-gray-300"
+                                    className="w-48 bg-transparent text-5xl font-black text-slate-800 text-center border-b-4 border-emerald-300 focus:border-emerald-500 focus:outline-none placeholder-slate-200 transition-colors"
                                     placeholder="0"
                                     min="0"
                                     required
@@ -463,14 +428,14 @@ const NewEntryForm: React.FC = () => {
                         </div>
                         
                          <div>
-                            <label className={labelStyle}>Payment Method</label>
-                             <div className="grid grid-cols-2 gap-3 mt-3">
+                            <label className={labelClass}>Payment Method</label>
+                             <div className="grid grid-cols-2 gap-4 mt-3">
                                 {['CASH', 'UPI', 'CARD', 'PENDING'].map(method => {
                                     const activeColors: Record<string, string> = {
-                                        'CASH': 'bg-emerald-500 border-emerald-600 text-white shadow-emerald-200',
-                                        'UPI': 'bg-blue-500 border-blue-600 text-white shadow-blue-200',
-                                        'CARD': 'bg-violet-500 border-violet-600 text-white shadow-violet-200',
-                                        'PENDING': 'bg-red-500 border-red-600 text-white shadow-red-200',
+                                        'CASH': 'bg-gradient-to-br from-emerald-500 to-emerald-600 text-white shadow-emerald-500/30 border-emerald-600',
+                                        'UPI': 'bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-blue-500/30 border-blue-600',
+                                        'CARD': 'bg-gradient-to-br from-violet-500 to-violet-600 text-white shadow-violet-500/30 border-violet-600',
+                                        'PENDING': 'bg-gradient-to-br from-red-500 to-red-600 text-white shadow-red-500/30 border-red-600',
                                     };
                                     const isActive = formData.paymentMethod === method;
                                     
@@ -479,10 +444,10 @@ const NewEntryForm: React.FC = () => {
                                             type="button"
                                             key={method}
                                             onClick={() => setFormData(prev => ({ ...prev, paymentMethod: method as any }))}
-                                            className={`py-3 px-2 text-sm font-bold rounded-xl border transition-all duration-200 shadow-sm
+                                            className={`py-4 px-2 text-sm font-black rounded-2xl border transition-all duration-200 shadow-md
                                                 ${isActive 
-                                                    ? `${activeColors[method]} shadow-lg transform scale-105` 
-                                                    : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50 hover:border-gray-300'}`}
+                                                    ? `${activeColors[method]} transform scale-105 shadow-lg` 
+                                                    : 'bg-white text-slate-400 border-slate-200 hover:bg-slate-50 hover:text-slate-600'}`}
                                         >
                                             {method}
                                         </button>
@@ -494,19 +459,19 @@ const NewEntryForm: React.FC = () => {
                         <button
                             type="submit"
                             disabled={loading}
-                            className={`w-full group flex items-center justify-center py-4 px-6 rounded-xl shadow-xl text-base font-bold text-white transition-all transform duration-200
+                            className={`w-full group flex items-center justify-center py-5 px-8 rounded-2xl shadow-xl text-lg font-black text-white transition-all transform duration-300
                                 ${loading 
-                                    ? 'bg-gray-400 cursor-not-allowed' 
+                                    ? 'bg-slate-400 cursor-not-allowed' 
                                     : activePackage && !activePackage.isExpired 
-                                        ? 'bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700'
-                                        : 'bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 hover:scale-[1.02] hover:shadow-indigo-200'}`}
+                                        ? 'bg-gradient-to-r from-emerald-500 to-teal-600 hover:shadow-emerald-500/30 hover:-translate-y-1'
+                                        : 'bg-gradient-to-r from-indigo-600 to-purple-600 hover:shadow-indigo-500/30 hover:-translate-y-1'}`}
                         >
                             {loading ? (
-                                <RefreshCw className="w-5 h-5 mr-2 animate-spin" />
+                                <RefreshCw className="w-6 h-6 mr-3 animate-spin" />
                             ) : activePackage && !activePackage.isExpired ? (
-                                <ShieldCheck className="w-5 h-5 mr-2" />
+                                <ShieldCheck className="w-6 h-6 mr-3" />
                             ) : (
-                                <Save className="w-5 h-5 mr-2 group-hover:animate-pulse" />
+                                <Save className="w-6 h-6 mr-3 group-hover:scale-110 transition-transform" />
                             )}
                             {loading ? 'Processing...' : (activePackage && !activePackage.isExpired ? 'SUBMIT PACKAGE ENTRY' : 'COMPLETE TRANSACTION')}
                         </button>

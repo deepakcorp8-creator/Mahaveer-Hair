@@ -3,7 +3,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line, AreaChart, Area
 } from 'recharts';
-import { Users, DollarSign, Activity, ShoppingBag, ArrowUpRight } from 'lucide-react';
+import { Users, DollarSign, Activity, ShoppingBag, ArrowUpRight, Sparkles, TrendingUp } from 'lucide-react';
 import { api } from '../services/api';
 import { DashboardStats, Entry } from '../types';
 
@@ -35,7 +35,7 @@ const Dashboard: React.FC = () => {
   if (loading) {
     return (
         <div className="flex justify-center items-center h-full">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-indigo-600"></div>
         </div>
     );
   }
@@ -51,11 +51,10 @@ const Dashboard: React.FC = () => {
     return acc;
   }, []);
 
-  // Sort entries by date for line chart
   const sortedEntries = [...entries].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   const salesData = sortedEntries.reduce((acc: any[], curr) => {
     const found = acc.find(item => item.date === curr.date);
-    const amount = Number(curr.amount || 0); // Safe cast to number
+    const amount = Number(curr.amount || 0);
     if (found) {
       found.amount += amount;
     } else {
@@ -66,7 +65,7 @@ const Dashboard: React.FC = () => {
 
   const technicianPerformance = entries.reduce((acc: any[], curr) => {
     const found = acc.find(item => item.name === curr.technician);
-    const amount = Number(curr.amount || 0); // Safe cast to number
+    const amount = Number(curr.amount || 0);
     if (found) {
       found.clients += 1;
       found.revenue += amount;
@@ -76,177 +75,202 @@ const Dashboard: React.FC = () => {
     return acc;
   }, []);
 
+  // 3D Card Style Helper
+  const card3D = "bg-white rounded-3xl shadow-[0_20px_50px_-12px_rgba(0,0,0,0.1)] border border-white/50 backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_25px_50px_-12px_rgba(99,102,241,0.15)]";
+
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
+    <div className="space-y-8 animate-in fade-in duration-500 pb-10">
+      
+      {/* Header Section */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center relative z-10">
         <div>
-            <h2 className="text-3xl font-bold text-slate-800 tracking-tight">Dashboard Overview</h2>
-            <p className="text-slate-500 mt-1 font-medium">Welcome back, here's what's happening today.</p>
+            <h2 className="text-4xl font-black text-slate-800 tracking-tight flex items-center">
+                Dashboard
+                <Sparkles className="w-6 h-6 text-yellow-500 ml-3 animate-pulse" />
+            </h2>
+            <p className="text-slate-500 mt-2 font-medium text-lg">Business Analytics & Overview</p>
         </div>
-        <div className="mt-4 md:mt-0 bg-white px-5 py-2.5 rounded-xl shadow-sm border border-slate-300 text-slate-700 text-sm font-semibold">
+        <div className="mt-4 md:mt-0 bg-white/80 backdrop-blur-md px-6 py-3 rounded-2xl shadow-lg border border-white/50 text-indigo-700 text-sm font-bold flex items-center">
+          <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse mr-3"></div>
           {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
         </div>
       </div>
 
-      {/* KPI Cards */}
+      {/* KPI Cards - 3D Effect */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        
         {/* Total Clients */}
-        <div className="relative overflow-hidden bg-white p-6 rounded-2xl shadow-sm border border-slate-300 group hover:shadow-md transition-all">
-          <div className="absolute right-0 top-0 h-32 w-32 bg-indigo-50 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-110"></div>
-          <div className="relative flex items-center justify-between mb-4">
-            <div className="p-3 bg-indigo-100 text-indigo-600 rounded-xl shadow-sm">
-               <Users className="w-6 h-6" />
+        <div className={`${card3D} p-6 group relative overflow-hidden bg-gradient-to-br from-white to-blue-50`}>
+          <div className="absolute right-0 top-0 h-32 w-32 bg-blue-500/10 rounded-bl-[100px] -mr-8 -mt-8 transition-transform group-hover:scale-110"></div>
+          <div className="relative flex items-center justify-between mb-6">
+            <div className="p-4 bg-white shadow-lg shadow-blue-200 rounded-2xl text-blue-600">
+               <Users className="w-7 h-7" />
             </div>
-            <span className="flex items-center text-green-600 text-xs font-bold bg-green-50 border border-green-100 px-2 py-1 rounded-full">
+            <span className="flex items-center text-emerald-600 text-xs font-bold bg-emerald-100/50 border border-emerald-200 px-3 py-1 rounded-full">
                 +12% <ArrowUpRight className="w-3 h-3 ml-1" />
             </span>
           </div>
           <div className="relative">
-            <p className="text-slate-500 text-sm font-bold uppercase tracking-wider">Total Clients</p>
-            <h3 className="text-3xl font-extrabold text-slate-900 mt-1">{stats?.totalClients}</h3>
+            <p className="text-slate-500 text-xs font-bold uppercase tracking-widest">Total Clients</p>
+            <h3 className="text-4xl font-black text-slate-800 mt-2">{stats?.totalClients}</h3>
           </div>
         </div>
 
-        {/* Total Revenue */}
-        <div className="relative overflow-hidden bg-slate-900 p-6 rounded-2xl shadow-xl shadow-slate-200 text-white border border-slate-700">
-          <div className="relative flex items-center justify-between mb-4">
-            <div className="p-3 bg-white/10 rounded-xl backdrop-blur-sm border border-white/10">
-               <DollarSign className="w-6 h-6 text-white" />
+        {/* Total Revenue - Dark Card */}
+        <div className="rounded-3xl p-6 relative overflow-hidden bg-gradient-to-br from-slate-900 to-slate-800 text-white shadow-[0_20px_50px_-12px_rgba(15,23,42,0.5)] transform hover:-translate-y-1 transition-all duration-300 hover:shadow-[0_25px_60px_-12px_rgba(15,23,42,0.6)] border border-slate-700">
+           {/* Abstract Glow */}
+          <div className="absolute top-0 right-0 w-[200px] h-[200px] bg-indigo-500/20 blur-[60px] rounded-full"></div>
+          
+          <div className="relative flex items-center justify-between mb-6">
+            <div className="p-4 bg-white/10 backdrop-blur-md rounded-2xl border border-white/10 shadow-inner">
+               <DollarSign className="w-7 h-7 text-indigo-300" />
             </div>
-             <span className="flex items-center text-green-300 text-xs font-bold bg-green-900/30 border border-green-500/30 px-2 py-1 rounded-full">
+             <span className="flex items-center text-emerald-300 text-xs font-bold bg-emerald-500/20 border border-emerald-500/30 px-3 py-1 rounded-full">
                 +5.4% <ArrowUpRight className="w-3 h-3 ml-1" />
             </span>
           </div>
           <div className="relative">
-            <p className="text-slate-400 text-sm font-bold uppercase tracking-wider">Total Revenue</p>
-            <h3 className="text-3xl font-extrabold mt-1">₹{stats?.totalAmount.toLocaleString()}</h3>
+            <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">Total Revenue</p>
+            <h3 className="text-4xl font-black mt-2 tracking-tight">₹{stats?.totalAmount.toLocaleString()}</h3>
           </div>
         </div>
 
         {/* New Clients */}
-        <div className="relative overflow-hidden bg-white p-6 rounded-2xl shadow-sm border border-slate-300 group hover:shadow-md transition-all">
-          <div className="absolute right-0 top-0 h-32 w-32 bg-purple-50 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-110"></div>
-          <div className="relative flex items-center justify-between mb-4">
-            <div className="p-3 bg-purple-100 text-purple-600 rounded-xl shadow-sm">
-               <Activity className="w-6 h-6" />
+        <div className={`${card3D} p-6 group relative overflow-hidden bg-gradient-to-br from-white to-purple-50`}>
+           <div className="absolute right-0 top-0 h-32 w-32 bg-purple-500/10 rounded-bl-[100px] -mr-8 -mt-8 transition-transform group-hover:scale-110"></div>
+          <div className="relative flex items-center justify-between mb-6">
+            <div className="p-4 bg-white shadow-lg shadow-purple-200 rounded-2xl text-purple-600">
+               <Activity className="w-7 h-7" />
             </div>
           </div>
           <div className="relative">
-            <p className="text-slate-500 text-sm font-bold uppercase tracking-wider">New Clients Today</p>
-            <h3 className="text-3xl font-extrabold text-slate-900 mt-1">{stats?.newClientsToday}</h3>
+            <p className="text-slate-500 text-xs font-bold uppercase tracking-widest">New Clients Today</p>
+            <h3 className="text-4xl font-black text-slate-800 mt-2">{stats?.newClientsToday}</h3>
           </div>
         </div>
 
         {/* Total Services */}
-        <div className="relative overflow-hidden bg-white p-6 rounded-2xl shadow-sm border border-slate-300 group hover:shadow-md transition-all">
-           <div className="absolute right-0 top-0 h-32 w-32 bg-orange-50 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-110"></div>
-          <div className="relative flex items-center justify-between mb-4">
-            <div className="p-3 bg-orange-100 text-orange-600 rounded-xl shadow-sm">
-               <ShoppingBag className="w-6 h-6" />
+        <div className={`${card3D} p-6 group relative overflow-hidden bg-gradient-to-br from-white to-orange-50`}>
+           <div className="absolute right-0 top-0 h-32 w-32 bg-orange-500/10 rounded-bl-[100px] -mr-8 -mt-8 transition-transform group-hover:scale-110"></div>
+          <div className="relative flex items-center justify-between mb-6">
+            <div className="p-4 bg-white shadow-lg shadow-orange-200 rounded-2xl text-orange-600">
+               <ShoppingBag className="w-7 h-7" />
             </div>
           </div>
           <div className="relative">
-            <p className="text-slate-500 text-sm font-bold uppercase tracking-wider">Total Services</p>
-            <h3 className="text-3xl font-extrabold text-slate-900 mt-1">{stats?.serviceCount}</h3>
+            <p className="text-slate-500 text-xs font-bold uppercase tracking-widest">Total Services</p>
+            <h3 className="text-4xl font-black text-slate-800 mt-2">{stats?.serviceCount}</h3>
           </div>
         </div>
       </div>
 
       {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Revenue Chart */}
-        <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-slate-300">
-          <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center">
-              Revenue Overview
-              <span className="ml-2 text-xs font-normal text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">Last 7 Days</span>
-          </h3>
-          <div className="h-80 w-full">
+        <div className={`${card3D} lg:col-span-2 p-8`}>
+          <div className="flex justify-between items-center mb-8">
+              <div>
+                  <h3 className="text-xl font-bold text-slate-800 flex items-center">
+                    <TrendingUp className="w-5 h-5 mr-2 text-indigo-500" />
+                    Revenue Analytics
+                  </h3>
+                  <p className="text-slate-400 text-sm font-medium">Income trends over time</p>
+              </div>
+              <span className="text-xs font-bold text-indigo-500 bg-indigo-50 px-3 py-1.5 rounded-xl border border-indigo-100">Last 7 Days</span>
+          </div>
+          <div className="h-[350px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={salesData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+              <AreaChart data={salesData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#6366f1" stopOpacity={0.2}/>
+                    <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3}/>
                     <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                <XAxis dataKey="date" tick={{fontSize: 12, fill: '#64748b'}} axisLine={false} tickLine={false} dy={10} />
-                <YAxis tick={{fontSize: 12, fill: '#64748b'}} axisLine={false} tickLine={false} dx={-10} />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis dataKey="date" tick={{fontSize: 12, fill: '#94a3b8', fontWeight: 600}} axisLine={false} tickLine={false} dy={15} />
+                <YAxis tick={{fontSize: 12, fill: '#94a3b8', fontWeight: 600}} axisLine={false} tickLine={false} dx={-10} />
                 <RechartsTooltip 
-                    contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                    contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 40px -10px rgba(0,0,0,0.1)', background: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(10px)' }}
                 />
-                <Area type="monotone" dataKey="amount" stroke="#6366f1" strokeWidth={3} fillOpacity={1} fill="url(#colorAmount)" />
+                <Area type="monotone" dataKey="amount" stroke="#6366f1" strokeWidth={4} fillOpacity={1} fill="url(#colorAmount)" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
         </div>
 
         {/* Service Type Distribution */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-300">
-          <h3 className="text-lg font-bold text-slate-800 mb-6">Service Mix</h3>
-          <div className="h-64">
+        <div className={`${card3D} p-8`}>
+          <h3 className="text-xl font-bold text-slate-800 mb-2">Service Mix</h3>
+          <p className="text-slate-400 text-sm font-medium mb-6">Distribution by Category</p>
+          <div className="h-[280px]">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
                   data={serviceTypeData}
                   cx="50%"
                   cy="50%"
-                  innerRadius={60}
-                  outerRadius={80}
-                  paddingAngle={5}
+                  innerRadius={65}
+                  outerRadius={90}
+                  paddingAngle={6}
                   dataKey="value"
+                  cornerRadius={8}
                 >
                   {serviceTypeData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} strokeWidth={0} />
                   ))}
                 </Pie>
-                <RechartsTooltip />
+                <RechartsTooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 30px rgba(0,0,0,0.1)' }}/>
                 <Legend verticalAlign="bottom" height={36} iconType="circle" />
               </PieChart>
             </ResponsiveContainer>
           </div>
-           <div className="text-center mt-4">
-              <p className="text-sm text-slate-500">Top Service: <span className="font-bold text-slate-800">{serviceTypeData.sort((a,b) => b.value - a.value)[0]?.name || 'N/A'}</span></p>
+           <div className="mt-4 p-4 bg-slate-50 rounded-2xl border border-slate-100 text-center">
+              <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">Top Performing Service</p>
+              <p className="text-lg font-black text-slate-800">{serviceTypeData.sort((a,b) => b.value - a.value)[0]?.name || 'N/A'}</p>
           </div>
         </div>
       </div>
 
-      {/* Technician Table */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-300 overflow-hidden">
-        <div className="px-6 py-5 border-b border-slate-200 flex justify-between items-center bg-slate-50/50">
-          <h3 className="text-lg font-bold text-slate-800">Technician Performance</h3>
-          <button className="text-sm text-indigo-600 font-bold hover:text-indigo-800 transition-colors">View All</button>
+      {/* Technician Table - 3D Container */}
+      <div className={`${card3D} overflow-hidden p-0`}>
+        <div className="px-8 py-6 border-b border-slate-100 flex justify-between items-center bg-gradient-to-r from-white to-slate-50">
+          <div>
+              <h3 className="text-xl font-bold text-slate-800">Technician Performance</h3>
+              <p className="text-slate-400 text-sm font-medium">Efficiency & Revenue Contribution</p>
+          </div>
+          <button className="text-sm bg-white border border-slate-200 shadow-sm text-indigo-600 font-bold py-2 px-4 rounded-xl hover:bg-indigo-50 transition-colors">View Full Report</button>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm text-slate-600">
-            <thead className="bg-slate-50 text-slate-500 uppercase font-bold text-xs">
+            <thead className="bg-slate-50/50 text-slate-400 uppercase font-bold text-xs">
               <tr>
-                <th className="px-6 py-4 rounded-tl-lg">Technician</th>
-                <th className="px-6 py-4 text-right">Clients Served</th>
-                <th className="px-6 py-4 text-right">Performance Score</th>
-                <th className="px-6 py-4 text-right rounded-tr-lg">Total Revenue</th>
+                <th className="px-8 py-5">Technician</th>
+                <th className="px-8 py-5 text-right">Clients Served</th>
+                <th className="px-8 py-5 text-right">Activity</th>
+                <th className="px-8 py-5 text-right">Total Revenue</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {technicianPerformance.map((tech: any, idx) => (
-                <tr key={idx} className="hover:bg-slate-50 transition-colors group">
-                  <td className="px-6 py-4">
+                <tr key={idx} className="hover:bg-slate-50/80 transition-colors group">
+                  <td className="px-8 py-5">
                       <div className="flex items-center">
-                          <div className="h-9 w-9 rounded-full bg-slate-200 flex items-center justify-center text-xs font-bold text-slate-600 mr-3 border border-slate-300">
+                          <div className="h-10 w-10 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-xs font-bold text-white mr-4 shadow-md shadow-indigo-200">
                               {tech.name.charAt(0)}
                           </div>
-                          <span className="font-bold text-slate-800">{tech.name}</span>
+                          <span className="font-bold text-slate-800 text-base">{tech.name}</span>
                       </div>
                   </td>
-                  <td className="px-6 py-4 text-right font-medium">{tech.clients}</td>
-                  <td className="px-6 py-4 text-right">
+                  <td className="px-8 py-5 text-right font-bold text-slate-600">{tech.clients}</td>
+                  <td className="px-8 py-5 text-right">
                       <div className="flex items-center justify-end">
-                          <div className="w-24 h-2.5 bg-slate-200 rounded-full overflow-hidden mr-2">
-                              <div className="h-full bg-green-500 rounded-full" style={{ width: `${Math.min(tech.clients * 10, 100)}%` }}></div>
+                          <div className="w-32 h-2.5 bg-slate-100 rounded-full overflow-hidden mr-2 shadow-inner">
+                              <div className="h-full bg-gradient-to-r from-green-400 to-emerald-500 rounded-full shadow-sm" style={{ width: `${Math.min(tech.clients * 10, 100)}%` }}></div>
                           </div>
                       </div>
                   </td>
-                  <td className="px-6 py-4 text-right font-bold text-slate-900">₹{tech.revenue.toLocaleString()}</td>
+                  <td className="px-8 py-5 text-right font-black text-slate-900 text-base">₹{tech.revenue.toLocaleString()}</td>
                 </tr>
               ))}
             </tbody>
