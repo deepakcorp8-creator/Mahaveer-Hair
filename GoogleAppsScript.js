@@ -139,7 +139,8 @@ function doPost(e) {
         invoiceUrl = "Error: " + e.message;
     }
 
-    // Append 14 columns (Columns A to N)
+    // Append 15 columns (Columns A to O)
+    // Column O (Index 14) is Patch Size
     sheet.appendRow([
       data.date,
       data.clientName,
@@ -154,7 +155,8 @@ function doPost(e) {
       data.paymentMethod,
       data.remark,
       data.numberOfService,
-      invoiceUrl // Column N
+      invoiceUrl,         // Column N
+      data.patchSize || '' // Column O
     ]);
     return response({status: "success", invoiceUrl: invoiceUrl});
   }
@@ -290,7 +292,12 @@ function getPackages(ss) {
 function getEntries(ss) {
     const sheet = ss.getSheetByName("DATA BASE");
     if (!sheet || sheet.getLastRow() <= 1) return response([]);
-    const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 14).getValues();
+    
+    // Read 15 columns now (A to O)
+    // Use getLastColumn() if dynamic, or fixed 15
+    const lastCol = Math.max(15, sheet.getLastColumn());
+    const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, lastCol).getValues();
+    
     const entries = data.map((row, index) => ({
       id: 'row_' + (index + 2),
       date: formatDate(row[0]),
@@ -306,7 +313,8 @@ function getEntries(ss) {
       paymentMethod: row[10],
       remark: row[11],
       numberOfService: row[12],
-      invoiceUrl: row[13]
+      invoiceUrl: row[13], // Column N
+      patchSize: row[14]   // Column O
     }));
     return response(entries.reverse());
 }

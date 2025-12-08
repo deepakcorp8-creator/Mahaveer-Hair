@@ -245,7 +245,10 @@ const DailyReport: React.FC = () => {
                                           entry.serviceType === 'SERVICE' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-700 border-slate-200'}`}>
                                          {entry.serviceType}
                                      </span>
-                                     <div className="text-xs mt-1 text-slate-500 font-medium">{entry.technician} ({entry.patchMethod})</div>
+                                     <div className="text-xs mt-1 text-slate-500 font-medium">
+                                        {entry.technician} ({entry.patchMethod})
+                                        {entry.patchSize && <div className="text-indigo-600 font-bold mt-0.5">Size: {entry.patchSize}</div>}
+                                     </div>
                                  </td>
                                  <td className="px-6 py-5">
                                      <div className="font-bold text-xs uppercase bg-slate-100 px-2 py-1 rounded-md inline-block text-slate-600 border border-slate-200">{entry.paymentMethod}</div>
