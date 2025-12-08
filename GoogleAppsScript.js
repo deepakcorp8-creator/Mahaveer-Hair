@@ -1,5 +1,32 @@
+
 // COPY THIS CODE INTO YOUR GOOGLE APPS SCRIPT EDITOR
-// REMEMBER TO DEPLOY AS "NEW VERSION"
+// SAVE IT.
+// SELECT "requestPermissions" function from the top dropdown and click RUN.
+// YOU MUST APPROVE THE PERMISSIONS TO "CREATE/EDIT" FILES.
+
+function requestPermissions() {
+  // Folder ID from your URL
+  const folderId = "1yNT2OJZ192AmNLF_3xxwCew_h3jCnEP_";
+  
+  try {
+    // 1. Get Folder (Read Permission)
+    const folder = DriveApp.getFolderById(folderId);
+    console.log("Folder found: " + folder.getName());
+
+    // 2. Create a dummy file (Triggers WRITE Permission)
+    // This step is CRITICAL to fix the "createFile" error
+    const testFile = folder.createFile("System_Check.txt", "This file verifies write permissions.");
+    console.log("Write permission verified.");
+
+    // 3. Delete dummy file
+    testFile.setTrashed(true);
+    console.log("System check complete. You can now Deploy.");
+    
+  } catch (e) {
+    console.log("ERROR: " + e.message);
+    console.log("Please run this function again and approve all permissions.");
+  }
+}
 
 function doGet(e) {
   const action = e.parameter.action;
@@ -56,11 +83,8 @@ function doPost(e) {
     if (!sheet) return response({error: "Sheet not found"});
     
     try {
-        // ID format expected: "row_12" where 12 is the actual spreadsheet row number
         const rowId = parseInt(data.id.split('_')[1]);
         if (isNaN(rowId) || rowId < 2) return response({error: "Invalid Row ID"});
-
-        // Column 6 is F (Status)
         sheet.getRange(rowId, 6).setValue(data.status); 
         return response({status: "success"});
     } catch(e) {
@@ -75,7 +99,6 @@ function doPost(e) {
     try {
         const rowId = parseInt(data.id.split('_')[1]);
         if (isNaN(rowId) || rowId < 2) return response({error: "Invalid Row ID"});
-
         sheet.deleteRow(rowId);
         return response({status: "success"});
     } catch(e) {
@@ -91,7 +114,6 @@ function doPost(e) {
         const rowId = parseInt(data.id.split('_')[1]);
         if (isNaN(rowId) || rowId < 2) return response({error: "Invalid Row ID"});
         
-        // Update columns A, C, D, E (Indexes 1, 3, 4, 5)
         sheet.getRange(rowId, 1).setValue(data.startDate);
         sheet.getRange(rowId, 3).setValue(data.packageName);
         sheet.getRange(rowId, 4).setValue(data.totalCost);
@@ -109,6 +131,15 @@ function doPost(e) {
     const sheet = ss.getSheetByName("DATA BASE");
     if (!sheet) return response({error: "Sheet 'DATA BASE' not found"});
 
+    // GENERATE INVOICE URL
+    var invoiceUrl = "";
+    try {
+        invoiceUrl = createInvoicePDF(data);
+    } catch(e) {
+        invoiceUrl = "Error: " + e.message;
+    }
+
+    // Append 14 columns (Columns A to N)
     sheet.appendRow([
       data.date,
       data.clientName,
@@ -122,9 +153,10 @@ function doPost(e) {
       data.amount,
       data.paymentMethod,
       data.remark,
-      data.numberOfService
+      data.numberOfService,
+      invoiceUrl // Column N
     ]);
-    return response({status: "success"});
+    return response({status: "success", invoiceUrl: invoiceUrl});
   }
 
   if (action == 'updateEntryStatus') {
@@ -132,7 +164,6 @@ function doPost(e) {
     if (!sheet) return response({error: "Sheet 'DATA BASE' not found"});
     
     try {
-        // ID format: "row_12"
         const rowId = parseInt(data.id.split('_')[1]);
         sheet.getRange(rowId, 9).setValue(data.status);
         return response({status: "success"});
@@ -243,9 +274,6 @@ function getPackages(ss) {
     if (!sheet || sheet.getLastRow() <= 1) return response([]);
     
     const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 6).getValues();
-    
-    // Map with EXACT ROW NUMBER
-    // Data starts at Row 2. So Index 0 = Row 2.
     const packages = data.map((row, index) => ({
       id: 'row_' + (index + 2), 
       startDate: formatDate(row[0]),
@@ -262,7 +290,7 @@ function getPackages(ss) {
 function getEntries(ss) {
     const sheet = ss.getSheetByName("DATA BASE");
     if (!sheet || sheet.getLastRow() <= 1) return response([]);
-    const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 13).getValues();
+    const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 14).getValues();
     const entries = data.map((row, index) => ({
       id: 'row_' + (index + 2),
       date: formatDate(row[0]),
@@ -277,7 +305,8 @@ function getEntries(ss) {
       amount: Number(row[9]),
       paymentMethod: row[10],
       remark: row[11],
-      numberOfService: row[12]
+      numberOfService: row[12],
+      invoiceUrl: row[13]
     }));
     return response(entries.reverse());
 }
@@ -287,7 +316,6 @@ function getAppointments(ss) {
     if (!sheet || sheet.getLastRow() <= 1) return response([]);
 
     const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 7).getValues();
-    
     const appointments = data.map((row) => ({
       id: row[0],         
       date: formatDate(row[1]), 
@@ -297,7 +325,6 @@ function getAppointments(ss) {
       note: row[5],       
       status: row[6] || 'PENDING' 
     }));
-    
     return response(appointments);
 }
 
@@ -368,4 +395,89 @@ function formatDate(date) {
   } catch (e) {
     return String(date);
   }
+}
+
+// --- NEW FUNCTION TO CREATE PDF INVOICE ---
+function createInvoicePDF(data) {
+  const folderId = "1yNT2OJZ192AmNLF_3xxwCew_h3jCnEP_";
+  var folder;
+  
+  try {
+     folder = DriveApp.getFolderById(folderId);
+  } catch(e) {
+     return "Error: Could not access folder. Please run requestPermissions() in editor. " + e.message;
+  }
+
+  // Generate Invoice Number
+  var invoiceNo = "INV-" + new Date().getFullYear() + "-" + Math.floor(Math.random() * 10000);
+  
+  // Professional HTML Template
+  var html = 
+    "<html><body style='font-family: \"Helvetica Neue\", Helvetica, Arial, sans-serif; color: #374151; padding: 40px; line-height: 1.6; background-color: #ffffff;'>" +
+      "<div style='max-width: 800px; margin: 0 auto; border: 1px solid #e5e7eb; padding: 40px;'>" +
+        
+        // Header
+        "<div style='text-align: center; border-bottom: 2px solid #f3f4f6; padding-bottom: 20px; margin-bottom: 30px;'>" +
+          "<h1 style='margin: 0; color: #111827; font-size: 24px; text-transform: uppercase; letter-spacing: 1px;'>MAHAVEER HAIR SOLUTION</h1>" +
+          "<p style='margin: 5px 0; font-size: 12px; color: #6b7280;'>" +
+             "First Floor, Opp. Ayurvedic College & Anupam Garden, Near Amit Sales, G.E. Road, Raipur<br>" +
+             "Mobile: +91-9691699382, +91-9144939828 | Email: info@mahaveerhairsolution.com" +
+          "</p>" +
+        "</div>" +
+        
+        // Meta Info
+        "<div style='display: flex; justify-content: space-between; background: #f9fafb; padding: 15px; border-radius: 6px; font-size: 13px; margin-bottom: 30px;'>" +
+           "<div><strong>Invoice No:</strong> " + invoiceNo + "</div>" +
+           "<div><strong>Date:</strong> " + data.date + "</div>" +
+           "<div><strong>Branch:</strong> " + data.branch + "</div>" +
+        "</div>" +
+
+        // Client Info
+        "<div style='margin-bottom: 30px;'>" +
+           "<h3 style='font-size: 11px; text-transform: uppercase; color: #9ca3af; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px; margin-bottom: 10px;'>Billed To</h3>" +
+           "<div style='font-size: 16px; font-weight: bold; color: #111;'>" + data.clientName + "</div>" +
+           "<div style='font-size: 14px; color: #666;'>" + (data.address || "Address not provided") + "</div>" +
+           "<div style='font-size: 14px; color: #666;'>Phone: " + data.contactNo + "</div>" +
+        "</div>" +
+
+        // Table
+        "<table style='width: 100%; border-collapse: collapse; margin-bottom: 30px;'>" +
+          "<tr style='background: #111827; color: #fff; text-transform: uppercase; font-size: 12px;'>" +
+             "<th style='padding: 12px; text-align: left;'>Service Description</th>" +
+             "<th style='padding: 12px; text-align: center;'>Qty</th>" +
+             "<th style='padding: 12px; text-align: right;'>Amount</th>" +
+          "</tr>" +
+          "<tr>" +
+             "<td style='padding: 15px; border-bottom: 1px solid #e5e7eb;'>" + 
+                "<strong>" + data.serviceType + " Service</strong><br>" +
+                "<span style='font-size: 12px; color: #6b7280;'>Method: " + data.patchMethod + " | Tech: " + data.technician + "</span>" +
+                (data.remark ? "<br><span style='font-size: 12px; font-style: italic; color: #6b7280;'>Note: " + data.remark + "</span>" : "") +
+             "</td>" +
+             "<td style='padding: 15px; border-bottom: 1px solid #e5e7eb; text-align: center;'>1</td>" +
+             "<td style='padding: 15px; border-bottom: 1px solid #e5e7eb; text-align: right; font-weight: bold;'>₹" + data.amount + "</td>" +
+          "</tr>" +
+        "</table>" +
+
+        // Totals
+        "<div style='text-align: right; margin-top: 20px; border-top: 2px solid #111; padding-top: 15px;'>" +
+           "<div style='font-size: 20px; font-weight: 800; color: #111;'>Total: ₹" + data.amount + "</div>" +
+           "<div style='font-size: 12px; color: #6b7280; margin-top: 5px;'>Paid via " + data.paymentMethod + "</div>" +
+        "</div>" +
+        
+        // Footer
+        "<div style='margin-top: 50px; font-size: 10px; color: #9ca3af; text-align: center; border-top: 1px solid #f3f4f6; padding-top: 20px;'>" +
+           "Thank you for your business. Terms & Conditions Apply." +
+        "</div>" +
+
+      "</div>" +
+    "</body></html>";
+
+  // Create Blob and File
+  var blob = Utilities.newBlob(html, MimeType.HTML).getAs(MimeType.PDF);
+  blob.setName("INV_" + data.clientName + "_" + data.date + ".pdf");
+  
+  var file = folder.createFile(blob);
+  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  
+  return file.getUrl();
 }

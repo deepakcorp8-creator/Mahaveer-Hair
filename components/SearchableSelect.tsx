@@ -81,9 +81,9 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
         <input
             ref={inputRef}
             type="text"
-            className={`w-full pl-9 pr-10 py-3 rounded-xl border bg-gray-50/50 text-gray-900 shadow-sm transition-all duration-200 
+            className={`w-full pl-9 pr-10 py-3 rounded-xl border border-slate-300 bg-slate-50/50 text-gray-900 shadow-sm transition-all duration-200 
                 placeholder:text-gray-400 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-semibold
-                ${isOpen ? 'border-indigo-500 ring-2 ring-indigo-500/20 bg-white' : 'border-gray-200'}`}
+                ${isOpen ? 'border-indigo-500 ring-2 ring-indigo-500/20 bg-white' : ''}`}
             placeholder={placeholder}
             value={value}
             onChange={(e) => {
@@ -126,7 +126,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
 
       {/* Dropdown Menu */}
       {isOpen && (
-        <div className="absolute z-50 w-full mt-2 bg-white rounded-xl shadow-xl border border-gray-100 max-h-60 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200 animate-in fade-in zoom-in-95 duration-100">
+        <div className="absolute z-50 w-full mt-2 bg-white rounded-xl shadow-xl border border-gray-200 max-h-60 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200 animate-in fade-in zoom-in-95 duration-100">
             {filteredOptions.length > 0 ? (
                 <div className="p-1">
                     {filteredOptions.map((opt, idx) => (
@@ -134,8 +134,8 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
                             key={`${opt.value}-${idx}`}
                             className={`px-3 py-2.5 text-sm cursor-pointer rounded-lg flex items-center justify-between transition-colors mb-0.5
                                 ${opt.value === value 
-                                    ? 'bg-indigo-50 text-indigo-700 font-bold' 
-                                    : 'text-gray-700 hover:bg-gray-50'}`}
+                                    ? 'bg-indigo-50 text-indigo-700 font-bold border border-indigo-100' 
+                                    : 'text-gray-700 hover:bg-gray-50 border border-transparent'}`}
                             onClick={() => handleSelect(opt.label)}
                         >
                             <div className="flex flex-col overflow-hidden">
@@ -151,7 +151,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
                     {value ? (
                         <div className="flex flex-col items-center">
                              <p>No existing match.</p>
-                             <p className="text-xs mt-1 text-indigo-600 font-semibold bg-indigo-50 px-2 py-1 rounded-md">
+                             <p className="text-xs mt-1 text-indigo-600 font-semibold bg-indigo-50 px-2 py-1 rounded-md border border-indigo-100">
                                 Creating new: "{value}"
                              </p>
                         </div>

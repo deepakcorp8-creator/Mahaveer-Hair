@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { Client, Item, Technician, Entry, ServicePackage } from '../types';
@@ -105,7 +106,7 @@ const NewEntryForm: React.FC = () => {
     if (!formData.clientName || !formData.technician) {
       setNotification({ msg: 'Please fill in all required fields (Client, Technician).', type: 'error' });
       setLoading(false);
-      window.scrollTo(0,0);
+      document.querySelector('main')?.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
 
@@ -122,7 +123,10 @@ const NewEntryForm: React.FC = () => {
           date: formData.date 
       });
       setActivePackage(null);
-      window.scrollTo(0,0);
+      
+      // Scroll to top of the MAIN container, not window
+      document.querySelector('main')?.scrollTo({ top: 0, behavior: 'smooth' });
+      
       setTimeout(() => setNotification(null), 8000);
     } catch (error) {
       setNotification({ msg: 'Failed to add entry. Please check your connection.', type: 'error' });
@@ -134,11 +138,11 @@ const NewEntryForm: React.FC = () => {
   const techOptions = technicians.map(t => ({ label: t.name, value: t.name }));
   const patchSizeOptions = items.map(i => ({ label: i.name, value: i.name, subtext: i.category }));
 
-  // 3D Card Class
-  const cardClass = "bg-white rounded-3xl shadow-[0_15px_35px_-5px_rgba(0,0,0,0.1)] border border-white/50 relative overflow-hidden backdrop-blur-md transition-all duration-300 hover:shadow-[0_20px_40px_-5px_rgba(0,0,0,0.12)] hover:-translate-y-1";
+  // 3D Card Class - Darkened border
+  const cardClass = "bg-white rounded-3xl shadow-[0_15px_35px_-5px_rgba(0,0,0,0.1)] border border-slate-200 relative overflow-hidden backdrop-blur-md transition-all duration-300 hover:shadow-[0_20px_40px_-5px_rgba(0,0,0,0.12)] hover:-translate-y-1";
   
-  // 3D Input Class (Recessed look)
-  const inputClass = "w-full rounded-2xl border-none bg-slate-100/50 px-4 py-3.5 text-gray-900 shadow-[inset_0_2px_4px_rgba(0,0,0,0.06)] ring-1 ring-slate-900/5 focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all font-semibold placeholder:font-normal placeholder:text-slate-400";
+  // 3D Input Class (Recessed look) - Added explicit border
+  const inputClass = "w-full rounded-2xl border border-slate-300 bg-slate-50/50 px-4 py-3.5 text-gray-900 shadow-[inset_0_2px_4px_rgba(0,0,0,0.06)] focus:ring-2 focus:ring-indigo-500 focus:bg-white focus:border-indigo-500 transition-all font-semibold placeholder:font-normal placeholder:text-slate-400";
   const labelClass = "block text-xs font-bold uppercase tracking-widest text-slate-500 mb-2 ml-1";
 
   return (
@@ -147,7 +151,7 @@ const NewEntryForm: React.FC = () => {
       {/* 3D Floating Header */}
       <div className="mb-10 relative group">
          <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-[2rem] blur-xl opacity-40 transform group-hover:scale-[1.02] transition-transform duration-500"></div>
-         <div className="relative bg-gradient-to-r from-indigo-600 to-purple-600 rounded-[2rem] p-8 text-white shadow-2xl overflow-hidden">
+         <div className="relative bg-gradient-to-r from-indigo-600 to-purple-600 rounded-[2rem] p-8 text-white shadow-2xl overflow-hidden border border-white/20">
             <div className="absolute top-0 right-0 w-80 h-80 bg-white opacity-5 rounded-full -mr-20 -mt-20 blur-3xl"></div>
             <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
@@ -166,7 +170,7 @@ const NewEntryForm: React.FC = () => {
         
         {notification && (
           <div className={`mb-8 p-4 rounded-2xl border flex flex-col md:flex-row items-center justify-between shadow-xl gap-4 
-            ${notification.type === 'success' ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
+            ${notification.type === 'success' ? 'bg-emerald-50 border-emerald-300 text-emerald-800' : 'bg-red-50 border-red-300 text-red-800'}`}>
             <div className="flex items-center">
                 {notification.type === 'success' ? <CheckCircle2 className="w-8 h-8 mr-4 text-emerald-600" /> : <AlertCircle className="w-8 h-8 mr-4 text-red-600" />}
                 <div>
@@ -179,8 +183,14 @@ const NewEntryForm: React.FC = () => {
             {notification.type === 'success' && lastSubmittedEntry && (
                 <button
                     type="button"
-                    onClick={() => generateInvoice(lastSubmittedEntry)}
-                    className="flex items-center bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-xl font-bold text-sm shadow-lg shadow-emerald-500/30 transition-all active:scale-95 hover:-translate-y-0.5"
+                    onClick={() => {
+                        if (lastSubmittedEntry.invoiceUrl && lastSubmittedEntry.invoiceUrl.startsWith('http')) {
+                            window.open(lastSubmittedEntry.invoiceUrl, '_blank');
+                        } else {
+                            generateInvoice(lastSubmittedEntry);
+                        }
+                    }}
+                    className="flex items-center bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-xl font-bold text-sm shadow-lg shadow-emerald-500/30 transition-all active:scale-95 hover:-translate-y-0.5 border border-emerald-700"
                 >
                     <FileDown className="w-5 h-5 mr-2" />
                     Download Invoice
@@ -195,8 +205,8 @@ const NewEntryForm: React.FC = () => {
                 
                 {/* 1. Client Card (3D) */}
                 <div className={cardClass}>
-                    <div className="px-8 py-6 bg-gradient-to-r from-blue-50 to-white border-b border-blue-100 flex items-center">
-                        <div className="p-3 bg-white rounded-2xl mr-4 shadow-md shadow-blue-100">
+                    <div className="px-8 py-6 bg-gradient-to-r from-blue-50 to-white border-b border-blue-200 flex items-center">
+                        <div className="p-3 bg-white rounded-2xl mr-4 shadow-md shadow-blue-100 border border-blue-100">
                             <User className="w-6 h-6 text-blue-600" />
                         </div>
                         <div>
@@ -219,10 +229,10 @@ const NewEntryForm: React.FC = () => {
                         {activePackage && (
                              <div className={`col-span-full rounded-2xl border-2 p-5 flex items-start gap-4 shadow-lg transition-all duration-300 transform hover:scale-[1.01]
                                 ${activePackage.isExpired 
-                                    ? 'bg-red-50 border-red-200' 
-                                    : 'bg-emerald-50 border-emerald-200'}
+                                    ? 'bg-red-50 border-red-300' 
+                                    : 'bg-emerald-50 border-emerald-300'}
                              `}>
-                                 <div className={`p-3 rounded-xl shadow-sm ${activePackage.isExpired ? 'bg-red-100 text-red-600' : 'bg-emerald-100 text-emerald-600'}`}>
+                                 <div className={`p-3 rounded-xl shadow-sm border ${activePackage.isExpired ? 'bg-red-100 border-red-200 text-red-600' : 'bg-emerald-100 border-emerald-200 text-emerald-600'}`}>
                                      <Ticket className="w-8 h-8" />
                                  </div>
                                  <div className="flex-1">
@@ -231,7 +241,7 @@ const NewEntryForm: React.FC = () => {
                                              {activePackage.isExpired ? 'PACKAGE EXPIRED' : activePackage.package.packageName}
                                          </h4>
                                          {!activePackage.isExpired && (
-                                             <span className="bg-white/80 backdrop-blur px-4 py-1.5 rounded-lg text-sm font-black border border-emerald-200 shadow-sm text-emerald-700">
+                                             <span className="bg-white/80 backdrop-blur px-4 py-1.5 rounded-lg text-sm font-black border border-emerald-300 shadow-sm text-emerald-700">
                                                  Remaining: {activePackage.remaining}
                                              </span>
                                          )}
@@ -273,8 +283,8 @@ const NewEntryForm: React.FC = () => {
 
                 {/* 2. Service Card (3D) */}
                 <div className={cardClass}>
-                    <div className="px-8 py-6 bg-gradient-to-r from-violet-50 to-white border-b border-violet-100 flex items-center">
-                        <div className="p-3 bg-white rounded-2xl mr-4 shadow-md shadow-violet-100">
+                    <div className="px-8 py-6 bg-gradient-to-r from-violet-50 to-white border-b border-violet-200 flex items-center">
+                        <div className="p-3 bg-white rounded-2xl mr-4 shadow-md shadow-violet-100 border border-violet-100">
                             <Scissors className="w-6 h-6 text-violet-600" />
                         </div>
                         <div>
@@ -285,16 +295,16 @@ const NewEntryForm: React.FC = () => {
                     <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                             <label className={labelClass}>Branch</label>
-                            <div className="flex gap-4 p-1 bg-slate-100/50 rounded-2xl">
+                            <div className="flex gap-4 p-1 bg-slate-100/50 rounded-2xl border border-slate-200">
                                 {['RPR', 'JDP'].map((b) => (
                                     <button
                                         type="button"
                                         key={b}
                                         onClick={() => setFormData(prev => ({ ...prev, branch: b as any }))}
-                                        className={`flex-1 py-3 rounded-xl font-bold text-sm transition-all duration-200
+                                        className={`flex-1 py-3 rounded-xl font-bold text-sm transition-all duration-200 border
                                             ${formData.branch === b 
-                                                ? 'bg-violet-600 text-white shadow-lg shadow-violet-500/30 transform scale-105' 
-                                                : 'text-slate-500 hover:bg-white hover:text-slate-700'
+                                                ? 'bg-violet-600 text-white shadow-lg shadow-violet-500/30 transform scale-105 border-violet-700' 
+                                                : 'text-slate-500 hover:bg-white hover:text-slate-700 border-transparent hover:border-slate-200'
                                             }`}
                                     >
                                         {b}
@@ -314,7 +324,7 @@ const NewEntryForm: React.FC = () => {
                             />
                         </div>
 
-                         <div className="md:col-span-2 h-px bg-slate-100 my-2"></div>
+                         <div className="md:col-span-2 h-px bg-slate-200 my-2"></div>
 
                         <div>
                             <label className={labelClass}>Service Type</label>
@@ -403,14 +413,14 @@ const NewEntryForm: React.FC = () => {
             <div className="lg:col-span-4 space-y-8">
                 {/* 3. Payment Card (3D) */}
                 <div className={`${cardClass} sticky top-6 bg-gradient-to-br from-white to-emerald-50/30`}>
-                    <div className="px-8 py-6 bg-gradient-to-r from-emerald-50 to-white border-b border-emerald-100 flex items-center">
-                        <div className="p-3 bg-white rounded-2xl mr-4 shadow-md shadow-emerald-100">
+                    <div className="px-8 py-6 bg-gradient-to-r from-emerald-50 to-white border-b border-emerald-200 flex items-center">
+                        <div className="p-3 bg-white rounded-2xl mr-4 shadow-md shadow-emerald-100 border border-emerald-100">
                             <CreditCard className="w-6 h-6 text-emerald-600" />
                         </div>
                         <h3 className="text-xl font-black text-slate-800">Payment</h3>
                     </div>
                      <div className="p-6 space-y-8">
-                         <div className="bg-white rounded-3xl p-8 border border-emerald-100 text-center shadow-[inset_0_2px_10px_rgba(0,0,0,0.03)]">
+                         <div className="bg-white rounded-3xl p-8 border border-emerald-200 text-center shadow-[inset_0_2px_10px_rgba(0,0,0,0.03)]">
                             <label className="text-emerald-800 font-black text-xs uppercase tracking-widest mb-4 block">Total Payable Amount</label>
                             <div className="relative flex justify-center items-center">
                                 <span className="text-emerald-500 text-4xl font-black mr-2">₹</span>
@@ -447,7 +457,7 @@ const NewEntryForm: React.FC = () => {
                                             className={`py-4 px-2 text-sm font-black rounded-2xl border transition-all duration-200 shadow-md
                                                 ${isActive 
                                                     ? `${activeColors[method]} transform scale-105 shadow-lg` 
-                                                    : 'bg-white text-slate-400 border-slate-200 hover:bg-slate-50 hover:text-slate-600'}`}
+                                                    : 'bg-white text-slate-400 border-slate-300 hover:bg-slate-50 hover:text-slate-600'}`}
                                         >
                                             {method}
                                         </button>
@@ -459,12 +469,12 @@ const NewEntryForm: React.FC = () => {
                         <button
                             type="submit"
                             disabled={loading}
-                            className={`w-full group flex items-center justify-center py-5 px-8 rounded-2xl shadow-xl text-lg font-black text-white transition-all transform duration-300
+                            className={`w-full group flex items-center justify-center py-5 px-8 rounded-2xl shadow-xl text-lg font-black text-white transition-all transform duration-300 border
                                 ${loading 
-                                    ? 'bg-slate-400 cursor-not-allowed' 
+                                    ? 'bg-slate-400 cursor-not-allowed border-slate-500' 
                                     : activePackage && !activePackage.isExpired 
-                                        ? 'bg-gradient-to-r from-emerald-500 to-teal-600 hover:shadow-emerald-500/30 hover:-translate-y-1'
-                                        : 'bg-gradient-to-r from-indigo-600 to-purple-600 hover:shadow-indigo-500/30 hover:-translate-y-1'}`}
+                                        ? 'bg-gradient-to-r from-emerald-500 to-teal-600 hover:shadow-emerald-500/30 hover:-translate-y-1 border-emerald-600'
+                                        : 'bg-gradient-to-r from-indigo-600 to-purple-600 hover:shadow-indigo-500/30 hover:-translate-y-1 border-indigo-600'}`}
                         >
                             {loading ? (
                                 <RefreshCw className="w-6 h-6 mr-3 animate-spin" />

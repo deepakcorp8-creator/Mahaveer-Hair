@@ -159,7 +159,7 @@ const ServicePackages: React.FC = () => {
       
       {/* Create Package Form - 3D Panel */}
       <div className="lg:col-span-1">
-        <div className="bg-white rounded-3xl shadow-[0_20px_50px_-12px_rgba(0,0,0,0.1)] border border-white/60 sticky top-6 overflow-hidden backdrop-blur-md">
+        <div className="bg-white rounded-3xl shadow-[0_20px_50px_-12px_rgba(0,0,0,0.1)] border border-slate-200 sticky top-6 overflow-hidden backdrop-blur-md">
             <div className="px-6 py-6 bg-gradient-to-r from-indigo-600 to-purple-600 flex items-center justify-between">
                 <div className="flex items-center text-white">
                     <PackageCheck className="w-6 h-6 mr-3" />
@@ -180,7 +180,7 @@ const ServicePackages: React.FC = () => {
                 </div>
                 
                 {newPkg.clientName && (
-                    <div className="bg-indigo-50/50 p-4 rounded-xl border border-indigo-100 text-sm text-indigo-700 font-medium">
+                    <div className="bg-indigo-50/50 p-4 rounded-xl border border-indigo-200 text-sm text-indigo-700 font-medium">
                         <span className="font-bold">Contact:</span> {newPkg.contact}
                     </div>
                 )}
@@ -189,7 +189,7 @@ const ServicePackages: React.FC = () => {
                     <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-2 ml-1">Package Name</label>
                     <input 
                         type="text" 
-                        className="w-full rounded-2xl border-none bg-slate-100/50 px-4 py-3.5 text-gray-900 shadow-inner ring-1 ring-slate-900/5 focus:ring-2 focus:ring-indigo-500 font-semibold"
+                        className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3.5 text-gray-900 shadow-inner focus:ring-2 focus:ring-indigo-500 font-semibold"
                         placeholder="e.g. Yearly Silver Plan"
                         value={newPkg.packageName}
                         onChange={e => setNewPkg({...newPkg, packageName: e.target.value})}
@@ -202,7 +202,7 @@ const ServicePackages: React.FC = () => {
                         <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-2 ml-1">Total Cost (₹)</label>
                         <input 
                             type="number" 
-                            className="w-full rounded-2xl border-none bg-slate-100/50 px-4 py-3.5 text-gray-900 shadow-inner ring-1 ring-slate-900/5 font-bold"
+                            className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3.5 text-gray-900 shadow-inner font-bold"
                             placeholder="5999"
                             value={newPkg.totalCost || ''}
                             onChange={e => setNewPkg({...newPkg, totalCost: Number(e.target.value)})}
@@ -213,7 +213,7 @@ const ServicePackages: React.FC = () => {
                         <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-2 ml-1">Total Services</label>
                         <input 
                             type="number" 
-                            className="w-full rounded-2xl border-none bg-slate-100/50 px-4 py-3.5 text-gray-900 shadow-inner ring-1 ring-slate-900/5"
+                            className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3.5 text-gray-900 shadow-inner"
                             placeholder="12"
                             value={newPkg.totalServices || ''}
                             onChange={e => setNewPkg({...newPkg, totalServices: Number(e.target.value)})}
@@ -226,7 +226,7 @@ const ServicePackages: React.FC = () => {
                     <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-2 ml-1">Start Date</label>
                     <input 
                         type="date" 
-                        className="w-full rounded-2xl border-none bg-slate-100/50 px-4 py-3.5 text-gray-900 shadow-inner ring-1 ring-slate-900/5"
+                        className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3.5 text-gray-900 shadow-inner"
                         value={newPkg.startDate}
                         onChange={e => setNewPkg({...newPkg, startDate: e.target.value})}
                         required
@@ -256,7 +256,7 @@ const ServicePackages: React.FC = () => {
                     <input 
                         type="text" 
                         placeholder="Search package..." 
-                        className="pl-10 pr-6 py-3 rounded-2xl border-none bg-white shadow-lg shadow-slate-200/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
+                        className="pl-10 pr-6 py-3 rounded-2xl border border-slate-200 bg-white shadow-lg shadow-slate-200/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
                         value={searchTerm}
                         onChange={e => setSearchTerm(e.target.value)}
                     />
@@ -271,7 +271,7 @@ const ServicePackages: React.FC = () => {
                     const statusText = pkg.status || 'PENDING';
                     
                     return (
-                    <div key={pkg.id} className="group relative bg-white rounded-3xl p-6 shadow-[0_15px_30px_-5px_rgba(0,0,0,0.08)] border border-slate-100 hover:shadow-[0_25px_50px_-12px_rgba(99,102,241,0.2)] transition-shadow duration-300 overflow-hidden isolate">
+                    <div key={pkg.id} className="group relative bg-white rounded-3xl p-6 shadow-[0_15px_30px_-5px_rgba(0,0,0,0.08)] border border-slate-200 hover:shadow-[0_25px_50px_-12px_rgba(99,102,241,0.2)] transition-shadow duration-300 overflow-hidden isolate">
                       
                       {/* Premium Card Glow - Pointer Events None to allow clicks through */}
                       <div className={`absolute top-0 right-0 w-40 h-40 rounded-full blur-[80px] -mr-10 -mt-10 opacity-40 transition-opacity pointer-events-none
@@ -280,8 +280,8 @@ const ServicePackages: React.FC = () => {
                       {/* Header Section */}
                       <div className="relative flex justify-between items-start mb-6 z-10">
                         <div className="flex gap-4">
-                          <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg transform group-hover:scale-110 transition-transform duration-300
-                            ${isPending ? 'bg-amber-100 text-amber-600' : stats.isExpired ? 'bg-red-100 text-red-600' : 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white'}`}>
+                          <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg transform group-hover:scale-110 transition-transform duration-300 border
+                            ${isPending ? 'bg-amber-100 text-amber-600 border-amber-200' : stats.isExpired ? 'bg-red-100 text-red-600 border-red-200' : 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white border-indigo-500'}`}>
                             {isPending ? <Clock className="w-7 h-7" /> : <PackageCheck className="w-7 h-7" />}
                           </div>
                           <div>
@@ -294,10 +294,10 @@ const ServicePackages: React.FC = () => {
                         </div>
                         {/* Status Badge */}
                         <span className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider border shadow-sm
-                            ${isPending ? 'bg-amber-50 text-amber-700 border-amber-200' :
-                            isApproved ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                            stats.isExpired ? 'bg-red-50 text-red-700 border-red-200' :
-                            'bg-slate-50 text-slate-600 border-slate-200'
+                            ${isPending ? 'bg-amber-50 text-amber-700 border-amber-300' :
+                            isApproved ? 'bg-emerald-50 text-emerald-700 border-emerald-300' :
+                            stats.isExpired ? 'bg-red-50 text-red-700 border-red-300' :
+                            'bg-slate-50 text-slate-600 border-slate-300'
                         }`}>
                             {statusText}
                         </span>
@@ -305,12 +305,12 @@ const ServicePackages: React.FC = () => {
 
                       {/* Progress Section (Only if Active/Approved) */}
                       {!isPending && (
-                          <div className="mb-6 relative z-10 bg-slate-50/80 rounded-2xl p-4 border border-slate-100">
+                          <div className="mb-6 relative z-10 bg-slate-50/80 rounded-2xl p-4 border border-slate-200">
                               <div className="flex justify-between text-xs font-bold text-slate-500 mb-3">
                                   <span>Usage Progress</span>
                                   <span><span className="text-slate-900 text-sm">{stats.used}</span> / {pkg.totalServices}</span>
                               </div>
-                              <div className="h-3 w-full bg-slate-200 rounded-full overflow-hidden shadow-inner">
+                              <div className="h-3 w-full bg-slate-200 rounded-full overflow-hidden shadow-inner border border-slate-300">
                                  <div 
                                     className={`h-full rounded-full transition-all duration-1000 ease-out shadow-lg ${stats.isExpired ? 'bg-red-500' : 'bg-gradient-to-r from-indigo-500 to-purple-500'}`} 
                                     style={{width: `${Math.min((stats.used / pkg.totalServices) * 100, 100)}%`}}
@@ -324,7 +324,7 @@ const ServicePackages: React.FC = () => {
 
                       {/* Pending Actions - High Z-Index for Clicks */}
                       {isPending && (
-                          <div className="bg-amber-50/80 rounded-2xl p-5 border border-amber-100 mb-6 relative z-50 backdrop-blur-md shadow-sm">
+                          <div className="bg-amber-50/80 rounded-2xl p-5 border border-amber-200 mb-6 relative z-50 backdrop-blur-md shadow-sm">
                               <p className="text-xs text-amber-800 font-bold uppercase tracking-wide mb-4 flex items-center justify-center">
                                   <ShieldAlert className="w-4 h-4 mr-2" />
                                   Action Required
@@ -333,14 +333,14 @@ const ServicePackages: React.FC = () => {
                                  <div className="flex gap-3">
                                      <button 
                                         type="button"
-                                        className="flex-1 bg-white border border-emerald-200 text-emerald-700 hover:bg-emerald-500 hover:text-white py-2.5 rounded-xl text-xs font-black uppercase tracking-wide shadow-sm transition-all hover:shadow-emerald-200 hover:-translate-y-0.5 relative cursor-pointer z-50" 
+                                        className="flex-1 bg-white border border-emerald-300 text-emerald-700 hover:bg-emerald-500 hover:text-white py-2.5 rounded-xl text-xs font-black uppercase tracking-wide shadow-sm transition-all hover:shadow-emerald-200 hover:-translate-y-0.5 relative cursor-pointer z-50" 
                                         onClick={(e) => handlePackageApproval(e, pkg.id, 'APPROVE')}
                                      >
                                         Approve
                                      </button>
                                      <button 
                                         type="button"
-                                        className="flex-1 bg-white border border-red-200 text-red-700 hover:bg-red-500 hover:text-white py-2.5 rounded-xl text-xs font-black uppercase tracking-wide shadow-sm transition-all hover:shadow-red-200 hover:-translate-y-0.5 relative cursor-pointer z-50" 
+                                        className="flex-1 bg-white border border-red-300 text-red-700 hover:bg-red-500 hover:text-white py-2.5 rounded-xl text-xs font-black uppercase tracking-wide shadow-sm transition-all hover:shadow-red-200 hover:-translate-y-0.5 relative cursor-pointer z-50" 
                                         onClick={(e) => handlePackageApproval(e, pkg.id, 'REJECT')}
                                      >
                                         Reject
@@ -355,7 +355,7 @@ const ServicePackages: React.FC = () => {
                       )}
 
                       {/* Footer Info */}
-                      <div className="flex items-center justify-between pt-4 border-t border-slate-100 relative z-10">
+                      <div className="flex items-center justify-between pt-4 border-t border-slate-200 relative z-10">
                           <div className="flex flex-col">
                               <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Total Cost</span>
                               <span className="text-lg font-black text-slate-800">₹{pkg.totalCost}</span>
@@ -376,7 +376,7 @@ const ServicePackages: React.FC = () => {
                                 setEditingPackage(pkg);
                                 setIsEditModalOpen(true);
                             }}
-                            className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-all bg-white p-2.5 rounded-xl shadow-lg text-slate-400 hover:text-indigo-600 hover:scale-110 z-[60] cursor-pointer"
+                            className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-all bg-white p-2.5 rounded-xl shadow-lg text-slate-400 hover:text-indigo-600 hover:scale-110 z-[60] cursor-pointer border border-slate-200"
                             title="Edit Package"
                         >
                             <Pencil className="w-4 h-4" />
@@ -387,7 +387,7 @@ const ServicePackages: React.FC = () => {
                 )})}
                 
                 {filteredPackages.length === 0 && (
-                    <div className="col-span-full py-20 text-center bg-white rounded-3xl border border-dashed border-slate-300">
+                    <div className="col-span-full py-20 text-center bg-white rounded-3xl border-2 border-dashed border-slate-300">
                         <PackageCheck className="w-12 h-12 text-slate-300 mx-auto mb-4" />
                         <p className="text-slate-400 font-bold">No packages found matching your search.</p>
                     </div>
@@ -414,7 +414,7 @@ const ServicePackages: React.FC = () => {
                               type="text"
                               value={editingPackage.packageName}
                               onChange={e => setEditingPackage({...editingPackage, packageName: e.target.value})}
-                              className="w-full rounded-xl border-slate-200 bg-slate-50 px-4 py-3 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"
+                              className="w-full rounded-xl border-slate-300 border bg-slate-50 px-4 py-3 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"
                               required
                           />
                       </div>
@@ -426,7 +426,7 @@ const ServicePackages: React.FC = () => {
                                   type="number"
                                   value={editingPackage.totalCost}
                                   onChange={e => setEditingPackage({...editingPackage, totalCost: Number(e.target.value)})}
-                                  className="w-full rounded-xl border-slate-200 bg-slate-50 px-4 py-3 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"
+                                  className="w-full rounded-xl border-slate-300 border bg-slate-50 px-4 py-3 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"
                                   required
                               />
                           </div>
@@ -436,7 +436,7 @@ const ServicePackages: React.FC = () => {
                                   type="number"
                                   value={editingPackage.totalServices}
                                   onChange={e => setEditingPackage({...editingPackage, totalServices: Number(e.target.value)})}
-                                  className="w-full rounded-xl border-slate-200 bg-slate-50 px-4 py-3 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"
+                                  className="w-full rounded-xl border-slate-300 border bg-slate-50 px-4 py-3 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"
                                   required
                               />
                           </div>
@@ -448,7 +448,7 @@ const ServicePackages: React.FC = () => {
                               type="date"
                               value={editingPackage.startDate}
                               onChange={e => setEditingPackage({...editingPackage, startDate: e.target.value})}
-                              className="w-full rounded-xl border-slate-200 bg-slate-50 px-4 py-3 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"
+                              className="w-full rounded-xl border-slate-300 border bg-slate-50 px-4 py-3 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"
                               required
                           />
                       </div>
@@ -464,7 +464,7 @@ const ServicePackages: React.FC = () => {
                           <button 
                             type="submit"
                             disabled={loading}
-                            className="flex-1 py-3.5 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-300 transition-all flex items-center justify-center"
+                            className="flex-1 py-3.5 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-300 transition-all flex items-center justify-center border border-indigo-700"
                           >
                               {loading ? 'Saving...' : 'Save Changes'}
                           </button>

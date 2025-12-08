@@ -53,18 +53,18 @@ const ClientHistory: React.FC = () => {
 
   const getStatusBadge = (status: string) => {
       switch(status) {
-          case 'DONE': return <span className="inline-flex items-center px-2 py-1 rounded text-xs font-bold bg-green-100 text-green-700"><CheckCircle2 className="w-3 h-3 mr-1"/> DONE</span>;
-          case 'PENDING': return <span className="inline-flex items-center px-2 py-1 rounded text-xs font-bold bg-amber-100 text-amber-700"><Clock className="w-3 h-3 mr-1"/> PENDING</span>;
-          case 'PENDING_APPROVAL': return <span className="inline-flex items-center px-2 py-1 rounded text-xs font-bold bg-purple-100 text-purple-700"><Shield className="w-3 h-3 mr-1"/> APPROVAL</span>;
-          case 'REJECTED': return <span className="inline-flex items-center px-2 py-1 rounded text-xs font-bold bg-red-100 text-red-700"><XCircle className="w-3 h-3 mr-1"/> REJECTED</span>;
-          default: return <span className="inline-flex items-center px-2 py-1 rounded text-xs font-bold bg-gray-100 text-gray-700">{status}</span>;
+          case 'DONE': return <span className="inline-flex items-center px-2 py-1 rounded text-xs font-bold bg-green-100 text-green-700 border border-green-200"><CheckCircle2 className="w-3 h-3 mr-1"/> DONE</span>;
+          case 'PENDING': return <span className="inline-flex items-center px-2 py-1 rounded text-xs font-bold bg-amber-100 text-amber-700 border border-amber-200"><Clock className="w-3 h-3 mr-1"/> PENDING</span>;
+          case 'PENDING_APPROVAL': return <span className="inline-flex items-center px-2 py-1 rounded text-xs font-bold bg-purple-100 text-purple-700 border border-purple-200"><Shield className="w-3 h-3 mr-1"/> APPROVAL</span>;
+          case 'REJECTED': return <span className="inline-flex items-center px-2 py-1 rounded text-xs font-bold bg-red-100 text-red-700 border border-red-200"><XCircle className="w-3 h-3 mr-1"/> REJECTED</span>;
+          default: return <span className="inline-flex items-center px-2 py-1 rounded text-xs font-bold bg-gray-100 text-gray-700 border border-gray-200">{status}</span>;
       }
   }
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-20">
       {/* Header & Search */}
-      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-300">
         <div className="flex flex-col md:flex-row justify-between md:items-center gap-4 mb-6">
             <div>
                 <h2 className="text-2xl font-bold text-slate-800 flex items-center">
@@ -87,14 +87,14 @@ const ClientHistory: React.FC = () => {
             </div>
             
             {/* Date Filters */}
-            <div className="w-full lg:w-auto flex flex-col md:flex-row gap-4 bg-slate-50 p-3 rounded-xl border border-slate-100">
+            <div className="w-full lg:w-auto flex flex-col md:flex-row gap-4 bg-slate-50 p-3 rounded-xl border border-slate-200">
                 <div>
                     <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1 ml-1">From Date</label>
                     <input 
                         type="date" 
                         value={startDate}
                         onChange={(e) => setStartDate(e.target.value)}
-                        className="w-full md:w-40 px-3 py-2 rounded-lg border border-slate-200 text-sm font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"
+                        className="w-full md:w-40 px-3 py-2 rounded-lg border border-slate-300 text-sm font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"
                     />
                 </div>
                 <div>
@@ -103,14 +103,14 @@ const ClientHistory: React.FC = () => {
                         type="date" 
                         value={endDate}
                         onChange={(e) => setEndDate(e.target.value)}
-                        className="w-full md:w-40 px-3 py-2 rounded-lg border border-slate-200 text-sm font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"
+                        className="w-full md:w-40 px-3 py-2 rounded-lg border border-slate-300 text-sm font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"
                     />
                 </div>
                 <div className="flex items-end">
                     {(startDate || endDate) && (
                         <button 
                             onClick={clearDates}
-                            className="px-3 py-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                            className="px-3 py-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-200"
                             title="Clear Dates"
                         >
                             <RotateCcw className="w-5 h-5" />
@@ -125,8 +125,8 @@ const ClientHistory: React.FC = () => {
         <>
             {/* Client Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center">
-                    <div className="p-3 bg-blue-50 text-blue-600 rounded-full mr-4">
+                <div className="bg-white p-5 rounded-xl border border-slate-300 shadow-sm flex items-center">
+                    <div className="p-3 bg-blue-50 text-blue-600 rounded-full mr-4 border border-blue-100">
                         <User className="w-6 h-6" />
                     </div>
                     <div>
@@ -136,8 +136,8 @@ const ClientHistory: React.FC = () => {
                     </div>
                 </div>
 
-                <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center">
-                    <div className="p-3 bg-indigo-50 text-indigo-600 rounded-full mr-4">
+                <div className="bg-white p-5 rounded-xl border border-slate-300 shadow-sm flex items-center">
+                    <div className="p-3 bg-indigo-50 text-indigo-600 rounded-full mr-4 border border-indigo-100">
                         <Calendar className="w-6 h-6" />
                     </div>
                     <div>
@@ -148,8 +148,8 @@ const ClientHistory: React.FC = () => {
                     </div>
                 </div>
 
-                <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center">
-                    <div className="p-3 bg-emerald-50 text-emerald-600 rounded-full mr-4">
+                <div className="bg-white p-5 rounded-xl border border-slate-300 shadow-sm flex items-center">
+                    <div className="p-3 bg-emerald-50 text-emerald-600 rounded-full mr-4 border border-emerald-100">
                         <CreditCard className="w-6 h-6" />
                     </div>
                     <div>
@@ -162,8 +162,8 @@ const ClientHistory: React.FC = () => {
             </div>
 
             {/* Timeline / History List */}
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                <div className="px-6 py-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-300 overflow-hidden">
+                <div className="px-6 py-4 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
                     <h3 className="font-bold text-slate-700">Service Timeline</h3>
                     {(startDate || endDate) && (
                          <span className="text-xs font-bold bg-indigo-100 text-indigo-700 px-2 py-1 rounded border border-indigo-200">
@@ -173,7 +173,7 @@ const ClientHistory: React.FC = () => {
                 </div>
                 
                 {clientHistory.length > 0 ? (
-                    <div className="divide-y divide-slate-100">
+                    <div className="divide-y divide-slate-200">
                         {clientHistory.map((entry, index) => (
                             <div key={index} className="p-6 hover:bg-slate-50 transition-colors flex flex-col md:flex-row gap-4">
                                 {/* Date Column */}
@@ -188,8 +188,8 @@ const ClientHistory: React.FC = () => {
                                 {/* Content Column */}
                                 <div className="flex-1">
                                     <div className="flex flex-wrap items-center gap-2 mb-2">
-                                        <span className={`px-2 py-0.5 rounded text-xs font-bold uppercase tracking-wide
-                                            ${entry.serviceType === 'NEW' ? 'bg-blue-100 text-blue-700' : 'bg-slate-200 text-slate-700'}
+                                        <span className={`px-2 py-0.5 rounded text-xs font-bold uppercase tracking-wide border
+                                            ${entry.serviceType === 'NEW' ? 'bg-blue-100 text-blue-700 border-blue-200' : 'bg-slate-200 text-slate-700 border-slate-300'}
                                         `}>
                                             {entry.serviceType}
                                         </span>
@@ -208,7 +208,7 @@ const ClientHistory: React.FC = () => {
                                     </div>
                                     
                                     {entry.remark && (
-                                        <div className="mt-3 p-3 bg-slate-50 rounded-lg text-sm text-slate-600 italic border border-slate-100">
+                                        <div className="mt-3 p-3 bg-slate-50 rounded-lg text-sm text-slate-600 italic border border-slate-200">
                                             "{entry.remark}"
                                         </div>
                                     )}

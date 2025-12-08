@@ -97,17 +97,30 @@ export const api = {
     LOCAL_NEW_ENTRIES.push(newEntry as Entry);
     
     if (isLive) {
-      // OPTIMISTIC UI: Don't await the fetch. Let it run in background.
-      fetch(GOOGLE_SCRIPT_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'text/plain;charset=utf-8', 
-        },
-        body: JSON.stringify({
-          action: 'addEntry',
-          ...entry
-        })
-      }).catch(e => console.error("Error sending to sheet", e));
+      try {
+        // Must await to get the generated invoice URL
+        const response = await fetch(GOOGLE_SCRIPT_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'text/plain;charset=utf-8', 
+          },
+          body: JSON.stringify({
+            action: 'addEntry',
+            ...entry
+          })
+        });
+        const data = await response.json();
+        
+        // If the script returned an invoiceUrl, update our local entry
+        if (data && data.invoiceUrl) {
+           newEntry.invoiceUrl = data.invoiceUrl;
+           // Also update in cache if it's there
+           const cached = LOCAL_NEW_ENTRIES.find(e => e.id === newEntry.id);
+           if (cached) cached.invoiceUrl = data.invoiceUrl;
+        }
+      } catch (e) {
+        console.error("Error sending to sheet", e);
+      }
     } else {
         MOCK_ENTRIES.push(newEntry as Entry);
     }
@@ -361,33 +374,26 @@ export const api = {
       // 1. Fetch latest packages (Use Cache!)
       const packages = await api.getPackages();
       
-      // 2. Find active OR approved package
-      const pkg = packages.find((p: any) => 
-        p.clientName.trim().toLowerCase() === normalizedName && 
-        (p.status === 'ACTIVE' || p.status === 'APPROVED')
-      );
+      // 2. Find active package
+      const pkg = packages.find((p: any) => p.clientName.trim().toLowerCase() === normalizedName && p.status === 'ACTIVE');
       
       if (!pkg) return null;
 
-      // 3. Count entries STRICTLY
+      // 3. Count entries
       const entries = await api.getEntries();
       
       const pkgStartDate = new Date(pkg.startDate);
-      pkgStartDate.setHours(0,0,0,0); // Midnight start
+      pkgStartDate.setHours(0,0,0,0);
 
       const usedCount = entries.filter((e: any) => {
-          // Normalize Entry Name
-          const entryName = (e.clientName || '').trim().toLowerCase();
-          
-          // Normalize Entry Date
           const entryDate = new Date(e.date);
           entryDate.setHours(0,0,0,0);
           
           return (
-             entryName === normalizedName && 
-             entryDate >= pkgStartDate && // Logic: Entry Date must be >= Package Start Date
+             e.clientName.trim().toLowerCase() === normalizedName && 
+             entryDate >= pkgStartDate &&
              (e.serviceType === 'SERVICE') && 
-             (e.workStatus === 'DONE') // Only count COMPLETED services
+             (e.workStatus === 'DONE' || e.workStatus === 'PENDING_APPROVAL')
           );
       }).length;
 

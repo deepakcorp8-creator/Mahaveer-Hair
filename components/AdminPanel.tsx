@@ -97,17 +97,17 @@ const AdminPanel: React.FC = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Main Content Area */}
-        <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden min-h-[400px]">
-            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+        <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-300 overflow-hidden min-h-[400px]">
+            <div className="p-6 border-b border-gray-300 flex justify-between items-center bg-gray-50">
                 <div className="flex items-center">
-                    <div className="p-2 bg-indigo-100 rounded-lg text-indigo-600 mr-3">
+                    <div className="p-2 bg-indigo-100 rounded-lg text-indigo-600 mr-3 border border-indigo-200">
                         <Shield className="w-5 h-5" />
                     </div>
                     <h3 className="font-bold text-lg text-gray-800">User Management</h3>
                 </div>
                 <button 
                     onClick={() => setShowAddForm(!showAddForm)}
-                    className="flex items-center text-sm font-bold text-indigo-600 bg-indigo-50 px-3 py-2 rounded-lg hover:bg-indigo-100 transition-colors"
+                    className="flex items-center text-sm font-bold text-indigo-600 bg-indigo-50 px-3 py-2 rounded-lg hover:bg-indigo-100 transition-colors border border-indigo-200"
                 >
                     <UserPlus className="w-4 h-4 mr-2" />
                     {showAddForm ? 'Cancel' : 'Add User'}
@@ -116,7 +116,7 @@ const AdminPanel: React.FC = () => {
 
             {/* Add User Form */}
             {showAddForm && (
-                <form onSubmit={handleAddUser} className="p-6 bg-indigo-50/50 border-b border-indigo-100 grid grid-cols-1 md:grid-cols-2 gap-6">
+                <form onSubmit={handleAddUser} className="p-6 bg-indigo-50/50 border-b border-indigo-200 grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="md:col-span-2 flex items-center gap-2 mb-2">
                         <div className="h-px bg-indigo-200 flex-1"></div>
                         <span className="text-xs font-bold text-indigo-500 uppercase">Login Credentials</span>
@@ -188,7 +188,7 @@ const AdminPanel: React.FC = () => {
                     )}
 
                     <div className="md:col-span-2 pt-2">
-                        <button type="submit" disabled={loading} className="bg-indigo-600 text-white px-6 py-3 rounded-lg font-bold text-sm w-full hover:bg-indigo-700 shadow-md shadow-indigo-200 transition-all">
+                        <button type="submit" disabled={loading} className="bg-indigo-600 text-white px-6 py-3 rounded-lg font-bold text-sm w-full hover:bg-indigo-700 shadow-md shadow-indigo-200 transition-all border border-indigo-700">
                             {loading ? 'Saving...' : 'Create User & Grant Access'}
                         </button>
                     </div>
@@ -198,7 +198,7 @@ const AdminPanel: React.FC = () => {
             {/* User List */}
             <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm text-gray-600">
-                    <thead className="bg-white text-gray-500 uppercase font-bold text-xs border-b border-gray-100">
+                    <thead className="bg-white text-gray-500 uppercase font-bold text-xs border-b border-gray-200">
                         <tr>
                             <th className="px-6 py-3">User</th>
                             <th className="px-6 py-3">Role</th>
@@ -206,11 +206,11 @@ const AdminPanel: React.FC = () => {
                             <th className="px-6 py-3 text-right">Actions</th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-50">
+                    <tbody className="divide-y divide-gray-200">
                         {users.map((u, idx) => (
                             <tr key={idx} className="hover:bg-gray-50">
                                 <td className="px-6 py-4 flex items-center">
-                                    <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center mr-3 text-xs font-bold">
+                                    <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center mr-3 text-xs font-bold border border-gray-300">
                                         {u.username?.charAt(0).toUpperCase()}
                                     </div>
                                     <div>
@@ -219,7 +219,7 @@ const AdminPanel: React.FC = () => {
                                     </div>
                                 </td>
                                 <td className="px-6 py-4">
-                                    <span className={`px-2 py-1 rounded text-xs font-bold ${u.role === 'ADMIN' ? 'bg-purple-100 text-purple-700' : 'bg-green-100 text-green-700'}`}>
+                                    <span className={`px-2 py-1 rounded text-xs font-bold border ${u.role === 'ADMIN' ? 'bg-purple-100 text-purple-700 border-purple-200' : 'bg-green-100 text-green-700 border-green-200'}`}>
                                         {u.role}
                                     </span>
                                 </td>
@@ -234,7 +234,7 @@ const AdminPanel: React.FC = () => {
                                                     // Shorten label for tag
                                                     const shortLabel = label.split(' ')[0] + (label.split(' ').length > 1 ? '..' : '');
                                                     return (
-                                                        <span key={p} className="text-[10px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded border border-indigo-100">
+                                                        <span key={p} className="text-[10px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded border border-indigo-200">
                                                             {shortLabel}
                                                         </span>
                                                     );
@@ -249,7 +249,7 @@ const AdminPanel: React.FC = () => {
                                     <button 
                                         type="button"
                                         onClick={(e) => handleDeleteUser(e, u.username)}
-                                        className="text-red-400 hover:text-red-600 p-2 hover:bg-red-50 rounded-lg transition-all"
+                                        className="text-red-400 hover:text-red-600 p-2 hover:bg-red-50 rounded-lg transition-all border border-transparent hover:border-red-100"
                                         title="Remove User"
                                         disabled={loading}
                                     >
@@ -265,7 +265,7 @@ const AdminPanel: React.FC = () => {
 
         {/* System Info Sidebar */}
         <div className="space-y-6">
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-300">
                 <div className="flex items-center mb-4 text-slate-800">
                     <Database className="w-5 h-5 mr-3 text-slate-400" />
                     <h3 className="font-bold text-lg">System Health</h3>
@@ -286,13 +286,13 @@ const AdminPanel: React.FC = () => {
                 </div>
             </div>
 
-             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-300">
                 <div className="flex items-center mb-4 text-slate-800">
                     <Download className="w-5 h-5 mr-3 text-slate-400" />
                     <h3 className="font-bold text-lg">Data Exports</h3>
                 </div>
                 <p className="text-xs text-gray-500 mb-4">Download backup copies of your daily transactions.</p>
-                <button className="w-full py-2 bg-slate-100 text-slate-600 rounded-lg font-bold text-sm hover:bg-slate-200">Export CSV</button>
+                <button className="w-full py-2 bg-slate-100 text-slate-600 rounded-lg font-bold text-sm hover:bg-slate-200 border border-slate-200">Export CSV</button>
             </div>
         </div>
       </div>

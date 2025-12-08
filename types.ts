@@ -36,6 +36,7 @@ export interface Entry {
   remark: string;
   numberOfService: number;
   patchSize?: string; // Optional, only if NEW
+  invoiceUrl?: string; // NEW FIELD for PDF Link
 }
 
 export interface Appointment {
