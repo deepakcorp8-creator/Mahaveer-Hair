@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { authService } from '../services/auth';
 import { User } from '../types';
@@ -69,7 +70,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
          </div>
 
          <div className="relative z-10 flex items-center gap-4 text-sm text-slate-500 font-medium">
-             <span>© 2025 Mahaveer</span>
+             <span>© {new Date().getFullYear()} Mahaveer</span>
              <span className="w-1 h-1 bg-slate-700 rounded-full"></span>
              <span>v1.0.0</span>
          </div>
@@ -82,21 +83,21 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
              <div className="absolute top-[-20%] right-[-20%] w-64 h-64 bg-indigo-500 rounded-full blur-3xl opacity-20"></div>
          </div>
 
-         <div className="max-w-md w-full bg-white lg:bg-transparent rounded-3xl lg:rounded-none shadow-2xl lg:shadow-none p-8 lg:p-0 relative z-10">
+         <div className="max-w-md w-full bg-white lg:bg-transparent rounded-3xl lg:rounded-none shadow-2xl lg:shadow-none p-8 lg:p-0 relative z-10 flex flex-col min-h-[500px]">
             
             <div className="text-center lg:text-left mb-10">
-               <div className="mx-auto lg:mx-0 w-24 h-24 bg-indigo-50 rounded-2xl flex items-center justify-center mb-6 shadow-sm border border-indigo-100 overflow-hidden relative group">
+               {/* Updated Logo Container: Large and rectangular to fit the landscape logo */}
+               <div className="mx-auto lg:mx-0 w-full max-w-[280px] mb-8">
                   <img 
                     src={LOGO_URL}
-                    alt="Logo" 
+                    alt="Mahaveer Logo" 
                     referrerPolicy="no-referrer"
-                    className="w-full h-full object-contain p-1"
+                    className="w-full h-auto object-contain drop-shadow-sm"
                     onError={(e) => {
                         e.currentTarget.style.display = 'none';
-                        // Show fallback
                         const parent = e.currentTarget.parentElement;
                         if (parent) {
-                            parent.className = 'mx-auto lg:mx-0 w-24 h-24 bg-gradient-to-tr from-indigo-600 to-purple-600 rounded-2xl flex items-center justify-center mb-6 shadow-md';
+                             parent.className = 'mx-auto lg:mx-0 w-24 h-24 bg-gradient-to-tr from-indigo-600 to-purple-600 rounded-2xl flex items-center justify-center mb-6 shadow-md';
                             const fallback = document.createElement('span');
                             fallback.innerText = 'M';
                             fallback.className = 'text-white font-black text-4xl';
@@ -109,7 +110,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                <p className="text-slate-500 mt-2 font-medium">Please enter your details to sign in.</p>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-6 flex-1">
               {/* Username */}
                <div>
                   <label className="block text-sm font-bold text-slate-700 mb-2 ml-1">Username</label>
@@ -185,7 +186,10 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
 
              {/* Footer */}
              <div className="mt-8 pt-6 border-t border-slate-100 text-center">
-                 <p className="text-xs text-slate-500 mb-1 font-semibold uppercase tracking-wider">Powered by <span className="text-slate-900 font-bold">Gulshan Sahu</span></p>
+                 <p className="text-[11px] text-slate-400 font-medium">Copyright © {new Date().getFullYear()} Mahaveer Hair Solution</p>
+                 <p className="text-[10px] text-slate-400 mt-1 uppercase tracking-wider font-semibold">
+                    Developed by <span className="text-indigo-600 font-bold">Deepak Sahu</span>
+                 </p>
              </div>
          </div>
       </div>

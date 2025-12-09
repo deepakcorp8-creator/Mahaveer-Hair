@@ -99,6 +99,10 @@ const NewEntryForm: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // SAFETY CHECK: Prevent double submission
+    if (loading) return;
+
     setLoading(true);
     setNotification(null);
     setLastSubmittedEntry(null);
@@ -384,17 +388,6 @@ const NewEntryForm: React.FC = () => {
                             />
                         </div>
                         
-                        <div>
-                            <label className={labelClass}>Number of Service</label>
-                            <input
-                                type="number"
-                                name="numberOfService"
-                                value={formData.numberOfService}
-                                onChange={handleChange}
-                                className={inputClass}
-                            />
-                        </div>
-                        
                          <div className="md:col-span-2">
                             <label className={labelClass}>Remarks / Notes</label>
                             <textarea
@@ -429,6 +422,7 @@ const NewEntryForm: React.FC = () => {
                                     name="amount"
                                     value={formData.amount}
                                     onChange={handleChange}
+                                    onFocus={(e) => (formData.amount === 0 || (formData.amount as any) === '0') && setFormData(prev => ({ ...prev, amount: '' as any }))}
                                     className="w-48 bg-transparent text-5xl font-black text-slate-800 text-center border-b-4 border-emerald-300 focus:border-emerald-500 focus:outline-none placeholder-slate-200 transition-colors"
                                     placeholder="0"
                                     min="0"

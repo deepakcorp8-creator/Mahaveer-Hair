@@ -1,15 +1,16 @@
+
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { Appointment, Client } from '../types';
-import { Calendar, CheckCircle, Clock, Filter, Activity, CheckSquare, Plus, Search, Phone, MessageCircle, RefreshCw, CalendarClock, History, ArrowRightCircle } from 'lucide-react';
+import { Calendar, CheckCircle, Clock, Filter, Activity, CheckSquare, Plus, Search, Phone, MessageCircle, RefreshCw, CalendarClock, History, ArrowRightCircle, Megaphone, UserCheck, XCircle } from 'lucide-react';
 
 const AppointmentBooking: React.FC = () => {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(false);
   
-  // Tabs: 'SCHEDULE' for Today/Upcoming, 'HISTORY' for Closed/Leads
-  const [activeTab, setActiveTab] = useState<'SCHEDULE' | 'HISTORY'>('SCHEDULE');
+  // Tabs: 'SCHEDULE' (Pending), 'LEADS' (Followup), 'HISTORY' (Closed)
+  const [activeTab, setActiveTab] = useState<'SCHEDULE' | 'LEADS' | 'HISTORY'>('SCHEDULE');
   const [searchFilter, setSearchFilter] = useState('');
   
   const [newAppt, setNewAppt] = useState<Partial<Appointment>>({
@@ -43,13 +44,13 @@ const AppointmentBooking: React.FC = () => {
   };
 
   const handleRecall = (appt: Appointment) => {
-      // Logic to "Re-book" a past client
+      // Logic to "Re-book" a past client (Creates NEW record)
       setNewAppt({
           date: todayStr, // Default to today
           clientName: appt.clientName,
           contact: appt.contact,
           address: appt.address,
-          note: `Follow up: Last visit was on ${appt.date}`,
+          note: `Re-booking: Last visit was on ${appt.date}`,
           status: 'PENDING'
       });
       // Scroll to top of main container
@@ -58,6 +59,8 @@ const AppointmentBooking: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading) return; // Prevent double submission
+
     setLoading(true);
     try {
       if (newAppt.clientName && newAppt.date) {
@@ -81,44 +84,47 @@ const AppointmentBooking: React.FC = () => {
 
   // Filter Logic
   const filteredAppointments = appointments.filter(a => {
-      // Tab Logic
-      const isHistory = a.status === 'CLOSED';
-      if (activeTab === 'SCHEDULE' && isHistory) return false;
-      if (activeTab === 'HISTORY' && !isHistory) return false;
-
       // Search Logic
       const searchSafe = searchFilter.toLowerCase();
-      return (
-          (a.clientName || '').toLowerCase().includes(searchSafe) || 
-          String(a.contact || '').includes(searchFilter)
-      );
+      const matchesSearch = (a.clientName || '').toLowerCase().includes(searchSafe) || String(a.contact || '').includes(searchFilter);
+      
+      if (!matchesSearch) return false;
+
+      if (activeTab === 'SCHEDULE') return a.status === 'PENDING';
+      if (activeTab === 'LEADS') return a.status === 'FOLLOWUP';
+      if (activeTab === 'HISTORY') return a.status === 'CLOSED';
+      
+      return false;
   });
 
-  // Split Schedule into "Today", "Overdue" and "Upcoming" for the Schedule Tab
+  // Split Schedule into "Today" and "Upcoming"
   const todayAppointments = filteredAppointments.filter(a => a.date === todayStr && activeTab === 'SCHEDULE');
   const otherAppointments = filteredAppointments.filter(a => a.date !== todayStr && activeTab === 'SCHEDULE');
   
-  // For History Tab, show all filtered
-  const historyAppointments = filteredAppointments;
-
   // Stats
-  const todayCount = appointments.filter(a => a.date === todayStr && a.status !== 'CLOSED').length;
+  const todayCount = appointments.filter(a => a.date === todayStr && a.status === 'PENDING').length;
   const pendingCount = appointments.filter(a => a.status === 'PENDING').length;
-  const closedCount = appointments.filter(a => a.status === 'CLOSED').length;
+  const followupCount = appointments.filter(a => a.status === 'FOLLOWUP').length;
 
   const card3D = "bg-white rounded-2xl shadow-[0_10px_20px_-5px_rgba(0,0,0,0.1)] border border-slate-200 p-4 relative overflow-hidden transition-transform hover:-translate-y-1";
 
   const renderAppointmentCard = (appt: Appointment, isToday: boolean = false) => {
       const isOverdue = !isToday && new Date(appt.date) < new Date(todayStr) && appt.status === 'PENDING';
+      const isLead = appt.status === 'FOLLOWUP';
+      const isClosed = appt.status === 'CLOSED';
       
       return (
         <div key={appt.id} className={`
             relative p-4 rounded-2xl border transition-all duration-300 group
             ${isToday 
                 ? 'bg-gradient-to-r from-indigo-50 to-white border-indigo-300 shadow-md shadow-indigo-100' 
-                : isOverdue 
-                    ? 'bg-red-50 border-red-300' 
-                    : 'bg-white border-slate-300 hover:shadow-md'}
+                : isLead
+                    ? 'bg-amber-50/50 border-amber-200 hover:shadow-md'
+                    : isClosed
+                        ? 'bg-slate-50 border-slate-200 opacity-90'
+                    : isOverdue 
+                        ? 'bg-red-50 border-red-300' 
+                        : 'bg-white border-slate-300 hover:shadow-md'}
         `}>
             {isToday && (
                 <div className="absolute -top-3 left-4 bg-indigo-600 text-white text-[10px] font-bold px-3 py-1 rounded-full shadow-sm flex items-center">
@@ -130,19 +136,29 @@ const AppointmentBooking: React.FC = () => {
                     OVERDUE
                 </div>
             )}
+            {isLead && (
+                 <div className="absolute -top-3 left-4 bg-amber-500 text-white text-[10px] font-bold px-3 py-1 rounded-full shadow-sm flex items-center">
+                    <Megaphone className="w-3 h-3 mr-1" /> ACTIVE LEAD
+                </div>
+            )}
+             {isClosed && (
+                 <div className="absolute -top-3 left-4 bg-slate-500 text-white text-[10px] font-bold px-3 py-1 rounded-full shadow-sm flex items-center">
+                    <CheckCircle className="w-3 h-3 mr-1" /> COMPLETED
+                </div>
+            )}
 
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mt-2">
                 {/* Left: Date & Name */}
                 <div className="flex items-start gap-4">
                     <div className={`
                         flex flex-col items-center justify-center w-16 h-16 rounded-xl border-2
-                        ${isToday ? 'bg-white border-indigo-200 text-indigo-700' : 'bg-slate-50 border-slate-200 text-slate-500'}
+                        ${isToday ? 'bg-white border-indigo-200 text-indigo-700' : isLead ? 'bg-amber-100 border-amber-200 text-amber-600' : isClosed ? 'bg-slate-100 border-slate-200 text-slate-500' : 'bg-slate-50 border-slate-200 text-slate-500'}
                     `}>
                         <span className="text-xs font-bold uppercase">{new Date(appt.date).toLocaleString('default', { month: 'short' })}</span>
                         <span className="text-2xl font-black leading-none">{new Date(appt.date).getDate()}</span>
                     </div>
                     <div>
-                        <h4 className="font-bold text-slate-800 text-lg">{appt.clientName}</h4>
+                        <h4 className={`font-bold text-lg ${isClosed ? 'text-slate-600 line-through decoration-slate-400' : 'text-slate-800'}`}>{appt.clientName}</h4>
                         <div className="flex items-center gap-3 text-sm text-slate-500 font-medium">
                             <span>{appt.contact}</span>
                             {appt.address && (
@@ -181,23 +197,48 @@ const AppointmentBooking: React.FC = () => {
 
                     <div className="w-px h-8 bg-slate-200 mx-1 hidden md:block"></div>
 
-                    {/* Status Actions */}
-                    {activeTab === 'SCHEDULE' ? (
+                    {/* 1. SCHEDULE ACTIONS (Pending) */}
+                    {appt.status === 'PENDING' && (
                         <>
                             <button 
                                 onClick={() => updateStatus(appt.id, 'FOLLOWUP')}
-                                className="px-3 py-2 rounded-xl bg-amber-50 text-amber-600 font-bold text-xs hover:bg-amber-100 border border-amber-200 transition-colors"
+                                className="px-3 py-2 rounded-xl bg-amber-50 text-amber-600 font-bold text-xs hover:bg-amber-100 border border-amber-200 transition-colors flex items-center"
+                                title="Move to Active Leads"
                             >
-                                Follow Up
+                                <Megaphone className="w-3.5 h-3.5 mr-1.5" /> Follow Up
                             </button>
                             <button 
                                 onClick={() => updateStatus(appt.id, 'CLOSED')}
                                 className="px-3 py-2 rounded-xl bg-indigo-600 text-white font-bold text-xs hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-colors flex items-center border border-indigo-700"
+                                title="Mark as Completed"
                             >
                                 <CheckCircle className="w-3.5 h-3.5 mr-1.5" /> Done
                             </button>
                         </>
-                    ) : (
+                    )}
+
+                    {/* 2. LEADS ACTIONS (Follow-Up) */}
+                    {appt.status === 'FOLLOWUP' && (
+                        <>
+                             <button 
+                                onClick={() => updateStatus(appt.id, 'PENDING')}
+                                className="px-3 py-2 rounded-xl bg-blue-50 text-blue-600 font-bold text-xs hover:bg-blue-100 border border-blue-200 transition-colors flex items-center"
+                                title="Move back to Schedule"
+                            >
+                                <UserCheck className="w-3.5 h-3.5 mr-1.5" /> Book Visit
+                            </button>
+                             <button 
+                                onClick={() => updateStatus(appt.id, 'CLOSED')}
+                                className="px-3 py-2 rounded-xl bg-emerald-600 text-white font-bold text-xs hover:bg-emerald-700 shadow-lg shadow-emerald-200 transition-colors flex items-center border border-emerald-700"
+                                title="Close this Lead"
+                            >
+                                <CheckCircle className="w-3.5 h-3.5 mr-1.5" /> Close Lead
+                            </button>
+                        </>
+                    )}
+
+                    {/* 3. HISTORY ACTIONS (Closed) */}
+                    {appt.status === 'CLOSED' && (
                         <button 
                             onClick={() => handleRecall(appt)}
                             className="px-4 py-2 rounded-xl bg-white border-2 border-indigo-200 text-indigo-600 font-bold text-xs hover:border-indigo-600 hover:bg-indigo-50 transition-all flex items-center shadow-sm"
@@ -221,7 +262,7 @@ const AppointmentBooking: React.FC = () => {
                 <div className="absolute right-0 top-0 w-24 h-24 bg-white/10 rounded-full -mr-8 -mt-8 blur-xl"></div>
                 <div className="relative z-10 flex justify-between items-center">
                     <div>
-                        <p className="text-indigo-100 text-[10px] font-bold uppercase tracking-widest">Today's Appointments</p>
+                        <p className="text-indigo-100 text-[10px] font-bold uppercase tracking-widest">Today's Visits</p>
                         <h3 className="text-3xl font-black mt-1">{todayCount}</h3>
                     </div>
                     <div className="p-3 bg-white/20 rounded-xl backdrop-blur-md">
@@ -232,22 +273,22 @@ const AppointmentBooking: React.FC = () => {
              <div className={card3D}>
                 <div className="flex justify-between items-center">
                     <div>
-                        <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">Pending Total</p>
-                        <h3 className="text-3xl font-black text-slate-800 mt-1">{pendingCount}</h3>
+                        <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">Active Follow-Ups</p>
+                        <h3 className="text-3xl font-black text-slate-800 mt-1">{followupCount}</h3>
                     </div>
                     <div className="p-3 bg-amber-50 rounded-xl text-amber-500 border border-amber-100">
-                        <Activity className="w-6 h-6" />
+                        <Megaphone className="w-6 h-6" />
                     </div>
                 </div>
             </div>
              <div className={card3D}>
                 <div className="flex justify-between items-center">
                     <div>
-                        <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">Leads / Closed</p>
-                        <h3 className="text-3xl font-black text-slate-800 mt-1">{closedCount}</h3>
+                        <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">Total Pending Visits</p>
+                        <h3 className="text-3xl font-black text-slate-800 mt-1">{pendingCount}</h3>
                     </div>
                     <div className="p-3 bg-emerald-50 rounded-xl text-emerald-500 border border-emerald-100">
-                        <History className="w-6 h-6" />
+                        <Activity className="w-6 h-6" />
                     </div>
                 </div>
             </div>
@@ -336,25 +377,32 @@ const AppointmentBooking: React.FC = () => {
             </div>
         </div>
 
-        {/* Right: Lists (Schedule & Leads) */}
+        {/* Right: Lists (Schedule & Leads & History) */}
         <div className="lg:w-2/3 order-2 space-y-6">
             
-            {/* Tab Navigation */}
+            {/* Tab Navigation - 3 Sections */}
             <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white p-2 rounded-2xl border border-slate-200 shadow-sm">
-                <div className="flex bg-slate-100 p-1.5 rounded-xl w-full sm:w-auto border border-slate-200">
+                <div className="flex bg-slate-100 p-1.5 rounded-xl w-full sm:w-auto border border-slate-200 overflow-x-auto">
                     <button
                         onClick={() => setActiveTab('SCHEDULE')}
-                        className={`flex-1 sm:flex-none px-6 py-2.5 rounded-lg text-sm font-bold transition-all duration-300 flex items-center justify-center border
-                            ${activeTab === 'SCHEDULE' ? 'bg-white text-indigo-600 shadow-md border-indigo-100' : 'text-slate-500 hover:text-indigo-600 border-transparent'}`}
+                        className={`flex-1 sm:flex-none px-5 py-2.5 rounded-lg text-sm font-bold transition-all duration-300 flex items-center justify-center whitespace-nowrap
+                            ${activeTab === 'SCHEDULE' ? 'bg-white text-indigo-600 shadow-md border border-indigo-100' : 'text-slate-500 hover:text-indigo-600 border border-transparent'}`}
                     >
                         <Calendar className="w-4 h-4 mr-2" /> Schedule
                     </button>
                     <button
-                        onClick={() => setActiveTab('HISTORY')}
-                        className={`flex-1 sm:flex-none px-6 py-2.5 rounded-lg text-sm font-bold transition-all duration-300 flex items-center justify-center border
-                            ${activeTab === 'HISTORY' ? 'bg-white text-emerald-600 shadow-md border-emerald-100' : 'text-slate-500 hover:text-emerald-600 border-transparent'}`}
+                        onClick={() => setActiveTab('LEADS')}
+                        className={`flex-1 sm:flex-none px-5 py-2.5 rounded-lg text-sm font-bold transition-all duration-300 flex items-center justify-center whitespace-nowrap
+                            ${activeTab === 'LEADS' ? 'bg-white text-amber-600 shadow-md border border-amber-100' : 'text-slate-500 hover:text-amber-600 border border-transparent'}`}
                     >
-                        <History className="w-4 h-4 mr-2" /> History / Leads
+                        <Megaphone className="w-4 h-4 mr-2" /> Follow-Ups
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('HISTORY')}
+                        className={`flex-1 sm:flex-none px-5 py-2.5 rounded-lg text-sm font-bold transition-all duration-300 flex items-center justify-center whitespace-nowrap
+                            ${activeTab === 'HISTORY' ? 'bg-white text-slate-600 shadow-md border border-slate-100' : 'text-slate-500 hover:text-slate-700 border border-transparent'}`}
+                    >
+                        <History className="w-4 h-4 mr-2" /> History
                     </button>
                 </div>
 
@@ -370,7 +418,7 @@ const AppointmentBooking: React.FC = () => {
                 </div>
             </div>
 
-            {/* List Content */}
+            {/* List Content: SCHEDULE TAB */}
             {activeTab === 'SCHEDULE' && (
                 <div className="space-y-6">
                     {/* Today's Section - Only show if there are appointments */}
@@ -393,8 +441,8 @@ const AppointmentBooking: React.FC = () => {
                             {otherAppointments.length > 0 ? (
                                 otherAppointments.map(appt => renderAppointmentCard(appt))
                             ) : (
-                                <div className="p-8 text-center border-2 border-dashed border-slate-300 rounded-2xl">
-                                    <p className="text-slate-400 font-medium text-sm">No upcoming appointments found.</p>
+                                <div className="p-8 text-center border-2 border-dashed border-slate-300 rounded-2xl bg-slate-50/50">
+                                    <p className="text-slate-400 font-medium text-sm">No pending appointments found in schedule.</p>
                                 </div>
                             )}
                         </div>
@@ -402,26 +450,57 @@ const AppointmentBooking: React.FC = () => {
                 </div>
             )}
 
-            {/* History / Leads Tab */}
-            {activeTab === 'HISTORY' && (
-                <div className="animate-in fade-in">
-                    <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-sm font-black text-emerald-800 uppercase tracking-widest">Closed Appointments (Leads)</h3>
-                        <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-1 rounded font-bold border border-emerald-200">{historyAppointments.length} Records</span>
-                    </div>
-                    
-                    <div className="space-y-3">
-                         {historyAppointments.length > 0 ? (
-                             historyAppointments.map(appt => renderAppointmentCard(appt))
-                         ) : (
-                             <div className="p-10 bg-white rounded-3xl border border-slate-200 text-center shadow-sm">
-                                 <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-300 border border-slate-100">
-                                     <CheckSquare className="w-8 h-8" />
+            {/* List Content: FOLLOW-UPS (LEADS) TAB */}
+            {activeTab === 'LEADS' && (
+                <div className="animate-in fade-in space-y-8">
+                    <div>
+                        <div className="flex justify-between items-center mb-3">
+                            <h3 className="text-sm font-black text-amber-700 uppercase tracking-widest flex items-center">
+                                <Megaphone className="w-4 h-4 mr-2" />
+                                Active Leads / Follow-Ups
+                            </h3>
+                            <span className="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded font-bold border border-amber-200">
+                                {filteredAppointments.length} Active
+                            </span>
+                        </div>
+                        
+                        <div className="space-y-3">
+                             {filteredAppointments.length > 0 ? (
+                                 filteredAppointments.map(appt => renderAppointmentCard(appt))
+                             ) : (
+                                 <div className="p-6 bg-white rounded-2xl border border-slate-200 text-center shadow-sm">
+                                     <p className="text-slate-400 text-sm">No active follow-ups pending.</p>
                                  </div>
-                                 <h4 className="text-slate-800 font-bold mb-1">No History Found</h4>
-                                 <p className="text-slate-400 text-sm">Completed appointments will appear here.</p>
-                             </div>
-                         )}
+                             )}
+                        </div>
+                    </div>
+                </div>
+            )}
+            
+            {/* List Content: HISTORY TAB */}
+            {activeTab === 'HISTORY' && (
+                <div className="animate-in fade-in space-y-8">
+                    <div>
+                        <div className="flex justify-between items-center mb-3">
+                            <h3 className="text-sm font-black text-slate-500 uppercase tracking-widest flex items-center">
+                                <CheckSquare className="w-4 h-4 mr-2" />
+                                Closed History
+                            </h3>
+                            <span className="text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded font-bold border border-slate-200">
+                                {filteredAppointments.length} Records
+                            </span>
+                        </div>
+                        
+                        <div className="space-y-3 opacity-80 hover:opacity-100 transition-opacity">
+                             {filteredAppointments.length > 0 ? (
+                                 filteredAppointments.map(appt => renderAppointmentCard(appt))
+                             ) : (
+                                 <div className="p-8 text-center">
+                                     <h4 className="text-slate-400 font-bold mb-1">No History Found</h4>
+                                     <p className="text-slate-300 text-xs">Completed appointments will appear here.</p>
+                                 </div>
+                             )}
+                        </div>
                     </div>
                 </div>
             )}

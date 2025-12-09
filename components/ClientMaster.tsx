@@ -1,12 +1,14 @@
+
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { Client } from '../types';
-import { Search, UserPlus } from 'lucide-react';
+import { Search, UserPlus, Loader2 } from 'lucide-react';
 
 const ClientMaster: React.FC = () => {
   const [clients, setClients] = useState<Client[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   const [newClient, setNewClient] = useState<Client>({
     name: '', contact: '', address: '', gender: 'Male', email: '', dob: ''
@@ -23,10 +25,19 @@ const ClientMaster: React.FC = () => {
 
   const handleAddClient = async (e: React.FormEvent) => {
     e.preventDefault();
-    await api.addClient(newClient);
-    setShowModal(false);
-    setNewClient({ name: '', contact: '', address: '', gender: 'Male', email: '', dob: '' });
-    loadClients();
+    if (isSubmitting) return;
+
+    setIsSubmitting(true);
+    try {
+        await api.addClient(newClient);
+        setShowModal(false);
+        setNewClient({ name: '', contact: '', address: '', gender: 'Male', email: '', dob: '' });
+        loadClients();
+    } catch (e) {
+        console.error(e);
+    } finally {
+        setIsSubmitting(false);
+    }
   };
 
   // FIX: Cast properties to string to ensure .includes() works correctly on all data types
@@ -129,8 +140,15 @@ const ClientMaster: React.FC = () => {
                 <input type="date" className="w-full border rounded p-2" value={newClient.dob} onChange={e => setNewClient({...newClient, dob: e.target.value})} />
               </div>
               <div className="flex justify-end space-x-3 mt-6">
-                <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 text-gray-700 bg-gray-100 rounded hover:bg-gray-200">Cancel</button>
-                <button type="submit" className="px-4 py-2 text-white bg-blue-600 rounded hover:bg-blue-700">Save Client</button>
+                <button type="button" onClick={() => setShowModal(false)} disabled={isSubmitting} className="px-4 py-2 text-gray-700 bg-gray-100 rounded hover:bg-gray-200">Cancel</button>
+                <button 
+                  type="submit" 
+                  disabled={isSubmitting} 
+                  className={`px-4 py-2 text-white rounded flex items-center ${isSubmitting ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}
+                >
+                  {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  {isSubmitting ? 'Saving...' : 'Save Client'}
+                </button>
               </div>
             </form>
           </div>

@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
@@ -115,7 +116,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
 
         {/* User Profile Footer */}
         <div className="p-4 border-t border-slate-800 bg-slate-900/50 shrink-0">
-            <div className="bg-slate-800 rounded-xl p-3 flex items-center justify-between group hover:bg-slate-750 transition-colors">
+            <div className="bg-slate-800 rounded-xl p-3 flex items-center justify-between group hover:bg-slate-750 transition-colors mb-4">
               <div className="flex items-center space-x-3">
                 <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold shadow-md uppercase">
                     {user.username.charAt(0)}
@@ -132,6 +133,16 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
               >
                 <LogOut className="w-5 h-5" />
               </button>
+            </div>
+
+            {/* Professional Footer Credits */}
+            <div className="pt-3 border-t border-slate-800 text-center opacity-70 hover:opacity-100 transition-opacity">
+                 <p className="text-[10px] text-slate-500 font-medium">
+                    Copyright © {new Date().getFullYear()} Mahaveer Hair Solution
+                 </p>
+                 <p className="text-[9px] text-slate-600 mt-1 uppercase tracking-wider">
+                    Developed by <span className="text-slate-400 font-bold">Deepak Sahu</span>
+                 </p>
             </div>
         </div>
       </aside>

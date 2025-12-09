@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer,
@@ -51,17 +52,23 @@ const Dashboard: React.FC = () => {
     return acc;
   }, []);
 
-  const sortedEntries = [...entries].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-  const salesData = sortedEntries.reduce((acc: any[], curr) => {
-    const found = acc.find(item => item.date === curr.date);
-    const amount = Number(curr.amount || 0);
-    if (found) {
-      found.amount += amount;
-    } else {
-      acc.push({ date: curr.date, amount: amount });
-    }
-    return acc;
-  }, []);
+  // SALES DATA PROCESSING (Fixed Sorting & Formatting)
+  const salesMap = new Map<string, number>();
+
+  entries.forEach(entry => {
+      if (!entry.date || !entry.amount) return;
+      // Aggregate by date
+      const currentAmount = salesMap.get(entry.date) || 0;
+      salesMap.set(entry.date, currentAmount + Number(entry.amount));
+  });
+
+  // Convert to array and Sort by Date Ascending
+  const salesData = Array.from(salesMap.entries())
+    .map(([date, amount]) => ({ date, amount }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  // Limit to last 15 records for cleaner UI (Recent Trend)
+  const chartData = salesData.slice(-15);
 
   const technicianPerformance = entries.reduce((acc: any[], curr) => {
     const found = acc.find(item => item.name === curr.technician);
@@ -77,6 +84,17 @@ const Dashboard: React.FC = () => {
 
   // 3D Card Style Helper - Updated border color
   const card3D = "bg-white rounded-3xl shadow-[0_20px_50px_-12px_rgba(0,0,0,0.1)] border border-slate-200 backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_25px_50px_-12px_rgba(99,102,241,0.15)]";
+
+  // Date Formatter for X-Axis (DD/MM/YY)
+  const formatDateTick = (dateStr: string) => {
+      try {
+          const date = new Date(dateStr);
+          // Format: 1/12/25 (Day/Month/Year)
+          return `${date.getDate()}/${date.getMonth() + 1}/${String(date.getFullYear()).slice(-2)}`;
+      } catch (e) {
+          return dateStr;
+      }
+  };
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500 pb-10">
@@ -176,11 +194,11 @@ const Dashboard: React.FC = () => {
                   </h3>
                   <p className="text-slate-400 text-sm font-medium">Income trends over time</p>
               </div>
-              <span className="text-xs font-bold text-indigo-500 bg-indigo-50 px-3 py-1.5 rounded-xl border border-indigo-200">Last 7 Days</span>
+              <span className="text-xs font-bold text-indigo-500 bg-indigo-50 px-3 py-1.5 rounded-xl border border-indigo-200">Recent Trend</span>
           </div>
           <div className="h-[350px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={salesData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+              <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
                 <defs>
                   <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3}/>
@@ -188,12 +206,35 @@ const Dashboard: React.FC = () => {
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                <XAxis dataKey="date" tick={{fontSize: 12, fill: '#64748b', fontWeight: 600}} axisLine={false} tickLine={false} dy={15} />
-                <YAxis tick={{fontSize: 12, fill: '#64748b', fontWeight: 600}} axisLine={false} tickLine={false} dx={-10} />
+                <XAxis 
+                    dataKey="date" 
+                    tick={{fontSize: 11, fill: '#64748b', fontWeight: 600}} 
+                    axisLine={false} 
+                    tickLine={false} 
+                    dy={10} 
+                    tickFormatter={formatDateTick}
+                    interval="preserveStartEnd"
+                />
+                <YAxis 
+                    tick={{fontSize: 12, fill: '#64748b', fontWeight: 600}} 
+                    axisLine={false} 
+                    tickLine={false} 
+                    dx={-10} 
+                />
                 <RechartsTooltip 
                     contentStyle={{ borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 10px 40px -10px rgba(0,0,0,0.1)', background: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(10px)' }}
+                    labelFormatter={(label) => new Date(label).toLocaleDateString()}
+                    formatter={(value) => [`₹${Number(value).toLocaleString()}`, 'Revenue']}
                 />
-                <Area type="monotone" dataKey="amount" stroke="#6366f1" strokeWidth={4} fillOpacity={1} fill="url(#colorAmount)" />
+                <Area 
+                    type="monotone" 
+                    dataKey="amount" 
+                    stroke="#6366f1" 
+                    strokeWidth={4} 
+                    fillOpacity={1} 
+                    fill="url(#colorAmount)" 
+                    animationDuration={1500}
+                />
               </AreaChart>
             </ResponsiveContainer>
           </div>

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { ServicePackage, Client, Entry, Role, User } from '../types';
@@ -55,6 +56,8 @@ const ServicePackages: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading) return; // Prevent double submit
+
     setLoading(true);
     try {
         if(newPkg.clientName && newPkg.packageName && newPkg.totalServices) {
@@ -83,7 +86,8 @@ const ServicePackages: React.FC = () => {
 
   const handleUpdatePackage = async (e: React.FormEvent) => {
       e.preventDefault();
-      if (!editingPackage) return;
+      if (!editingPackage || loading) return; // Prevent double submit
+      
       setLoading(true);
       try {
           await api.editPackage(editingPackage);
@@ -100,7 +104,8 @@ const ServicePackages: React.FC = () => {
   
   const handlePackageApproval = async (e: React.MouseEvent, id: string, action: 'APPROVE' | 'REJECT') => {
       e.stopPropagation();
-      e.preventDefault(); // Ensure button click doesn't trigger anything else
+      e.preventDefault(); 
+      if (loading) return;
       
       const isDelete = action === 'REJECT';
       const msg = isDelete 
@@ -273,11 +278,11 @@ const ServicePackages: React.FC = () => {
                     return (
                     <div key={pkg.id} className="group relative bg-white rounded-3xl p-6 shadow-[0_15px_30px_-5px_rgba(0,0,0,0.08)] border border-slate-200 hover:shadow-[0_25px_50px_-12px_rgba(99,102,241,0.2)] transition-shadow duration-300 overflow-hidden isolate">
                       
-                      {/* Premium Card Glow - Pointer Events None to allow clicks through */}
-                      <div className={`absolute top-0 right-0 w-40 h-40 rounded-full blur-[80px] -mr-10 -mt-10 opacity-40 transition-opacity pointer-events-none
+                      {/* Premium Card Glow - Z-0 to be behind everything */}
+                      <div className={`absolute top-0 right-0 w-40 h-40 rounded-full blur-[80px] -mr-10 -mt-10 opacity-40 transition-opacity pointer-events-none z-0
                         ${isPending ? 'bg-amber-400' : stats.isExpired ? 'bg-red-500' : 'bg-indigo-500'}`}></div>
 
-                      {/* Header Section */}
+                      {/* Header Section - Z-10 */}
                       <div className="relative flex justify-between items-start mb-6 z-10">
                         <div className="flex gap-4">
                           <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg transform group-hover:scale-110 transition-transform duration-300 border
@@ -303,7 +308,7 @@ const ServicePackages: React.FC = () => {
                         </span>
                       </div>
 
-                      {/* Progress Section (Only if Active/Approved) */}
+                      {/* Progress Section */}
                       {!isPending && (
                           <div className="mb-6 relative z-10 bg-slate-50/80 rounded-2xl p-4 border border-slate-200">
                               <div className="flex justify-between text-xs font-bold text-slate-500 mb-3">
@@ -322,25 +327,25 @@ const ServicePackages: React.FC = () => {
                           </div>
                       )}
 
-                      {/* Pending Actions - High Z-Index for Clicks */}
+                      {/* Pending Actions - REMOVED BACKDROP BLUR, FIXED Z-INDEX */}
                       {isPending && (
-                          <div className="bg-amber-50/80 rounded-2xl p-5 border border-amber-200 mb-6 relative z-50 backdrop-blur-md shadow-sm">
+                          <div className="bg-amber-50 rounded-2xl p-5 border border-amber-200 mb-6 relative z-20 shadow-sm">
                               <p className="text-xs text-amber-800 font-bold uppercase tracking-wide mb-4 flex items-center justify-center">
                                   <ShieldAlert className="w-4 h-4 mr-2" />
                                   Action Required
                               </p>
                               {currentUser?.role === Role.ADMIN ? (
-                                 <div className="flex gap-3">
+                                 <div className="flex gap-3 relative z-30">
                                      <button 
                                         type="button"
-                                        className="flex-1 bg-white border border-emerald-300 text-emerald-700 hover:bg-emerald-500 hover:text-white py-2.5 rounded-xl text-xs font-black uppercase tracking-wide shadow-sm transition-all hover:shadow-emerald-200 hover:-translate-y-0.5 relative cursor-pointer z-50" 
+                                        className="flex-1 bg-white border border-emerald-300 text-emerald-700 hover:bg-emerald-500 hover:text-white py-2.5 rounded-xl text-xs font-black uppercase tracking-wide shadow-sm transition-all hover:shadow-emerald-200 hover:-translate-y-0.5 cursor-pointer" 
                                         onClick={(e) => handlePackageApproval(e, pkg.id, 'APPROVE')}
                                      >
                                         Approve
                                      </button>
                                      <button 
                                         type="button"
-                                        className="flex-1 bg-white border border-red-300 text-red-700 hover:bg-red-500 hover:text-white py-2.5 rounded-xl text-xs font-black uppercase tracking-wide shadow-sm transition-all hover:shadow-red-200 hover:-translate-y-0.5 relative cursor-pointer z-50" 
+                                        className="flex-1 bg-white border border-red-300 text-red-700 hover:bg-red-500 hover:text-white py-2.5 rounded-xl text-xs font-black uppercase tracking-wide shadow-sm transition-all hover:shadow-red-200 hover:-translate-y-0.5 cursor-pointer" 
                                         onClick={(e) => handlePackageApproval(e, pkg.id, 'REJECT')}
                                      >
                                         Reject
@@ -367,6 +372,7 @@ const ServicePackages: React.FC = () => {
                       </div>
                       
                       {/* Admin Edit Action - Only show for PENDING packages */}
+                      {/* Lower Z-Index to avoid blocking main content, moved to Z-10 */}
                       {currentUser?.role === Role.ADMIN && isPending && (
                         <button 
                             type="button"
@@ -376,7 +382,7 @@ const ServicePackages: React.FC = () => {
                                 setEditingPackage(pkg);
                                 setIsEditModalOpen(true);
                             }}
-                            className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-all bg-white p-2.5 rounded-xl shadow-lg text-slate-400 hover:text-indigo-600 hover:scale-110 z-[60] cursor-pointer border border-slate-200"
+                            className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-all bg-white p-2.5 rounded-xl shadow-lg text-slate-400 hover:text-indigo-600 hover:scale-110 z-10 cursor-pointer border border-slate-200"
                             title="Edit Package"
                         >
                             <Pencil className="w-4 h-4" />

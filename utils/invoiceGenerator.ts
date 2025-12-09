@@ -1,3 +1,4 @@
+
 import { Entry } from '../types';
 
 export const generateInvoice = (entry: Entry) => {
@@ -346,8 +347,9 @@ export const generateInvoice = (entry: Entry) => {
             </div>
         </div>
         
-        <div style="text-align: center; margin-top: 30px; font-size: 10px; color: #9ca3af;">
-            Computer Generated Invoice • Printed on ${printDate}
+        <div style="text-align: center; margin-top: 30px; padding-top: 10px; border-top: 1px dashed #e5e7eb; font-size: 10px; color: #9ca3af;">
+            <p style="margin: 0;">Copyright © ${new Date().getFullYear()} Mahaveer Hair Solution. All Rights Reserved.</p>
+            <p style="margin: 2px 0 0 0;">Developed by <strong>Deepak Sahu</strong></p>
         </div>
 
         <button class="print-btn" onclick="window.print()">Print Invoice</button>

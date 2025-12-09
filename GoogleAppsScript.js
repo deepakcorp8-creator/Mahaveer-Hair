@@ -474,7 +474,8 @@ function createInvoicePDF(data) {
         
         // Footer
         "<div style='margin-top: 50px; font-size: 10px; color: #9ca3af; text-align: center; border-top: 1px solid #f3f4f6; padding-top: 20px;'>" +
-           "Thank you for your business. Terms & Conditions Apply." +
+           "<p style='margin:0'>Thank you for your business. Terms & Conditions Apply.</p>" +
+           "<p style='margin:5px 0 0 0; opacity: 0.7;'>Copyright © " + new Date().getFullYear() + " Mahaveer Hair Solution | Developed by Deepak Sahu</p>" +
         "</div>" +
 
       "</div>" +

@@ -98,7 +98,7 @@ export const api = {
     
     if (isLive) {
       try {
-        // Must await to get the generated invoice URL
+        // DIRECT SAVE: Await the response to ensure data is written and we get invoice URL
         const response = await fetch(GOOGLE_SCRIPT_URL, {
           method: 'POST',
           headers: {
@@ -120,6 +120,7 @@ export const api = {
         }
       } catch (e) {
         console.error("Error sending to sheet", e);
+        throw e; // Throw error so UI knows save failed
       }
     } else {
         MOCK_ENTRIES.push(newEntry as Entry);
