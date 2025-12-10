@@ -8,7 +8,7 @@ export const generateInvoice = (entry: Entry) => {
     return;
   }
 
-  // Helper to format date as DD/MM/YYYY
+  // Helper to format date as DD/MM/YYYY (Full Year)
   const formatDate = (dateStr: string) => {
       if (!dateStr) return '';
       // Assuming ISO input YYYY-MM-DD

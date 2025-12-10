@@ -52,7 +52,7 @@ const DailyReport: React.FC = () => {
     PENDING: dailyEntries.filter(e => e.paymentMethod === 'PENDING').reduce((s, e) => s + Number(e.amount), 0),
   };
 
-  // Date formatter helper
+  // Date formatter helper - DD/MM/YYYY
   const formatDateDDMMYYYY = (isoDate: string) => {
     if(!isoDate) return '';
     const parts = isoDate.split('-');

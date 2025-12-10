@@ -132,7 +132,7 @@ const ClientHistory: React.FC = () => {
                     </div>
                 </div>
                 <div className="flex-1">
-                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 ml-1">To Date</label>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5 ml-1">To Date</label>
                     <div className="relative">
                         <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                         <input 
