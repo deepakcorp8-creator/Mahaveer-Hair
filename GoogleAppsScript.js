@@ -405,7 +405,7 @@ function formatDate(date) {
   }
 }
 
-// --- NEW FUNCTION TO CREATE PDF INVOICE ---
+// --- NEW FUNCTION TO CREATE COMPACT PDF INVOICE ---
 function createInvoicePDF(data) {
   const folderId = "1yNT2OJZ192AmNLF_3xxwCew_h3jCnEP_";
   var folder;
@@ -419,63 +419,63 @@ function createInvoicePDF(data) {
   // Generate Invoice Number
   var invoiceNo = "INV-" + new Date().getFullYear() + "-" + Math.floor(Math.random() * 10000);
   
-  // Professional HTML Template
+  // Compact HTML Template for PDF
   var html = 
-    "<html><body style='font-family: \"Helvetica Neue\", Helvetica, Arial, sans-serif; color: #374151; padding: 40px; line-height: 1.6; background-color: #ffffff;'>" +
-      "<div style='max-width: 800px; margin: 0 auto; border: 1px solid #e5e7eb; padding: 40px;'>" +
+    "<html><body style='font-family: \"Helvetica Neue\", Helvetica, Arial, sans-serif; color: #374151; padding: 20px; line-height: 1.3; background-color: #ffffff; margin: 0;'>" +
+      "<div style='max-width: 750px; margin: 0 auto; border: 1px solid #e5e7eb; padding: 25px;'>" +
         
         // Header
-        "<div style='text-align: center; border-bottom: 2px solid #f3f4f6; padding-bottom: 20px; margin-bottom: 30px;'>" +
-          "<h1 style='margin: 0; color: #111827; font-size: 24px; text-transform: uppercase; letter-spacing: 1px;'>MAHAVEER HAIR SOLUTION</h1>" +
-          "<p style='margin: 5px 0; font-size: 12px; color: #6b7280;'>" +
+        "<div style='text-align: center; border-bottom: 2px solid #f3f4f6; padding-bottom: 10px; margin-bottom: 20px;'>" +
+          "<h1 style='margin: 0; color: #111827; font-size: 20px; text-transform: uppercase; letter-spacing: 1px;'>MAHAVEER HAIR SOLUTION</h1>" +
+          "<p style='margin: 5px 0; font-size: 11px; color: #6b7280;'>" +
              "First Floor, Opp. Ayurvedic College & Anupam Garden, Near Amit Sales, G.E. Road, Raipur<br>" +
              "Mobile: +91-9691699382, +91-9144939828 | Email: info@mahaveerhairsolution.com" +
           "</p>" +
         "</div>" +
         
         // Meta Info
-        "<div style='display: flex; justify-content: space-between; background: #f9fafb; padding: 15px; border-radius: 6px; font-size: 13px; margin-bottom: 30px;'>" +
+        "<div style='display: flex; justify-content: space-between; background: #f9fafb; padding: 10px; border-radius: 6px; font-size: 12px; margin-bottom: 20px;'>" +
            "<div><strong>Invoice No:</strong> " + invoiceNo + "</div>" +
            "<div><strong>Date:</strong> " + data.date + "</div>" +
            "<div><strong>Branch:</strong> " + data.branch + "</div>" +
         "</div>" +
 
         // Client Info
-        "<div style='margin-bottom: 30px;'>" +
-           "<h3 style='font-size: 11px; text-transform: uppercase; color: #9ca3af; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px; margin-bottom: 10px;'>Billed To</h3>" +
-           "<div style='font-size: 16px; font-weight: bold; color: #111;'>" + data.clientName + "</div>" +
-           "<div style='font-size: 14px; color: #666;'>" + (data.address || "Address not provided") + "</div>" +
-           "<div style='font-size: 14px; color: #666;'>Phone: " + data.contactNo + "</div>" +
+        "<div style='margin-bottom: 20px;'>" +
+           "<h3 style='font-size: 10px; text-transform: uppercase; color: #9ca3af; border-bottom: 1px solid #e5e7eb; padding-bottom: 2px; margin-bottom: 5px;'>Billed To</h3>" +
+           "<div style='font-size: 14px; font-weight: bold; color: #111;'>" + data.clientName + "</div>" +
+           "<div style='font-size: 12px; color: #666;'>" + (data.address || "Address not provided") + "</div>" +
+           "<div style='font-size: 12px; color: #666;'>Phone: " + data.contactNo + "</div>" +
         "</div>" +
 
         // Table
-        "<table style='width: 100%; border-collapse: collapse; margin-bottom: 30px;'>" +
-          "<tr style='background: #111827; color: #fff; text-transform: uppercase; font-size: 12px;'>" +
-             "<th style='padding: 12px; text-align: left;'>Service Description</th>" +
-             "<th style='padding: 12px; text-align: center;'>Qty</th>" +
-             "<th style='padding: 12px; text-align: right;'>Amount</th>" +
+        "<table style='width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 12px;'>" +
+          "<tr style='background: #111827; color: #fff; text-transform: uppercase; font-size: 11px;'>" +
+             "<th style='padding: 8px; text-align: left;'>Service Description</th>" +
+             "<th style='padding: 8px; text-align: center;'>Qty</th>" +
+             "<th style='padding: 8px; text-align: right;'>Amount</th>" +
           "</tr>" +
           "<tr>" +
-             "<td style='padding: 15px; border-bottom: 1px solid #e5e7eb;'>" + 
+             "<td style='padding: 10px; border-bottom: 1px solid #e5e7eb;'>" + 
                 "<strong>" + data.serviceType + " Service</strong><br>" +
-                "<span style='font-size: 12px; color: #6b7280;'>Method: " + data.patchMethod + " | Tech: " + data.technician + "</span>" +
-                (data.remark ? "<br><span style='font-size: 12px; font-style: italic; color: #6b7280;'>Note: " + data.remark + "</span>" : "") +
+                "<span style='font-size: 10px; color: #6b7280;'>Method: " + data.patchMethod + " | Tech: " + data.technician + "</span>" +
+                (data.remark ? "<br><span style='font-size: 10px; font-style: italic; color: #6b7280;'>Note: " + data.remark + "</span>" : "") +
              "</td>" +
-             "<td style='padding: 15px; border-bottom: 1px solid #e5e7eb; text-align: center;'>1</td>" +
-             "<td style='padding: 15px; border-bottom: 1px solid #e5e7eb; text-align: right; font-weight: bold;'>₹" + data.amount + "</td>" +
+             "<td style='padding: 10px; border-bottom: 1px solid #e5e7eb; text-align: center;'>1</td>" +
+             "<td style='padding: 10px; border-bottom: 1px solid #e5e7eb; text-align: right; font-weight: bold;'>₹" + data.amount + "</td>" +
           "</tr>" +
         "</table>" +
 
         // Totals
-        "<div style='text-align: right; margin-top: 20px; border-top: 2px solid #111; padding-top: 15px;'>" +
-           "<div style='font-size: 20px; font-weight: 800; color: #111;'>Total: ₹" + data.amount + "</div>" +
-           "<div style='font-size: 12px; color: #6b7280; margin-top: 5px;'>Paid via " + data.paymentMethod + "</div>" +
+        "<div style='text-align: right; margin-top: 10px; border-top: 2px solid #111; padding-top: 10px;'>" +
+           "<div style='font-size: 16px; font-weight: 800; color: #111;'>Total: ₹" + data.amount + "</div>" +
+           "<div style='font-size: 11px; color: #6b7280; margin-top: 2px;'>Paid via " + data.paymentMethod + "</div>" +
         "</div>" +
         
         // Footer
-        "<div style='margin-top: 50px; font-size: 10px; color: #9ca3af; text-align: center; border-top: 1px solid #f3f4f6; padding-top: 20px;'>" +
+        "<div style='margin-top: 40px; font-size: 9px; color: #9ca3af; text-align: center; border-top: 1px solid #f3f4f6; padding-top: 15px;'>" +
            "<p style='margin:0'>Thank you for your business. Terms & Conditions Apply.</p>" +
-           "<p style='margin:5px 0 0 0; opacity: 0.7;'>Copyright © " + new Date().getFullYear() + " Mahaveer Hair Solution | Developed by Deepak Sahu</p>" +
+           "<p style='margin:2px 0 0 0; opacity: 0.7;'>Copyright © " + new Date().getFullYear() + " Mahaveer Hair Solution</p>" +
         "</div>" +
 
       "</div>" +

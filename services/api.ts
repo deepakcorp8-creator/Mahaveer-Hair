@@ -29,6 +29,15 @@ let DATA_CACHE: {
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minute cache for entries/appts
 const OPTIONS_CACHE_DURATION = 15 * 60 * 1000; // 15 minutes for clients/items
 
+// --- DEDUPLICATION HELPERS ---
+// Create a unique signature for an entry based on its content
+const getEntrySignature = (e: Entry) => 
+    `${e.date}|${e.clientName?.trim().toLowerCase()}|${e.amount}|${e.serviceType}|${e.technician}`;
+
+// Create a unique signature for an appointment
+const getApptSignature = (a: Appointment) => 
+    `${a.date}|${a.clientName?.trim().toLowerCase()}|${a.contact}`;
+
 export const api = {
   // --- OPTION HELPERS (Clients, Technicians, Items) ---
   getOptions: async (forceRefresh = false) => {
@@ -157,9 +166,16 @@ export const api = {
     }
 
     // Merge with local new entries
-    const serverIds = new Set(allEntries.map(e => e.id));
-    const uniqueLocal = LOCAL_NEW_ENTRIES.filter(e => !serverIds.has(e.id));
+    // SMART DEDUPLICATION:
+    // If a local entry (temp id) matches a server entry (row id) by content,
+    // we assume the server has processed it and we hide the local one to avoid duplicates.
+    const serverSignatures = new Set(allEntries.map(e => getEntrySignature(e)));
+    const uniqueLocal = LOCAL_NEW_ENTRIES.filter(e => {
+        // Filter out if this local entry's signature already exists in the server data
+        return !serverSignatures.has(getEntrySignature(e));
+    });
     
+    // Put unique local items first, then server items
     return [...uniqueLocal, ...allEntries];
   },
 
@@ -214,9 +230,11 @@ export const api = {
         }
     }
 
-    // Merge Local Appointments
-    const serverIds = new Set(allAppts.map(a => a.id));
-    const uniqueLocal = LOCAL_NEW_APPOINTMENTS.filter(a => !serverIds.has(a.id));
+    // Merge Local Appointments with Deduplication
+    const serverSignatures = new Set(allAppts.map(a => getApptSignature(a)));
+    const uniqueLocal = LOCAL_NEW_APPOINTMENTS.filter(a => {
+        return !serverSignatures.has(getApptSignature(a));
+    });
     
     return [...uniqueLocal, ...allAppts];
   },
