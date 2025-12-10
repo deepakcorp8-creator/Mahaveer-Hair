@@ -142,18 +142,12 @@ const NewEntryForm: React.FC = () => {
   const techOptions = technicians.map(t => ({ label: t.name, value: t.name }));
   const patchSizeOptions = items.map(i => ({ label: i.name, value: i.name, subtext: i.category }));
 
-  // 3D Card Class - Darkened border
-  const cardClass = "bg-white rounded-3xl shadow-[0_15px_35px_-5px_rgba(0,0,0,0.1)] border border-slate-200 relative overflow-hidden backdrop-blur-md transition-all duration-300 hover:shadow-[0_20px_40px_-5px_rgba(0,0,0,0.12)] hover:-translate-y-1";
+  // 3D Card Class - Stronger Visibility
+  const cardClass = "bg-white rounded-3xl shadow-[0_15px_40px_-5px_rgba(0,0,0,0.1)] border-2 border-slate-200 relative overflow-hidden transition-all duration-300 hover:shadow-[0_20px_50px_-5px_rgba(0,0,0,0.15)] hover:border-slate-300";
   
   // 3D Input Class (Recessed look) - Added explicit border
-  const inputClass = "w-full rounded-2xl border border-slate-300 bg-slate-50/50 px-4 py-3.5 text-gray-900 shadow-[inset_0_2px_4px_rgba(0,0,0,0.06)] focus:ring-2 focus:ring-indigo-500 focus:bg-white focus:border-indigo-500 transition-all font-semibold placeholder:font-normal placeholder:text-slate-400";
-  const labelClass = "block text-xs font-bold uppercase tracking-widest text-slate-500 mb-2 ml-1";
-
-  // Helper for current date - DD/MM/YYYY
-  const getTodayDDMMYYYY = () => {
-      const d = new Date();
-      return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
-  }
+  const inputClass = "w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3.5 text-gray-900 shadow-inner focus:ring-2 focus:ring-indigo-500 focus:bg-white focus:border-indigo-500 transition-all font-bold placeholder:font-normal placeholder:text-slate-400";
+  const labelClass = "block text-xs font-black uppercase tracking-widest text-slate-500 mb-2 ml-1";
 
   return (
     <div className="max-w-6xl mx-auto pb-20">
@@ -161,7 +155,7 @@ const NewEntryForm: React.FC = () => {
       {/* 3D Floating Header */}
       <div className="mb-10 relative group">
          <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-[2rem] blur-xl opacity-40 transform group-hover:scale-[1.02] transition-transform duration-500"></div>
-         <div className="relative bg-gradient-to-r from-indigo-600 to-purple-600 rounded-[2rem] p-8 text-white shadow-2xl overflow-hidden border border-white/20">
+         <div className="relative bg-gradient-to-r from-indigo-700 to-purple-700 rounded-[2rem] p-8 text-white shadow-2xl overflow-hidden border border-white/20">
             <div className="absolute top-0 right-0 w-80 h-80 bg-white opacity-5 rounded-full -mr-20 -mt-20 blur-3xl"></div>
             <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
@@ -170,7 +164,7 @@ const NewEntryForm: React.FC = () => {
                 </div>
                 <div className="flex items-center bg-white/10 backdrop-blur-md rounded-2xl px-5 py-3 border border-white/20 shadow-inner">
                     <Calendar className="w-5 h-5 mr-3 text-indigo-100" />
-                    <span className="font-bold text-lg">{getTodayDDMMYYYY()}</span>
+                    <span className="font-bold text-lg">{new Date().toDateString()}</span>
                 </div>
             </div>
          </div>
@@ -215,16 +209,16 @@ const NewEntryForm: React.FC = () => {
                 
                 {/* 1. Client Card (3D) */}
                 <div className={cardClass}>
-                    <div className="px-8 py-6 bg-gradient-to-r from-blue-50 to-white border-b border-blue-200 flex items-center">
-                        <div className="p-3 bg-white rounded-2xl mr-4 shadow-md shadow-blue-100 border border-blue-100">
-                            <User className="w-6 h-6 text-blue-600" />
+                    <div className="px-8 py-6 bg-gradient-to-r from-blue-50 to-white border-b border-blue-100 flex items-center">
+                        <div className="p-3 bg-blue-100 text-blue-600 rounded-2xl mr-4 shadow-sm border border-blue-200">
+                            <User className="w-6 h-6" />
                         </div>
                         <div>
                             <h3 className="text-xl font-black text-slate-800">Client Details</h3>
                             <p className="text-sm text-blue-500 font-bold">Customer Information</p>
                         </div>
                     </div>
-                    <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-6 bg-gradient-to-b from-white to-blue-50/20">
                         <div className="col-span-full">
                             <SearchableSelect 
                                 label="Client Name"
@@ -293,16 +287,16 @@ const NewEntryForm: React.FC = () => {
 
                 {/* 2. Service Card (3D) */}
                 <div className={cardClass}>
-                    <div className="px-8 py-6 bg-gradient-to-r from-violet-50 to-white border-b border-violet-200 flex items-center">
-                        <div className="p-3 bg-white rounded-2xl mr-4 shadow-md shadow-violet-100 border border-violet-100">
-                            <Scissors className="w-6 h-6 text-violet-600" />
+                    <div className="px-8 py-6 bg-gradient-to-r from-violet-50 to-white border-b border-violet-100 flex items-center">
+                        <div className="p-3 bg-violet-100 text-violet-600 rounded-2xl mr-4 shadow-sm border border-violet-200">
+                            <Scissors className="w-6 h-6" />
                         </div>
                         <div>
                             <h3 className="text-xl font-black text-slate-800">Service Data</h3>
                             <p className="text-sm text-violet-500 font-bold">Work & Technician</p>
                         </div>
                     </div>
-                    <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-6 bg-gradient-to-b from-white to-violet-50/20">
                         <div>
                             <label className={labelClass}>Branch</label>
                             <div className="flex gap-4 p-1 bg-slate-100/50 rounded-2xl border border-slate-200">
@@ -411,15 +405,15 @@ const NewEntryForm: React.FC = () => {
 
             <div className="lg:col-span-4 space-y-8">
                 {/* 3. Payment Card (3D) */}
-                <div className={`${cardClass} sticky top-6 bg-gradient-to-br from-white to-emerald-50/30`}>
-                    <div className="px-8 py-6 bg-gradient-to-r from-emerald-50 to-white border-b border-emerald-200 flex items-center">
-                        <div className="p-3 bg-white rounded-2xl mr-4 shadow-md shadow-emerald-100 border border-emerald-100">
-                            <CreditCard className="w-6 h-6 text-emerald-600" />
+                <div className={`${cardClass} sticky top-6 bg-gradient-to-b from-white to-emerald-50/20`}>
+                    <div className="px-8 py-6 bg-gradient-to-r from-emerald-50 to-white border-b border-emerald-100 flex items-center">
+                        <div className="p-3 bg-emerald-100 text-emerald-600 rounded-2xl mr-4 shadow-sm border border-emerald-200">
+                            <CreditCard className="w-6 h-6" />
                         </div>
                         <h3 className="text-xl font-black text-slate-800">Payment</h3>
                     </div>
                      <div className="p-6 space-y-8">
-                         <div className="bg-white rounded-3xl p-8 border border-emerald-200 text-center shadow-[inset_0_2px_10px_rgba(0,0,0,0.03)]">
+                         <div className="bg-white rounded-3xl p-8 border border-emerald-200 text-center shadow-inner">
                             <label className="text-emerald-800 font-black text-xs uppercase tracking-widest mb-4 block">Total Payable Amount</label>
                             <div className="relative flex justify-center items-center">
                                 <span className="text-emerald-500 text-4xl font-black mr-2">₹</span>
@@ -454,7 +448,7 @@ const NewEntryForm: React.FC = () => {
                                             type="button"
                                             key={method}
                                             onClick={() => setFormData(prev => ({ ...prev, paymentMethod: method as any }))}
-                                            className={`py-4 px-2 text-sm font-black rounded-2xl border transition-all duration-200 shadow-md
+                                            className={`py-4 px-2 text-sm font-black rounded-2xl border transition-all duration-200 shadow-sm
                                                 ${isActive 
                                                     ? `${activeColors[method]} transform scale-105 shadow-lg` 
                                                     : 'bg-white text-slate-400 border-slate-300 hover:bg-slate-50 hover:text-slate-600'}`}

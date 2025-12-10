@@ -150,4 +150,4 @@ export const MOCK_PACKAGES: ServicePackage[] = [
     }
 ];
 
-export const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyGNGkyWvUQWoGxca7rqNCUXF9xGy9pIdqZXwRanhP0G_yjf-t4PHqOgCc1YmlB80DMSw/exec';
+export const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzN4oNNYW6afcg3CtQrzKy5mQl28LPb2X6XW8-J-pVw7lj_fgtmlLvrMVPA5RGwOq90ZQ/exec';

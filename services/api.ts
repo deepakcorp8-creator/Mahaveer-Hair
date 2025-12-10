@@ -29,15 +29,6 @@ let DATA_CACHE: {
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minute cache for entries/appts
 const OPTIONS_CACHE_DURATION = 15 * 60 * 1000; // 15 minutes for clients/items
 
-// --- DEDUPLICATION HELPERS ---
-// Create a unique signature for an entry based on its content
-const getEntrySignature = (e: Entry) => 
-    `${e.date}|${e.clientName?.trim().toLowerCase()}|${e.amount}|${e.serviceType}|${e.technician}`;
-
-// Create a unique signature for an appointment
-const getApptSignature = (a: Appointment) => 
-    `${a.date}|${a.clientName?.trim().toLowerCase()}|${a.contact}`;
-
 export const api = {
   // --- OPTION HELPERS (Clients, Technicians, Items) ---
   getOptions: async (forceRefresh = false) => {
@@ -166,16 +157,9 @@ export const api = {
     }
 
     // Merge with local new entries
-    // SMART DEDUPLICATION:
-    // If a local entry (temp id) matches a server entry (row id) by content,
-    // we assume the server has processed it and we hide the local one to avoid duplicates.
-    const serverSignatures = new Set(allEntries.map(e => getEntrySignature(e)));
-    const uniqueLocal = LOCAL_NEW_ENTRIES.filter(e => {
-        // Filter out if this local entry's signature already exists in the server data
-        return !serverSignatures.has(getEntrySignature(e));
-    });
+    const serverIds = new Set(allEntries.map(e => e.id));
+    const uniqueLocal = LOCAL_NEW_ENTRIES.filter(e => !serverIds.has(e.id));
     
-    // Put unique local items first, then server items
     return [...uniqueLocal, ...allEntries];
   },
 
@@ -230,11 +214,9 @@ export const api = {
         }
     }
 
-    // Merge Local Appointments with Deduplication
-    const serverSignatures = new Set(allAppts.map(a => getApptSignature(a)));
-    const uniqueLocal = LOCAL_NEW_APPOINTMENTS.filter(a => {
-        return !serverSignatures.has(getApptSignature(a));
-    });
+    // Merge Local Appointments
+    const serverIds = new Set(allAppts.map(a => a.id));
+    const uniqueLocal = LOCAL_NEW_APPOINTMENTS.filter(a => !serverIds.has(a.id));
     
     return [...uniqueLocal, ...allAppts];
   },
@@ -488,9 +470,16 @@ export const api = {
   },
 
   getDashboardStats: async (): Promise<DashboardStats> => {
-    const entries = await api.getEntries();
+    // Parallel fetch for better performance
+    const [entries, options] = await Promise.all([
+        api.getEntries(),
+        api.getOptions()
+    ]);
     
-    const totalClients = new Set(entries.map((e: any) => e.clientName)).size;
+    // UPDATED: Use the length of the Client Master list (total registered clients)
+    // instead of just unique clients found in transactions.
+    const totalClients = options.clients.length;
+    
     const totalAmount = entries.reduce((sum: number, e: any) => sum + Number(e.amount || 0), 0);
     const today = new Date().toISOString().split('T')[0];
     const newClientsToday = entries.filter((e: any) => e.date === today && e.serviceType === 'NEW').length;

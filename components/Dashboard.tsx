@@ -82,34 +82,19 @@ const Dashboard: React.FC = () => {
     return acc;
   }, []);
 
-  // 3D Card Style Helper - Updated border color
-  const card3D = "bg-white rounded-3xl shadow-[0_20px_50px_-12px_rgba(0,0,0,0.1)] border border-slate-200 backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_25px_50px_-12px_rgba(99,102,241,0.15)]";
+  // Updated 3D Card Style - Darker Borders & Stronger Shadows
+  const card3D = "bg-white rounded-2xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.08)] border border-slate-200 transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_20px_40px_-10px_rgba(0,0,0,0.15)]";
 
-  // Date Formatter for X-Axis (DD/MM/YYYY) - Strict Full Year
+  // Date Formatter for X-Axis (DD/MM/YY)
   const formatDateTick = (dateStr: string) => {
-      // Input dateStr is YYYY-MM-DD
-      const parts = dateStr.split('-');
-      if (parts.length === 3) {
-          // Return DD/MM/YYYY
-          return `${parts[2]}/${parts[1]}/${parts[0]}`;
+      try {
+          const date = new Date(dateStr);
+          // Format: 1/12/25 (Day/Month/Year)
+          return `${date.getDate()}/${date.getMonth() + 1}/${String(date.getFullYear()).slice(-2)}`;
+      } catch (e) {
+          return dateStr;
       }
-      return dateStr;
   };
-  
-  // Format full date for tooltip
-  const formatFullDate = (dateStr: string) => {
-      const parts = dateStr.split('-');
-      if (parts.length === 3) {
-          return `${parts[2]}/${parts[1]}/${parts[0]}`;
-      }
-      return dateStr;
-  }
-  
-  // Format today's date for header - DD/MM/YYYY
-  const getTodayDDMMYYYY = () => {
-      const d = new Date();
-      return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
-  }
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500 pb-10">
@@ -121,78 +106,96 @@ const Dashboard: React.FC = () => {
                 Dashboard
                 <Sparkles className="w-6 h-6 text-yellow-500 ml-3 animate-pulse" />
             </h2>
-            <p className="text-slate-500 mt-2 font-medium text-lg">Business Analytics & Overview</p>
+            <p className="text-slate-600 mt-2 font-semibold text-lg">Business Analytics & Overview</p>
         </div>
-        <div className="mt-4 md:mt-0 bg-white/80 backdrop-blur-md px-6 py-3 rounded-2xl shadow-lg border border-slate-200 text-indigo-700 text-sm font-bold flex items-center">
-          <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse mr-3"></div>
-          {getTodayDDMMYYYY()}
+        <div className="mt-4 md:mt-0 bg-white border-2 border-slate-100 px-6 py-3 rounded-2xl shadow-lg text-indigo-700 text-sm font-bold flex items-center">
+          <div className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse mr-3 shadow-[0_0_10px_rgba(34,197,94,0.6)]"></div>
+          {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
         </div>
       </div>
 
-      {/* KPI Cards - 3D Effect */}
+      {/* KPI Cards - High Contrast 3D Effect */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         
         {/* Total Clients */}
-        <div className={`${card3D} p-6 group relative overflow-hidden bg-gradient-to-br from-white to-blue-50`}>
-          <div className="absolute right-0 top-0 h-32 w-32 bg-blue-500/10 rounded-bl-[100px] -mr-8 -mt-8 transition-transform group-hover:scale-110"></div>
-          <div className="relative flex items-center justify-between mb-6">
-            <div className="p-4 bg-white shadow-lg shadow-blue-200 rounded-2xl text-blue-600 border border-blue-100">
-               <Users className="w-7 h-7" />
-            </div>
-            <span className="flex items-center text-emerald-600 text-xs font-bold bg-emerald-100/50 border border-emerald-300 px-3 py-1 rounded-full">
-                +12% <ArrowUpRight className="w-3 h-3 ml-1" />
-            </span>
+        <div className="relative bg-white rounded-3xl p-6 border-b-4 border-b-blue-500 shadow-[0_15px_30px_-5px_rgba(59,130,246,0.15)] transition-transform hover:-translate-y-2 group overflow-hidden border-x border-t border-slate-100">
+          <div className="absolute right-[-20px] top-[-20px] w-32 h-32 bg-blue-50 rounded-full blur-2xl group-hover:bg-blue-100 transition-colors"></div>
+          <div className="relative z-10 flex justify-between items-start">
+              <div>
+                  <p className="text-slate-500 text-xs font-black uppercase tracking-widest mb-2">Total Clients</p>
+                  <h3 className="text-4xl font-black text-slate-800">{stats?.totalClients}</h3>
+              </div>
+              <div className="p-3 bg-blue-100 text-blue-600 rounded-xl shadow-inner border border-blue-200">
+                  <Users className="w-7 h-7" />
+              </div>
           </div>
-          <div className="relative">
-            <p className="text-slate-500 text-xs font-bold uppercase tracking-widest">Total Clients</p>
-            <h3 className="text-4xl font-black text-slate-800 mt-2">{stats?.totalClients}</h3>
+          <div className="mt-4 flex items-center text-xs font-bold text-slate-400">
+              <span className="text-blue-600 bg-blue-50 px-2 py-1 rounded-md mr-2 flex items-center">
+                  <ArrowUpRight className="w-3 h-3 mr-1" /> Active
+              </span>
+              <span>Registered Clients</span>
           </div>
         </div>
 
         {/* Total Revenue - Dark Card */}
-        <div className="rounded-3xl p-6 relative overflow-hidden bg-gradient-to-br from-slate-900 to-slate-800 text-white shadow-[0_20px_50px_-12px_rgba(15,23,42,0.5)] transform hover:-translate-y-1 transition-all duration-300 hover:shadow-[0_25px_60px_-12px_rgba(15,23,42,0.6)] border border-slate-600">
+        <div className="relative rounded-3xl p-6 bg-slate-900 text-white shadow-[0_20px_40px_-10px_rgba(15,23,42,0.6)] border border-slate-700 transition-transform hover:-translate-y-2 overflow-hidden">
            {/* Abstract Glow */}
-          <div className="absolute top-0 right-0 w-[200px] h-[200px] bg-indigo-500/20 blur-[60px] rounded-full"></div>
+          <div className="absolute top-0 right-0 w-[150px] h-[150px] bg-emerald-500/20 blur-[50px] rounded-full animate-pulse"></div>
           
-          <div className="relative flex items-center justify-between mb-6">
-            <div className="p-4 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 shadow-inner">
-               <IndianRupee className="w-7 h-7 text-indigo-300" />
-            </div>
-             <span className="flex items-center text-emerald-300 text-xs font-bold bg-emerald-500/20 border border-emerald-500/30 px-3 py-1 rounded-full">
-                +5.4% <ArrowUpRight className="w-3 h-3 ml-1" />
-            </span>
+          <div className="relative z-10 flex justify-between items-start">
+             <div>
+                <p className="text-slate-400 text-xs font-black uppercase tracking-widest mb-2">Total Revenue</p>
+                <h3 className="text-4xl font-black tracking-tight text-white">₹{stats?.totalAmount.toLocaleString()}</h3>
+             </div>
+             <div className="p-3 bg-white/10 backdrop-blur-md rounded-xl border border-white/20 shadow-inner">
+                 <IndianRupee className="w-7 h-7 text-emerald-400" />
+             </div>
           </div>
-          <div className="relative">
-            <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">Total Revenue</p>
-            <h3 className="text-4xl font-black mt-2 tracking-tight">₹{stats?.totalAmount.toLocaleString()}</h3>
+           <div className="mt-4 flex items-center text-xs font-bold text-slate-400">
+              <span className="text-emerald-300 bg-emerald-500/20 border border-emerald-500/30 px-2 py-1 rounded-md mr-2 flex items-center">
+                  <ArrowUpRight className="w-3 h-3 mr-1" /> Verified
+              </span>
+              <span>Total Earnings</span>
           </div>
         </div>
 
         {/* New Clients */}
-        <div className={`${card3D} p-6 group relative overflow-hidden bg-gradient-to-br from-white to-purple-50`}>
-           <div className="absolute right-0 top-0 h-32 w-32 bg-purple-500/10 rounded-bl-[100px] -mr-8 -mt-8 transition-transform group-hover:scale-110"></div>
-          <div className="relative flex items-center justify-between mb-6">
-            <div className="p-4 bg-white shadow-lg shadow-purple-200 rounded-2xl text-purple-600 border border-purple-100">
-               <Activity className="w-7 h-7" />
-            </div>
+        <div className="relative bg-white rounded-3xl p-6 border-b-4 border-b-purple-500 shadow-[0_15px_30px_-5px_rgba(168,85,247,0.15)] transition-transform hover:-translate-y-2 group overflow-hidden border-x border-t border-slate-100">
+           <div className="absolute right-[-20px] top-[-20px] w-32 h-32 bg-purple-50 rounded-full blur-2xl group-hover:bg-purple-100 transition-colors"></div>
+          <div className="relative z-10 flex justify-between items-start">
+              <div>
+                  <p className="text-slate-500 text-xs font-black uppercase tracking-widest mb-2">New Clients Today</p>
+                  <h3 className="text-4xl font-black text-slate-800">{stats?.newClientsToday}</h3>
+              </div>
+              <div className="p-3 bg-purple-100 text-purple-600 rounded-xl shadow-inner border border-purple-200">
+                  <Activity className="w-7 h-7" />
+              </div>
           </div>
-          <div className="relative">
-            <p className="text-slate-500 text-xs font-bold uppercase tracking-widest">New Clients Today</p>
-            <h3 className="text-4xl font-black text-slate-800 mt-2">{stats?.newClientsToday}</h3>
+          <div className="mt-4 flex items-center text-xs font-bold text-slate-400">
+              <span className="text-purple-600 bg-purple-50 px-2 py-1 rounded-md mr-2 flex items-center">
+                  <ArrowUpRight className="w-3 h-3 mr-1" /> Growing
+              </span>
+              <span>Today's Acquisition</span>
           </div>
         </div>
 
         {/* Total Services */}
-        <div className={`${card3D} p-6 group relative overflow-hidden bg-gradient-to-br from-white to-orange-50`}>
-           <div className="absolute right-0 top-0 h-32 w-32 bg-orange-500/10 rounded-bl-[100px] -mr-8 -mt-8 transition-transform group-hover:scale-110"></div>
-          <div className="relative flex items-center justify-between mb-6">
-            <div className="p-4 bg-white shadow-lg shadow-orange-200 rounded-2xl text-orange-600 border border-orange-100">
-               <ShoppingBag className="w-7 h-7" />
-            </div>
+        <div className="relative bg-white rounded-3xl p-6 border-b-4 border-b-orange-500 shadow-[0_15px_30px_-5px_rgba(249,115,22,0.15)] transition-transform hover:-translate-y-2 group overflow-hidden border-x border-t border-slate-100">
+           <div className="absolute right-[-20px] top-[-20px] w-32 h-32 bg-orange-50 rounded-full blur-2xl group-hover:bg-orange-100 transition-colors"></div>
+          <div className="relative z-10 flex justify-between items-start">
+              <div>
+                  <p className="text-slate-500 text-xs font-black uppercase tracking-widest mb-2">Total Services</p>
+                  <h3 className="text-4xl font-black text-slate-800">{stats?.serviceCount}</h3>
+              </div>
+              <div className="p-3 bg-orange-100 text-orange-600 rounded-xl shadow-inner border border-orange-200">
+                  <ShoppingBag className="w-7 h-7" />
+              </div>
           </div>
-          <div className="relative">
-            <p className="text-slate-500 text-xs font-bold uppercase tracking-widest">Total Services</p>
-            <h3 className="text-4xl font-black text-slate-800 mt-2">{stats?.serviceCount}</h3>
+          <div className="mt-4 flex items-center text-xs font-bold text-slate-400">
+              <span className="text-orange-600 bg-orange-50 px-2 py-1 rounded-md mr-2 flex items-center">
+                  <ArrowUpRight className="w-3 h-3 mr-1" /> Volume
+              </span>
+              <span>Services Performed</span>
           </div>
         </div>
       </div>
@@ -200,30 +203,30 @@ const Dashboard: React.FC = () => {
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Revenue Chart */}
-        <div className={`${card3D} lg:col-span-2 p-8`}>
+        <div className={`${card3D} lg:col-span-2 p-8 border-t-4 border-t-indigo-500`}>
           <div className="flex justify-between items-center mb-8">
               <div>
                   <h3 className="text-xl font-bold text-slate-800 flex items-center">
-                    <TrendingUp className="w-5 h-5 mr-2 text-indigo-500" />
+                    <TrendingUp className="w-6 h-6 mr-2 text-indigo-600" />
                     Revenue Analytics
                   </h3>
-                  <p className="text-slate-400 text-sm font-medium">Income trends over time</p>
+                  <p className="text-slate-500 text-sm font-medium">Income trends over time</p>
               </div>
-              <span className="text-xs font-bold text-indigo-500 bg-indigo-50 px-3 py-1.5 rounded-xl border border-indigo-200">Recent Trend</span>
+              <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-xl border border-indigo-200 shadow-sm">Recent Trend</span>
           </div>
           <div className="h-[350px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
                 <defs>
                   <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3}/>
+                    <stop offset="5%" stopColor="#6366f1" stopOpacity={0.4}/>
                     <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                 <XAxis 
                     dataKey="date" 
-                    tick={{fontSize: 11, fill: '#64748b', fontWeight: 600}} 
+                    tick={{fontSize: 11, fill: '#475569', fontWeight: 700}} 
                     axisLine={false} 
                     tickLine={false} 
                     dy={10} 
@@ -231,20 +234,20 @@ const Dashboard: React.FC = () => {
                     interval="preserveStartEnd"
                 />
                 <YAxis 
-                    tick={{fontSize: 12, fill: '#64748b', fontWeight: 600}} 
+                    tick={{fontSize: 12, fill: '#475569', fontWeight: 700}} 
                     axisLine={false} 
                     tickLine={false} 
                     dx={-10} 
                 />
                 <RechartsTooltip 
-                    contentStyle={{ borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 10px 40px -10px rgba(0,0,0,0.1)', background: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(10px)' }}
-                    labelFormatter={(label) => formatFullDate(String(label))}
+                    contentStyle={{ borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 10px 40px -10px rgba(0,0,0,0.1)', background: 'rgba(255, 255, 255, 0.95)', fontWeight: 'bold' }}
+                    labelFormatter={(label) => new Date(label).toLocaleDateString()}
                     formatter={(value) => [`₹${Number(value).toLocaleString()}`, 'Revenue']}
                 />
                 <Area 
                     type="monotone" 
                     dataKey="amount" 
-                    stroke="#6366f1" 
+                    stroke="#4f46e5" 
                     strokeWidth={4} 
                     fillOpacity={1} 
                     fill="url(#colorAmount)" 
@@ -256,9 +259,9 @@ const Dashboard: React.FC = () => {
         </div>
 
         {/* Service Type Distribution */}
-        <div className={`${card3D} p-8`}>
+        <div className={`${card3D} p-8 border-t-4 border-t-purple-500`}>
           <h3 className="text-xl font-bold text-slate-800 mb-2">Service Mix</h3>
-          <p className="text-slate-400 text-sm font-medium mb-6">Distribution by Category</p>
+          <p className="text-slate-500 text-sm font-medium mb-6">Distribution by Category</p>
           <div className="h-[280px]">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
@@ -276,30 +279,30 @@ const Dashboard: React.FC = () => {
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} strokeWidth={0} />
                   ))}
                 </Pie>
-                <RechartsTooltip contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 10px 30px rgba(0,0,0,0.1)' }}/>
+                <RechartsTooltip contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 10px 30px rgba(0,0,0,0.1)', fontWeight: 'bold' }}/>
                 <Legend verticalAlign="bottom" height={36} iconType="circle" />
               </PieChart>
             </ResponsiveContainer>
           </div>
-           <div className="mt-4 p-4 bg-slate-50 rounded-2xl border border-slate-200 text-center">
-              <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">Top Performing Service</p>
-              <p className="text-lg font-black text-slate-800">{serviceTypeData.sort((a,b) => b.value - a.value)[0]?.name || 'N/A'}</p>
+           <div className="mt-4 p-4 bg-slate-50 rounded-2xl border border-slate-200 text-center shadow-inner">
+              <p className="text-xs text-slate-500 font-bold uppercase tracking-wider mb-1">Top Performing Service</p>
+              <p className="text-xl font-black text-slate-800">{serviceTypeData.sort((a,b) => b.value - a.value)[0]?.name || 'N/A'}</p>
           </div>
         </div>
       </div>
 
       {/* Technician Table - 3D Container */}
-      <div className={`${card3D} overflow-hidden p-0`}>
+      <div className={`${card3D} overflow-hidden p-0 border-none`}>
         <div className="px-8 py-6 border-b border-slate-200 flex justify-between items-center bg-gradient-to-r from-white to-slate-50">
           <div>
               <h3 className="text-xl font-bold text-slate-800">Technician Performance</h3>
-              <p className="text-slate-400 text-sm font-medium">Efficiency & Revenue Contribution</p>
+              <p className="text-slate-500 text-sm font-medium">Efficiency & Revenue Contribution</p>
           </div>
-          <button className="text-sm bg-white border border-slate-300 shadow-sm text-indigo-600 font-bold py-2 px-4 rounded-xl hover:bg-indigo-50 transition-colors">View Full Report</button>
+          <button className="text-sm bg-white border border-slate-300 shadow-sm text-indigo-700 font-bold py-2.5 px-5 rounded-xl hover:bg-indigo-50 transition-colors">View Full Report</button>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm text-slate-600">
-            <thead className="bg-slate-50/50 text-slate-500 uppercase font-bold text-xs border-b border-slate-200">
+            <thead className="bg-slate-50/50 text-slate-600 uppercase font-bold text-xs border-b border-slate-200">
               <tr>
                 <th className="px-8 py-5">Technician</th>
                 <th className="px-8 py-5 text-right">Clients Served</th>
@@ -312,17 +315,17 @@ const Dashboard: React.FC = () => {
                 <tr key={idx} className="hover:bg-slate-50/80 transition-colors group">
                   <td className="px-8 py-5">
                       <div className="flex items-center">
-                          <div className="h-10 w-10 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-xs font-bold text-white mr-4 shadow-md shadow-indigo-200">
+                          <div className="h-10 w-10 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-xs font-bold text-white mr-4 shadow-lg shadow-indigo-200 border border-indigo-400">
                               {tech.name.charAt(0)}
                           </div>
                           <span className="font-bold text-slate-800 text-base">{tech.name}</span>
                       </div>
                   </td>
-                  <td className="px-8 py-5 text-right font-bold text-slate-600">{tech.clients}</td>
+                  <td className="px-8 py-5 text-right font-bold text-slate-700">{tech.clients}</td>
                   <td className="px-8 py-5 text-right">
                       <div className="flex items-center justify-end">
                           <div className="w-32 h-2.5 bg-slate-100 rounded-full overflow-hidden mr-2 shadow-inner border border-slate-200">
-                              <div className="h-full bg-gradient-to-r from-green-400 to-emerald-500 rounded-full shadow-sm" style={{ width: `${Math.min(tech.clients * 10, 100)}%` }}></div>
+                              <div className="h-full bg-gradient-to-r from-green-400 to-emerald-600 rounded-full shadow-sm" style={{ width: `${Math.min(tech.clients * 10, 100)}%` }}></div>
                           </div>
                       </div>
                   </td>
