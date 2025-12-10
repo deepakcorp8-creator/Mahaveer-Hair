@@ -415,6 +415,15 @@ function createInvoicePDF(data) {
   } catch(e) {
      return "Error: Could not access folder. Please run requestPermissions() in editor. " + e.message;
   }
+  
+  // Format Date to DD/MM/YYYY
+  var formattedDate = data.date;
+  if (data.date && data.date.indexOf('-') > -1) {
+    var parts = data.date.split('-');
+    if (parts.length === 3) {
+      formattedDate = parts[2] + '/' + parts[1] + '/' + parts[0];
+    }
+  }
 
   // Generate Invoice Number
   var invoiceNo = "INV-" + new Date().getFullYear() + "-" + Math.floor(Math.random() * 10000);
@@ -436,7 +445,7 @@ function createInvoicePDF(data) {
         // Meta Info
         "<div style='display: flex; justify-content: space-between; background: #f9fafb; padding: 10px; border-radius: 6px; font-size: 12px; margin-bottom: 20px;'>" +
            "<div><strong>Invoice No:</strong> " + invoiceNo + "</div>" +
-           "<div><strong>Date:</strong> " + data.date + "</div>" +
+           "<div><strong>Date:</strong> " + formattedDate + "</div>" +
            "<div><strong>Branch:</strong> " + data.branch + "</div>" +
         "</div>" +
 
@@ -483,7 +492,7 @@ function createInvoicePDF(data) {
 
   // Create Blob and File
   var blob = Utilities.newBlob(html, MimeType.HTML).getAs(MimeType.PDF);
-  blob.setName("INV_" + data.clientName + "_" + data.date + ".pdf");
+  blob.setName("INV_" + data.clientName + "_" + formattedDate.replace(/\//g,'-') + ".pdf");
   
   var file = folder.createFile(blob);
   file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);

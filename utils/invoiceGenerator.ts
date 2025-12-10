@@ -8,6 +8,17 @@ export const generateInvoice = (entry: Entry) => {
     return;
   }
 
+  // Helper to format date as DD/MM/YYYY
+  const formatDate = (dateStr: string) => {
+      if (!dateStr) return '';
+      // Assuming ISO input YYYY-MM-DD
+      const parts = dateStr.split('-');
+      if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+      return dateStr;
+  };
+
+  const displayDate = formatDate(entry.date);
+
   // Logo URL
   const LOGO_URL = "https://i.ibb.co/hhB5D9r/MAHAVEER-Logo-1920x1080-1.png";
 
@@ -282,7 +293,7 @@ export const generateInvoice = (entry: Entry) => {
         <!-- Meta Bar -->
         <div class="invoice-meta">
             <div class="meta-item"><strong>Invoice No:</strong> ${invoiceNumber}</div>
-            <div class="meta-item"><strong>Date:</strong> ${entry.date}</div>
+            <div class="meta-item"><strong>Date:</strong> ${displayDate}</div>
             <div class="meta-item"><strong>Branch:</strong> ${entry.branch}</div>
         </div>
 

@@ -85,16 +85,31 @@ const Dashboard: React.FC = () => {
   // 3D Card Style Helper - Updated border color
   const card3D = "bg-white rounded-3xl shadow-[0_20px_50px_-12px_rgba(0,0,0,0.1)] border border-slate-200 backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_25px_50px_-12px_rgba(99,102,241,0.15)]";
 
-  // Date Formatter for X-Axis (DD/MM/YY)
+  // Date Formatter for X-Axis (DD/MM/YYYY)
   const formatDateTick = (dateStr: string) => {
-      try {
-          const date = new Date(dateStr);
-          // Format: 1/12/25 (Day/Month/Year)
-          return `${date.getDate()}/${date.getMonth() + 1}/${String(date.getFullYear()).slice(-2)}`;
-      } catch (e) {
-          return dateStr;
+      // Input dateStr is YYYY-MM-DD
+      const parts = dateStr.split('-');
+      if (parts.length === 3) {
+          // Return DD/MM/YY for chart compactness
+          return `${parts[2]}/${parts[1]}/${parts[0].slice(2)}`;
       }
+      return dateStr;
   };
+  
+  // Format full date for tooltip
+  const formatFullDate = (dateStr: string) => {
+      const parts = dateStr.split('-');
+      if (parts.length === 3) {
+          return `${parts[2]}/${parts[1]}/${parts[0]}`;
+      }
+      return dateStr;
+  }
+  
+  // Format today's date for header
+  const getTodayDDMMYYYY = () => {
+      const d = new Date();
+      return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
+  }
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500 pb-10">
@@ -110,7 +125,7 @@ const Dashboard: React.FC = () => {
         </div>
         <div className="mt-4 md:mt-0 bg-white/80 backdrop-blur-md px-6 py-3 rounded-2xl shadow-lg border border-slate-200 text-indigo-700 text-sm font-bold flex items-center">
           <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse mr-3"></div>
-          {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+          {getTodayDDMMYYYY()}
         </div>
       </div>
 
@@ -223,7 +238,7 @@ const Dashboard: React.FC = () => {
                 />
                 <RechartsTooltip 
                     contentStyle={{ borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 10px 40px -10px rgba(0,0,0,0.1)', background: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(10px)' }}
-                    labelFormatter={(label) => new Date(label).toLocaleDateString()}
+                    labelFormatter={(label) => formatFullDate(String(label))}
                     formatter={(value) => [`₹${Number(value).toLocaleString()}`, 'Revenue']}
                 />
                 <Area 

@@ -149,6 +149,12 @@ const NewEntryForm: React.FC = () => {
   const inputClass = "w-full rounded-2xl border border-slate-300 bg-slate-50/50 px-4 py-3.5 text-gray-900 shadow-[inset_0_2px_4px_rgba(0,0,0,0.06)] focus:ring-2 focus:ring-indigo-500 focus:bg-white focus:border-indigo-500 transition-all font-semibold placeholder:font-normal placeholder:text-slate-400";
   const labelClass = "block text-xs font-bold uppercase tracking-widest text-slate-500 mb-2 ml-1";
 
+  // Helper for current date
+  const getTodayDDMMYYYY = () => {
+      const d = new Date();
+      return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
+  }
+
   return (
     <div className="max-w-6xl mx-auto pb-20">
       
@@ -164,7 +170,7 @@ const NewEntryForm: React.FC = () => {
                 </div>
                 <div className="flex items-center bg-white/10 backdrop-blur-md rounded-2xl px-5 py-3 border border-white/20 shadow-inner">
                     <Calendar className="w-5 h-5 mr-3 text-indigo-100" />
-                    <span className="font-bold text-lg">{new Date().toDateString()}</span>
+                    <span className="font-bold text-lg">{getTodayDDMMYYYY()}</span>
                 </div>
             </div>
          </div>

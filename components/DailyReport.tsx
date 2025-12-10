@@ -52,6 +52,14 @@ const DailyReport: React.FC = () => {
     PENDING: dailyEntries.filter(e => e.paymentMethod === 'PENDING').reduce((s, e) => s + Number(e.amount), 0),
   };
 
+  // Date formatter helper
+  const formatDateDDMMYYYY = (isoDate: string) => {
+    if(!isoDate) return '';
+    const parts = isoDate.split('-');
+    if(parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    return isoDate;
+  };
+
   const card3D = "bg-white rounded-2xl shadow-[0_10px_30px_-10px_rgba(0,0,0,0.1)] border border-slate-200 p-5 transition-transform duration-300 hover:-translate-y-1 hover:shadow-xl";
 
   return (
@@ -66,7 +74,7 @@ const DailyReport: React.FC = () => {
                    <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
                </button>
            </div>
-           <p className="text-slate-500 font-medium mt-1">Transactions for {new Date(selectedDate).toDateString()}</p>
+           <p className="text-slate-500 font-medium mt-1">Transactions for {formatDateDDMMYYYY(selectedDate)}</p>
         </div>
         <div className="mt-4 md:mt-0 flex items-center bg-slate-50 border border-slate-300 rounded-xl p-1.5 shadow-inner">
             <div className="px-3 py-2 text-indigo-500">
@@ -234,7 +242,7 @@ const DailyReport: React.FC = () => {
                              <tr key={idx} className="hover:bg-slate-50 transition-colors group">
                                  <td className="px-6 py-5">
                                      <div className="font-bold text-slate-800 text-base">{entry.clientName}</div>
-                                     <div className="text-xs font-medium text-slate-400 mt-1">{entry.date}</div>
+                                     <div className="text-xs font-medium text-slate-400 mt-1">{formatDateDDMMYYYY(entry.date)}</div>
                                  </td>
                                  <td className="px-6 py-5">
                                      <div className="font-medium text-slate-700">{entry.contactNo}</div>

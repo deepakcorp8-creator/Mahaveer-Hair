@@ -72,6 +72,20 @@ const ClientHistory: React.FC = () => {
           }, 100);
       }
   };
+  
+  // Strict DD/MM/YYYY formatting helper
+  const formatDateDDMMYYYY = (isoDate: string) => {
+    if(!isoDate) return '';
+    const parts = isoDate.split('-');
+    if(parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    return isoDate;
+  };
+  
+  const getDayName = (isoDate: string) => {
+      try {
+          return new Date(isoDate).toLocaleDateString('en-US', { weekday: 'short' });
+      } catch (e) { return ''; }
+  }
 
   return (
     <div className="flex flex-col space-y-4 animate-in fade-in duration-500 pb-20">
@@ -202,8 +216,8 @@ const ClientHistory: React.FC = () => {
                          filteredData.map((entry, idx) => (
                              <tr key={idx} className="hover:bg-slate-50 transition-colors group">
                                  <td className="px-6 py-5 whitespace-nowrap">
-                                     <div className="font-bold text-slate-800">{new Date(entry.date).toLocaleDateString('en-GB')}</div>
-                                     <div className="text-[10px] font-bold text-slate-400 uppercase">{new Date(entry.date).toLocaleDateString('en-US', { weekday: 'short' })}</div>
+                                     <div className="font-bold text-slate-800">{formatDateDDMMYYYY(entry.date)}</div>
+                                     <div className="text-[10px] font-bold text-slate-400 uppercase">{getDayName(entry.date)}</div>
                                  </td>
                                  <td className="px-6 py-5">
                                      <div className="font-black text-slate-800 text-base">{entry.clientName}</div>
