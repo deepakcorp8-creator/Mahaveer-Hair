@@ -66,10 +66,10 @@ const NewEntryForm: React.FC = () => {
     setTechnicians(options.technicians);
     setItems(options.items);
     
-    // Identify clients with ACTIVE packages
+    // Identify clients with ACTIVE or APPROVED packages
     const activeNames = new Set(
         packages
-            .filter(p => p.status === 'ACTIVE')
+            .filter(p => p.status === 'ACTIVE' || p.status === 'APPROVED')
             .map(p => p.clientName.trim().toLowerCase())
     );
     setActivePackageClients(activeNames);
@@ -98,6 +98,8 @@ const NewEntryForm: React.FC = () => {
     // 1. Try to find client details in Master List
     const client = clients.find(c => c.name.toLowerCase() === clientName.toLowerCase());
     
+    let contactToUse = '';
+
     if (client) {
       setFormData(prev => ({
         ...prev,
@@ -105,19 +107,20 @@ const NewEntryForm: React.FC = () => {
         contactNo: client.contact,
         address: client.address
       }));
+      contactToUse = client.contact;
     }
 
     // 2. Check for Package (Always check, even if not in master list)
     // Use the name found in master list if available, otherwise use typed name
     const nameToCheck = client ? client.name : clientName;
-    checkPackage(nameToCheck);
+    checkPackage(nameToCheck, contactToUse);
   };
   
-  const checkPackage = async (name: string) => {
+  const checkPackage = async (name: string, contact?: string) => {
      if (!name) return;
      setCheckingPackage(true);
      try {
-        const pkgStatus = await api.checkClientPackage(name);
+        const pkgStatus = await api.checkClientPackage(name, contact);
         if (pkgStatus && !pkgStatus.isExpired) {
             setActivePackage(pkgStatus);
             setFormData(prev => ({ 
@@ -191,8 +194,11 @@ const NewEntryForm: React.FC = () => {
 
       setLoading(true);
       try {
+          // Sanitise amount: Ensure it is a number (handle empty string case)
+          const safeAmount = (editingEntry.amount as any) === '' ? 0 : Number(editingEntry.amount);
+          
           // If amount is > 0 and method was pending, assume it's collected now
-          const updatedEntry = { ...editingEntry };
+          const updatedEntry = { ...editingEntry, amount: safeAmount };
           if (updatedEntry.amount > 0 && updatedEntry.paymentMethod === 'PENDING') {
              // Keep user selected method or default to CASH if they didn't change it from PENDING?
              // Actually, the UI allows them to change it.
@@ -712,7 +718,8 @@ const NewEntryForm: React.FC = () => {
                           <input 
                               type="number"
                               value={editingEntry.amount}
-                              onChange={e => setEditingEntry({...editingEntry, amount: Number(e.target.value)})}
+                              onChange={e => setEditingEntry({...editingEntry, amount: e.target.value as any})}
+                              onFocus={(e) => (editingEntry.amount === 0 || (editingEntry.amount as any) === '0') && setEditingEntry({...editingEntry, amount: '' as any})}
                               className="w-full rounded-xl border-emerald-200 border-2 bg-emerald-50/50 px-4 py-4 text-2xl font-black text-emerald-800 focus:ring-2 focus:ring-emerald-500 outline-none"
                               autoFocus={editingEntry.amount === 0}
                           />

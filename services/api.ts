@@ -391,15 +391,23 @@ export const api = {
       return true;
   },
 
-  checkClientPackage: async (clientName: string) => {
-      if (!clientName) return null;
-      const normalizedName = clientName.trim().toLowerCase();
+  checkClientPackage: async (clientName: string, contactNo?: string) => {
+      if (!clientName && !contactNo) return null;
+      const normalizedName = clientName ? clientName.trim().toLowerCase() : '';
+      const normalizedContact = contactNo ? String(contactNo).trim() : '';
 
       // 1. Fetch latest packages (Use Cache!)
       const packages = await api.getPackages();
       
-      // 2. Find active package
-      const pkg = packages.find((p: any) => p.clientName.trim().toLowerCase() === normalizedName && p.status === 'ACTIVE');
+      // 2. Find active package - CHECK BOTH ACTIVE AND APPROVED STATUS
+      const pkg = packages.find((p: any) => {
+          const isActive = p.status === 'ACTIVE' || p.status === 'APPROVED';
+          const nameMatch = p.clientName.trim().toLowerCase() === normalizedName;
+          // Fallback: Check contact if name fails but contact is provided
+          const contactMatch = normalizedContact && String(p.contact || '').trim() === normalizedContact;
+          
+          return isActive && (nameMatch || contactMatch);
+      });
       
       if (!pkg) return null;
 
@@ -413,8 +421,15 @@ export const api = {
           const entryDate = new Date(e.date);
           entryDate.setHours(0,0,0,0);
           
+          // Match entry to package (by name mostly)
+          const entryName = e.clientName.trim().toLowerCase();
+          const entryContact = String(e.contactNo || '').trim();
+          
+          const isMatch = entryName === pkg.clientName.trim().toLowerCase() || 
+                          (entryContact && entryContact === String(pkg.contact).trim());
+
           return (
-             e.clientName.trim().toLowerCase() === normalizedName && 
+             isMatch &&
              entryDate >= pkgStartDate &&
              (e.serviceType === 'SERVICE') && 
              (e.workStatus === 'DONE' || e.workStatus === 'PENDING_APPROVAL')
