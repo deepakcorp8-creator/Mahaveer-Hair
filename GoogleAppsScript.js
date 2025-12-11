@@ -174,6 +174,29 @@ function doPost(e) {
     }
   }
 
+  // NEW: Update entire row
+  if (action == 'editEntry') {
+    const sheet = ss.getSheetByName("DATA BASE");
+    if (!sheet) return response({error: "Sheet 'DATA BASE' not found"});
+
+    try {
+        const rowId = parseInt(data.id.split('_')[1]);
+        if (isNaN(rowId)) return response({error: "Invalid Row ID"});
+        
+        // Update Columns
+        // A=1 (date), E=5 (branch), F=6 (type), G=7 (method), H=8 (technician), J=10 (amount), K=11 (paymentMethod), L=12 (remark)
+        sheet.getRange(rowId, 8).setValue(data.technician);
+        sheet.getRange(rowId, 6).setValue(data.serviceType);
+        sheet.getRange(rowId, 10).setValue(data.amount);
+        sheet.getRange(rowId, 11).setValue(data.paymentMethod);
+        sheet.getRange(rowId, 12).setValue(data.remark);
+        
+        return response({status: "success"});
+    } catch(e) {
+        return response({error: "Failed to update entry"});
+    }
+  }
+
   if (action == 'addClient') {
       const sheet = ss.getSheetByName("CLIENT MASTER");
       if (sheet) {

@@ -1,10 +1,12 @@
+
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { ChevronDown, Check, X, Search } from 'lucide-react';
+import { ChevronDown, Check, X, Search, Crown } from 'lucide-react';
 
 interface Option {
   label: string;
   value: string;
   subtext?: string;
+  isHighlight?: boolean; // NEW PROP
 }
 
 interface SearchableSelectProps {
@@ -45,15 +47,23 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
     // Always return options to allow browsing, filtered if typed
     if (!options) return [];
     
-    return options.filter(opt => {
+    // Split into high priority (highlighted) and normal
+    let result = options.filter(opt => {
       const labelSafe = String(opt.label || '').toLowerCase();
       const subtextSafe = String(opt.subtext || '').toLowerCase();
       
-      // If input is empty, show all (or limit to top 50 for perf)
       if (!searchTerm) return true;
-      
       return labelSafe.includes(searchTerm) || subtextSafe.includes(searchTerm);
-    }).slice(0, 50); // Performance limit
+    });
+
+    // Sort: Highlighted first
+    result.sort((a, b) => {
+        if (a.isHighlight && !b.isHighlight) return -1;
+        if (!a.isHighlight && b.isHighlight) return 1;
+        return 0;
+    });
+
+    return result.slice(0, 50); // Performance limit
   }, [options, value]);
 
   const handleSelect = (optValue: string) => {
@@ -135,12 +145,24 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
                             className={`px-3 py-2.5 text-sm cursor-pointer rounded-lg flex items-center justify-between transition-colors mb-0.5
                                 ${opt.value === value 
                                     ? 'bg-indigo-50 text-indigo-700 font-bold border border-indigo-100' 
-                                    : 'text-gray-700 hover:bg-gray-50 border border-transparent'}`}
+                                    : 'text-gray-700 hover:bg-gray-50 border border-transparent'}
+                                ${opt.isHighlight ? 'bg-amber-50 hover:bg-amber-100 border-amber-100' : ''}
+                            `}
                             onClick={() => handleSelect(opt.label)}
                         >
-                            <div className="flex flex-col overflow-hidden">
-                                <span className="truncate">{opt.label}</span>
-                                {opt.subtext && <span className="text-[10px] text-gray-400 font-medium truncate">{opt.subtext}</span>}
+                            <div className="flex items-center gap-3 overflow-hidden">
+                                {opt.isHighlight && (
+                                    <div className="bg-gradient-to-br from-amber-300 to-amber-500 text-white p-1 rounded-md shadow-sm">
+                                        <Crown className="w-3.5 h-3.5" />
+                                    </div>
+                                )}
+                                <div className="flex flex-col overflow-hidden">
+                                    <span className="truncate flex items-center gap-2">
+                                        {opt.label}
+                                        {opt.isHighlight && <span className="text-[9px] font-black uppercase tracking-wider text-amber-600 bg-amber-100 px-1.5 py-0.5 rounded border border-amber-200">Package</span>}
+                                    </span>
+                                    {opt.subtext && <span className="text-[10px] text-gray-400 font-medium truncate">{opt.subtext}</span>}
+                                </div>
                             </div>
                             {opt.value === value && <Check className="w-4 h-4 text-indigo-600 flex-shrink-0" />}
                         </div>

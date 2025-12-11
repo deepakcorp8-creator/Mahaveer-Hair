@@ -2,16 +2,26 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { Client, Item, Technician, Entry, ServicePackage } from '../types';
-import { Save, AlertCircle, User, CreditCard, Scissors, Calendar, MapPin, RefreshCw, CheckCircle2, Ticket, FileDown, ShieldCheck } from 'lucide-react';
+import { Save, AlertCircle, User, CreditCard, Scissors, Calendar, MapPin, RefreshCw, CheckCircle2, Ticket, FileDown, ShieldCheck, Search, PenSquare, Wallet, X, Clock, AlertTriangle, Loader2 } from 'lucide-react';
 import { SearchableSelect } from './SearchableSelect';
 import { generateInvoice } from '../utils/invoiceGenerator';
 
 const NewEntryForm: React.FC = () => {
   const [loading, setLoading] = useState(false);
+  const [checkingPackage, setCheckingPackage] = useState(false);
   const [clients, setClients] = useState<Client[]>([]);
   const [technicians, setTechnicians] = useState<Technician[]>([]);
   const [items, setItems] = useState<Item[]>([]);
+  const [todayEntries, setTodayEntries] = useState<Entry[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
   
+  // NEW: Store names of clients who have active packages
+  const [activePackageClients, setActivePackageClients] = useState<Set<string>>(new Set());
+  
+  // Edit Modal State
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingEntry, setEditingEntry] = useState<Entry | null>(null);
+
   const [activePackage, setActivePackage] = useState<{
       package: ServicePackage,
       currentServiceNumber: number,
@@ -42,14 +52,37 @@ const NewEntryForm: React.FC = () => {
   const [lastSubmittedEntry, setLastSubmittedEntry] = useState<Entry | null>(null);
 
   useEffect(() => {
-    const init = async () => {
-      const options = await api.getOptions();
-      setClients(options.clients);
-      setTechnicians(options.technicians);
-      setItems(options.items);
-    };
     init();
   }, []);
+
+  const init = async () => {
+    // Parallel fetch for speed
+    const [options, packages] = await Promise.all([
+        api.getOptions(),
+        api.getPackages()
+    ]);
+
+    setClients(options.clients);
+    setTechnicians(options.technicians);
+    setItems(options.items);
+    
+    // Identify clients with ACTIVE packages
+    const activeNames = new Set(
+        packages
+            .filter(p => p.status === 'ACTIVE')
+            .map(p => p.clientName.trim().toLowerCase())
+    );
+    setActivePackageClients(activeNames);
+
+    loadTodayEntries();
+  };
+
+  const loadTodayEntries = async () => {
+      const allEntries = await api.getEntries(true); // Force refresh
+      const today = new Date().toISOString().split('T')[0];
+      const todays = allEntries.filter(e => e.date === today);
+      setTodayEntries(todays);
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -62,20 +95,27 @@ const NewEntryForm: React.FC = () => {
 
     if (!clientName) return;
 
+    // 1. Try to find client details in Master List
     const client = clients.find(c => c.name.toLowerCase() === clientName.toLowerCase());
     
     if (client) {
       setFormData(prev => ({
         ...prev,
-        clientName: clientName, 
+        clientName: client.name, // Use exact casing from master
         contactNo: client.contact,
         address: client.address
       }));
-      checkPackage(client.name);
-    } 
+    }
+
+    // 2. Check for Package (Always check, even if not in master list)
+    // Use the name found in master list if available, otherwise use typed name
+    const nameToCheck = client ? client.name : clientName;
+    checkPackage(nameToCheck);
   };
   
   const checkPackage = async (name: string) => {
+     if (!name) return;
+     setCheckingPackage(true);
      try {
         const pkgStatus = await api.checkClientPackage(name);
         if (pkgStatus && !pkgStatus.isExpired) {
@@ -94,13 +134,13 @@ const NewEntryForm: React.FC = () => {
         }
     } catch (e) {
         console.error("Error checking package", e);
+    } finally {
+        setCheckingPackage(false);
     }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // SAFETY CHECK: Prevent double submission
     if (loading) return;
 
     setLoading(true);
@@ -127,8 +167,8 @@ const NewEntryForm: React.FC = () => {
           date: formData.date 
       });
       setActivePackage(null);
+      await loadTodayEntries(); // Refresh the list
       
-      // Scroll to top of the MAIN container, not window
       document.querySelector('main')?.scrollTo({ top: 0, behavior: 'smooth' });
       
       setTimeout(() => setNotification(null), 8000);
@@ -139,15 +179,50 @@ const NewEntryForm: React.FC = () => {
     }
   };
 
+  // --- EDIT / COMPLETE PAYMENT LOGIC ---
+  const openEditModal = (entry: Entry) => {
+      setEditingEntry(entry);
+      setIsEditModalOpen(true);
+  };
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!editingEntry) return;
+
+      setLoading(true);
+      try {
+          // If amount is > 0 and method was pending, assume it's collected now
+          const updatedEntry = { ...editingEntry };
+          if (updatedEntry.amount > 0 && updatedEntry.paymentMethod === 'PENDING') {
+             // Keep user selected method or default to CASH if they didn't change it from PENDING?
+             // Actually, the UI allows them to change it.
+          }
+
+          await api.updateEntry(updatedEntry);
+          setIsEditModalOpen(false);
+          setEditingEntry(null);
+          await loadTodayEntries();
+          setNotification({ msg: 'Entry updated successfully!', type: 'success' });
+      } catch (e) {
+          setNotification({ msg: 'Failed to update entry.', type: 'error' });
+      } finally {
+          setLoading(false);
+      }
+  };
+
   const techOptions = technicians.map(t => ({ label: t.name, value: t.name }));
   const patchSizeOptions = items.map(i => ({ label: i.name, value: i.name, subtext: i.category }));
 
-  // 3D Card Class - Stronger Visibility
+  // Styles
   const cardClass = "bg-white rounded-3xl shadow-[0_15px_40px_-5px_rgba(0,0,0,0.1)] border-2 border-slate-200 relative overflow-hidden transition-all duration-300 hover:shadow-[0_20px_50px_-5px_rgba(0,0,0,0.15)] hover:border-slate-300";
-  
-  // 3D Input Class (Recessed look) - Added explicit border
   const inputClass = "w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3.5 text-gray-900 shadow-inner focus:ring-2 focus:ring-indigo-500 focus:bg-white focus:border-indigo-500 transition-all font-bold placeholder:font-normal placeholder:text-slate-400";
   const labelClass = "block text-xs font-black uppercase tracking-widest text-slate-500 mb-2 ml-1";
+
+  // Filter Today's List
+  const filteredTodayEntries = todayEntries.filter(e => 
+      e.clientName.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      String(e.contactNo).includes(searchTerm)
+  );
 
   return (
     <div className="max-w-6xl mx-auto pb-20">
@@ -170,7 +245,7 @@ const NewEntryForm: React.FC = () => {
          </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <form onSubmit={handleSubmit} className="animate-in fade-in slide-in-from-bottom-4 duration-500 mb-16">
         
         {notification && (
           <div className={`mb-8 p-4 rounded-2xl border flex flex-col md:flex-row items-center justify-between shadow-xl gap-4 
@@ -204,9 +279,7 @@ const NewEntryForm: React.FC = () => {
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            
             <div className="lg:col-span-8 space-y-8">
-                
                 {/* 1. Client Card (3D) */}
                 <div className={cardClass}>
                     <div className="px-8 py-6 bg-gradient-to-r from-blue-50 to-white border-b border-blue-100 flex items-center">
@@ -220,18 +293,25 @@ const NewEntryForm: React.FC = () => {
                     </div>
                     <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-6 bg-gradient-to-b from-white to-blue-50/20">
                         <div className="col-span-full">
+                            <div className="flex items-center justify-between mb-1">
+                                <label className={labelClass}>Client Name <span className="text-red-500">*</span></label>
+                                {checkingPackage && <span className="text-[10px] text-indigo-600 flex items-center font-bold"><Loader2 className="w-3 h-3 mr-1 animate-spin" /> Checking Plan...</span>}
+                            </div>
                             <SearchableSelect 
-                                label="Client Name"
-                                options={clients.map(c => ({ label: c.name, value: c.name, subtext: c.contact }))}
+                                options={clients.map(c => ({ 
+                                    label: c.name, 
+                                    value: c.name, 
+                                    subtext: c.contact,
+                                    isHighlight: activePackageClients.has(c.name.trim().toLowerCase()) 
+                                }))}
                                 value={formData.clientName || ''}
                                 onChange={handleClientChange}
                                 placeholder="Search Client..."
                                 required
                             />
                         </div>
-                        
                         {activePackage && (
-                             <div className={`col-span-full rounded-2xl border-2 p-5 flex items-start gap-4 shadow-lg transition-all duration-300 transform hover:scale-[1.01]
+                             <div className={`col-span-full rounded-2xl border-2 p-5 flex items-start gap-4 shadow-lg transition-all duration-300 transform hover:scale-[1.01] animate-in fade-in slide-in-from-top-4
                                 ${activePackage.isExpired 
                                     ? 'bg-red-50 border-red-300' 
                                     : 'bg-emerald-50 border-emerald-300'}
@@ -484,6 +564,202 @@ const NewEntryForm: React.FC = () => {
             </div>
         </div>
       </form>
+
+      {/* --- TODAY'S ACTIVITY LIST --- */}
+      <div className="bg-white rounded-[2.5rem] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)] border border-slate-200 overflow-hidden relative">
+          {/* Header */}
+          <div className="px-8 py-6 bg-slate-50/50 border-b border-slate-200 flex flex-col md:flex-row justify-between items-center gap-4">
+              <div className="flex items-center gap-3">
+                  <div className="p-2.5 bg-indigo-100 text-indigo-600 rounded-xl border border-indigo-200">
+                     <Clock className="w-6 h-6" />
+                  </div>
+                  <div>
+                      <h3 className="text-xl font-black text-slate-800">Today's Activity</h3>
+                      <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{new Date().toDateString()}</p>
+                  </div>
+              </div>
+              <div className="relative w-full md:w-80 group">
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-indigo-500" />
+                  <input 
+                      type="text" 
+                      placeholder="Search today's client..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-sm"
+                  />
+              </div>
+          </div>
+
+          {/* List */}
+          <div className="divide-y divide-slate-100">
+             {filteredTodayEntries.length === 0 ? (
+                 <div className="p-12 text-center text-slate-400 font-medium">
+                     No transactions found for today.
+                 </div>
+             ) : (
+                 filteredTodayEntries.map((entry) => {
+                     const isPending = entry.paymentMethod === 'PENDING' || Number(entry.amount) === 0;
+                     
+                     return (
+                         <div key={entry.id} className={`p-6 transition-colors hover:bg-slate-50 flex flex-col md:flex-row items-center justify-between gap-6
+                             ${isPending ? 'bg-amber-50/40' : ''}
+                         `}>
+                             {/* Client Info */}
+                             <div className="flex items-center gap-4 w-full md:w-1/3">
+                                 <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-black text-lg shadow-sm border
+                                    ${isPending ? 'bg-amber-100 text-amber-600 border-amber-200' : 'bg-slate-100 text-slate-600 border-slate-200'}
+                                 `}>
+                                     {entry.clientName.charAt(0)}
+                                 </div>
+                                 <div>
+                                     <h4 className="font-black text-slate-800 text-lg leading-tight">{entry.clientName}</h4>
+                                     <div className="text-xs font-bold text-slate-400 flex items-center gap-2 mt-1">
+                                         <span>{entry.contactNo}</span>
+                                         {isPending && (
+                                            <span className="flex items-center text-amber-600 bg-amber-100 px-1.5 py-0.5 rounded border border-amber-200">
+                                                <AlertTriangle className="w-3 h-3 mr-1" /> Payment Pending
+                                            </span>
+                                         )}
+                                     </div>
+                                 </div>
+                             </div>
+
+                             {/* Service Info */}
+                             <div className="w-full md:w-1/4">
+                                 <div className="text-sm font-bold text-slate-700">{entry.serviceType}</div>
+                                 <div className="text-xs text-slate-400 font-medium">Tech: {entry.technician}</div>
+                             </div>
+
+                             {/* Amount & Status */}
+                             <div className="w-full md:w-1/6 text-right md:text-left">
+                                 <div className={`font-black text-xl ${isPending ? 'text-amber-600' : 'text-slate-800'}`}>
+                                     ₹{entry.amount}
+                                 </div>
+                                 <div className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+                                     {entry.paymentMethod}
+                                 </div>
+                             </div>
+
+                             {/* Actions */}
+                             <div className="flex items-center gap-2 w-full md:w-auto justify-end">
+                                 {isPending && (
+                                     <button 
+                                        onClick={() => openEditModal(entry)}
+                                        className="px-4 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-xl font-bold text-sm shadow-lg shadow-emerald-500/30 hover:-translate-y-0.5 transition-all flex items-center border border-emerald-600"
+                                     >
+                                         <Wallet className="w-4 h-4 mr-2" />
+                                         Amount
+                                     </button>
+                                 )}
+                                 <button 
+                                    onClick={() => openEditModal(entry)}
+                                    className="p-2.5 bg-white border border-slate-200 text-slate-500 rounded-xl hover:text-indigo-600 hover:border-indigo-200 hover:bg-indigo-50 transition-all shadow-sm"
+                                    title="Edit Entry"
+                                 >
+                                     <PenSquare className="w-4 h-4" />
+                                 </button>
+                             </div>
+                         </div>
+                     );
+                 })
+             )}
+          </div>
+      </div>
+
+      {/* EDIT / COMPLETE PAYMENT MODAL */}
+      {isEditModalOpen && editingEntry && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+              <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 border border-white/20">
+                  <div className="bg-slate-900 px-8 py-6 flex justify-between items-center text-white">
+                      <div>
+                          <h3 className="font-black text-lg flex items-center tracking-tight">
+                              {editingEntry.amount === 0 ? 'Complete Payment' : 'Edit Transaction'}
+                          </h3>
+                          <p className="text-slate-400 text-xs font-bold">{editingEntry.clientName}</p>
+                      </div>
+                      <button onClick={() => setIsEditModalOpen(false)} className="hover:bg-slate-800 p-2 rounded-full transition-colors"><X className="w-5 h-5" /></button>
+                  </div>
+                  
+                  <form onSubmit={handleEditSubmit} className="p-8 space-y-6">
+                      <div className="grid grid-cols-2 gap-6">
+                          <div>
+                              <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Technician</label>
+                              <select 
+                                  value={editingEntry.technician}
+                                  onChange={e => setEditingEntry({...editingEntry, technician: e.target.value})}
+                                  className="w-full rounded-xl border-slate-200 border bg-slate-50 px-4 py-3 font-bold focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
+                              >
+                                  {technicians.map(t => <option key={t.name} value={t.name}>{t.name}</option>)}
+                              </select>
+                          </div>
+                          <div>
+                              <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Service Type</label>
+                              <select 
+                                  value={editingEntry.serviceType}
+                                  onChange={e => setEditingEntry({...editingEntry, serviceType: e.target.value as any})}
+                                  className="w-full rounded-xl border-slate-200 border bg-slate-50 px-4 py-3 font-bold focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
+                              >
+                                  <option value="SERVICE">SERVICE</option>
+                                  <option value="NEW">NEW</option>
+                                  <option value="DEMO">DEMO</option>
+                                  <option value="MUNDAN">MUNDAN</option>
+                              </select>
+                          </div>
+                      </div>
+
+                      <div>
+                          <label className="block text-[10px] font-black uppercase tracking-widest text-emerald-600 mb-2">Amount Received (₹)</label>
+                          <input 
+                              type="number"
+                              value={editingEntry.amount}
+                              onChange={e => setEditingEntry({...editingEntry, amount: Number(e.target.value)})}
+                              className="w-full rounded-xl border-emerald-200 border-2 bg-emerald-50/50 px-4 py-4 text-2xl font-black text-emerald-800 focus:ring-2 focus:ring-emerald-500 outline-none"
+                              autoFocus={editingEntry.amount === 0}
+                          />
+                      </div>
+
+                      <div>
+                          <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Payment Method</label>
+                          <div className="grid grid-cols-4 gap-2">
+                              {['CASH', 'UPI', 'CARD', 'PENDING'].map(m => (
+                                  <button
+                                      type="button"
+                                      key={m}
+                                      onClick={() => setEditingEntry({...editingEntry, paymentMethod: m as any})}
+                                      className={`py-2 rounded-lg text-xs font-black border transition-colors
+                                          ${editingEntry.paymentMethod === m 
+                                              ? 'bg-slate-800 text-white border-slate-900' 
+                                              : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}
+                                      `}
+                                  >
+                                      {m}
+                                  </button>
+                              ))}
+                          </div>
+                      </div>
+
+                      <div>
+                           <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Remarks</label>
+                           <textarea
+                                value={editingEntry.remark}
+                                onChange={e => setEditingEntry({...editingEntry, remark: e.target.value})}
+                                rows={2}
+                                className="w-full rounded-xl border-slate-200 border bg-slate-50 px-4 py-3 font-medium text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                           />
+                      </div>
+
+                      <button 
+                        type="submit"
+                        disabled={loading}
+                        className="w-full py-4 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-300 transition-all flex items-center justify-center border border-indigo-700 text-lg"
+                      >
+                          {loading ? <RefreshCw className="w-5 h-5 animate-spin" /> : 'Update Transaction'}
+                      </button>
+                  </form>
+              </div>
+          </div>
+      )}
+
     </div>
   );
 };

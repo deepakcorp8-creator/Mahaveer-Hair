@@ -7,7 +7,7 @@ const isLive = GOOGLE_SCRIPT_URL && GOOGLE_SCRIPT_URL.startsWith('http');
 
 // --- LOCAL CACHE & STATE MANAGEMENT ---
 // 1. Temporary storage for items added in this session (shows up immediately)
-const LOCAL_NEW_ENTRIES: Entry[] = [];
+let LOCAL_NEW_ENTRIES: Entry[] = []; // Changed to let to allow filtering
 const LOCAL_NEW_APPOINTMENTS: Appointment[] = [];
 
 // 2. Data Cache to prevent "Slow" performance (prevents fetching on every keystroke)
@@ -97,31 +97,17 @@ export const api = {
     LOCAL_NEW_ENTRIES.push(newEntry as Entry);
     
     if (isLive) {
-      try {
-        // DIRECT SAVE: Await the response to ensure data is written and we get invoice URL
-        const response = await fetch(GOOGLE_SCRIPT_URL, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'text/plain;charset=utf-8', 
-          },
-          body: JSON.stringify({
-            action: 'addEntry',
-            ...entry
-          })
-        });
-        const data = await response.json();
-        
-        // If the script returned an invoiceUrl, update our local entry
-        if (data && data.invoiceUrl) {
-           newEntry.invoiceUrl = data.invoiceUrl;
-           // Also update in cache if it's there
-           const cached = LOCAL_NEW_ENTRIES.find(e => e.id === newEntry.id);
-           if (cached) cached.invoiceUrl = data.invoiceUrl;
-        }
-      } catch (e) {
-        console.error("Error sending to sheet", e);
-        throw e; // Throw error so UI knows save failed
-      }
+      // OPTIMISTIC UI: Don't await the fetch. Let it run in background.
+      fetch(GOOGLE_SCRIPT_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'text/plain;charset=utf-8', 
+        },
+        body: JSON.stringify({
+          action: 'addEntry',
+          ...entry
+        })
+      }).catch(e => console.error("Error sending to sheet", e));
     } else {
         MOCK_ENTRIES.push(newEntry as Entry);
     }
@@ -156,11 +142,22 @@ export const api = {
         }
     }
 
-    // Merge with local new entries
-    const serverIds = new Set(allEntries.map(e => e.id));
-    const uniqueLocal = LOCAL_NEW_ENTRIES.filter(e => !serverIds.has(e.id));
+    // INTELLIGENT DE-DUPLICATION
+    // We create a "signature" for every entry coming from the server.
+    // If a local temporary entry matches a server entry (Client + Date + Amount + Type), we remove the local one.
+    // This prevents "Double Data" when the sheet updates faster than the local cache clears.
     
-    return [...uniqueLocal, ...allEntries];
+    const serverSignatures = new Set(allEntries.map(e => 
+        `${e.date}-${e.clientName.toLowerCase()}-${e.amount}-${e.serviceType}`
+    ));
+
+    // Filter local entries: Keep only those that DO NOT match a server entry
+    LOCAL_NEW_ENTRIES = LOCAL_NEW_ENTRIES.filter(local => {
+        const sig = `${local.date}-${local.clientName.toLowerCase()}-${local.amount}-${local.serviceType}`;
+        return !serverSignatures.has(sig);
+    });
+    
+    return [...LOCAL_NEW_ENTRIES, ...allEntries];
   },
 
   updateEntryStatus: async (id: string, status: string) => {
@@ -186,6 +183,32 @@ export const api = {
         }).catch(e => console.error("BG Update Fail", e));
     }
     return true;
+  },
+  
+  // NEW: Update Full Entry (Edit Mode)
+  updateEntry: async (entry: Entry) => {
+      // 1. Update Local Caches
+      const localIdx = LOCAL_NEW_ENTRIES.findIndex(e => e.id === entry.id);
+      if (localIdx !== -1) LOCAL_NEW_ENTRIES[localIdx] = entry;
+
+      if(DATA_CACHE.entries) {
+          const cacheIdx = DATA_CACHE.entries.findIndex(e => e.id === entry.id);
+          if (cacheIdx !== -1) DATA_CACHE.entries[cacheIdx] = entry;
+      }
+      
+      // 2. Mock Update
+      const mockIdx = MOCK_ENTRIES.findIndex(e => e.id === entry.id);
+      if (mockIdx !== -1) MOCK_ENTRIES[mockIdx] = entry;
+
+      // 3. Live Update
+      if (isLive) {
+         await fetch(GOOGLE_SCRIPT_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({ action: 'editEntry', ...entry })
+        });
+      }
+      return true;
   },
 
   // --- APPOINTMENTS ---
