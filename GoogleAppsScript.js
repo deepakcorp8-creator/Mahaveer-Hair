@@ -139,8 +139,9 @@ function doPost(e) {
         invoiceUrl = "Error: " + e.message;
     }
 
-    // Append 15 columns (Columns A to O)
+    // Append 16 columns (Columns A to P)
     // Column O (Index 14) is Patch Size
+    // Column P (Index 15) is Pending Amount
     sheet.appendRow([
       data.date,
       data.clientName,
@@ -156,7 +157,8 @@ function doPost(e) {
       data.remark,
       data.numberOfService,
       invoiceUrl,         // Column N
-      data.patchSize || '' // Column O
+      data.patchSize || '', // Column O
+      data.pendingAmount || 0 // Column P
     ]);
     return response({status: "success", invoiceUrl: invoiceUrl});
   }
@@ -190,6 +192,7 @@ function doPost(e) {
         sheet.getRange(rowId, 10).setValue(data.amount);
         sheet.getRange(rowId, 11).setValue(data.paymentMethod);
         sheet.getRange(rowId, 12).setValue(data.remark);
+        sheet.getRange(rowId, 16).setValue(data.pendingAmount || 0); // Column P (Pending Amount)
         
         return response({status: "success"});
     } catch(e) {
@@ -316,9 +319,9 @@ function getEntries(ss) {
     const sheet = ss.getSheetByName("DATA BASE");
     if (!sheet || sheet.getLastRow() <= 1) return response([]);
     
-    // Read 15 columns now (A to O)
-    // Use getLastColumn() if dynamic, or fixed 15
-    const lastCol = Math.max(15, sheet.getLastColumn());
+    // Read 16 columns now (A to P)
+    // Use getLastColumn() if dynamic, or fixed 16
+    const lastCol = Math.max(16, sheet.getLastColumn());
     const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, lastCol).getValues();
     
     const entries = data.map((row, index) => ({
@@ -337,7 +340,8 @@ function getEntries(ss) {
       remark: row[11],
       numberOfService: row[12],
       invoiceUrl: row[13], // Column N
-      patchSize: row[14]   // Column O
+      patchSize: row[14],  // Column O
+      pendingAmount: Number(row[15] || 0) // Column P
     }));
     return response(entries.reverse());
 }
@@ -492,6 +496,7 @@ function createInvoicePDF(data) {
         // Totals
         "<div style='text-align: right; margin-top: 20px; border-top: 2px solid #111; padding-top: 15px;'>" +
            "<div style='font-size: 20px; font-weight: 800; color: #111;'>Total: ₹" + data.amount + "</div>" +
+           "<div style='font-size: 14px; font-weight: 600; color: #dc2626; margin-top: 5px;'>Pending: ₹" + (data.pendingAmount || 0) + "</div>" +
            "<div style='font-size: 12px; color: #6b7280; margin-top: 5px;'>Paid via " + data.paymentMethod + "</div>" +
         "</div>" +
         
