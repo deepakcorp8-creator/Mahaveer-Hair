@@ -11,278 +11,306 @@ export const generateInvoice = (entry: Entry) => {
   // Logo URL
   const LOGO_URL = "https://i.ibb.co/hhB5D9r/MAHAVEER-Logo-1920x1080-1.png";
 
-  // Current Date for the Invoice Print Date
-  const printDate = new Date().toLocaleDateString('en-IN', {
-    day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
-  });
-
-  const invoiceNumber = `INV-${new Date().getFullYear()}${String(Math.floor(Math.random() * 10000)).padStart(4, '0')}`;
+  const invoiceNumber = `INV-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 10000)).padStart(4, '0')}`;
 
   const htmlContent = `
     <!DOCTYPE html>
-    <html>
+    <html lang="en">
     <head>
+      <meta charset="UTF-8">
       <title>Invoice - ${entry.clientName}</title>
+      <link rel="preconnect" href="https://fonts.googleapis.com">
+      <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&display=swap" rel="stylesheet">
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
       <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-        
+        @page {
+          size: A4;
+          margin: 0;
+        }
+
         body {
           font-family: 'Inter', Helvetica, Arial, sans-serif;
-          color: #374151;
-          background: #f9fafb;
-          padding: 40px 0;
+          background: #525252;
           margin: 0;
-          line-height: 1.5;
+          padding: 20px 0;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+          display: flex;
+          justify-content: center;
         }
 
-        .invoice-box {
-          max-width: 800px;
-          margin: auto;
-          padding: 40px;
-          border: 1px solid #e5e7eb;
+        .invoice-page {
+          width: 210mm;
+          min-height: 297mm;
           background: white;
-          box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+          padding: 15mm; /* Standard Print Margin */
+          box-sizing: border-box;
+          box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+          position: relative;
+          color: #374151;
+          line-height: 1.4;
         }
 
-        /* Header Section */
+        /* Header */
         .header {
           text-align: center;
-          margin-bottom: 30px;
-          border-bottom: 2px solid #f3f4f6;
-          padding-bottom: 20px;
+          border-bottom: 2px solid #111827;
+          padding-bottom: 15px;
+          margin-bottom: 20px;
         }
 
         .logo {
-          max-width: 180px;
-          height: auto;
-          margin-bottom: 10px;
+          height: 60px;
+          margin-bottom: 5px;
+          object-fit: contain;
         }
 
-        .company-name {
-          font-size: 24px;
+        .brand {
+          font-size: 20px;
           font-weight: 800;
           color: #111827;
           text-transform: uppercase;
-          margin: 5px 0;
-          letter-spacing: 0.5px;
+          letter-spacing: 1px;
+          margin-bottom: 4px;
         }
 
-        .company-details {
-          font-size: 12px;
+        .address {
+          font-size: 10px;
           color: #6b7280;
-          line-height: 1.6;
+          max-width: 80%;
+          margin: 0 auto;
         }
 
-        .company-details strong {
-            color: #374151;
-        }
-
-        /* Invoice Meta Bar */
-        .invoice-meta {
+        /* Info Grid */
+        .grid-container {
           display: flex;
           justify-content: space-between;
-          background: #f9fafb;
-          padding: 10px 20px;
-          border-radius: 6px;
-          border: 1px solid #e5e7eb;
-          margin-bottom: 30px;
-          font-size: 13px;
+          margin-bottom: 20px;
+          gap: 20px;
         }
 
-        .meta-item strong {
-          color: #111827;
-          margin-right: 5px;
-        }
-
-        /* Info Columns */
-        .info-columns {
-          display: flex;
-          justify-content: space-between;
-          margin-bottom: 30px;
-          gap: 40px;
-        }
-
-        .info-col {
+        .box {
           flex: 1;
+          padding: 10px;
+          border: 1px solid #e5e7eb;
+          border-radius: 6px;
+          font-size: 11px;
         }
 
-        .section-title {
-          font-size: 11px;
+        .box-title {
+          font-size: 9px;
           text-transform: uppercase;
           color: #9ca3af;
           font-weight: 700;
-          letter-spacing: 1px;
-          margin-bottom: 8px;
-          border-bottom: 1px solid #e5e7eb;
-          padding-bottom: 4px;
+          margin-bottom: 4px;
+          letter-spacing: 0.5px;
         }
 
-        .info-text {
-          font-size: 14px;
-          font-weight: 500;
-          color: #1f2937;
-          margin-bottom: 2px;
+        .box-content {
+          font-size: 12px;
+          font-weight: 600;
+          color: #111827;
         }
         
-        .info-sub {
-          font-size: 13px;
-          color: #6b7280;
+        .box-sub {
+          font-size: 11px;
+          font-weight: 400;
+          color: #4b5563;
+        }
+
+        /* Invoice Meta */
+        .meta-row {
+          display: flex;
+          justify-content: space-between;
+          background: #f9fafb;
+          border: 1px solid #e5e7eb;
+          border-radius: 6px;
+          padding: 8px 15px;
+          font-size: 11px;
+          font-weight: 600;
+          margin-bottom: 20px;
         }
 
         /* Table */
         table {
           width: 100%;
           border-collapse: collapse;
-          margin-bottom: 30px;
+          margin-bottom: 20px;
+          font-size: 11px;
         }
 
         th {
           background: #111827;
           color: white;
-          font-weight: 600;
-          font-size: 12px;
           text-transform: uppercase;
-          padding: 12px;
+          padding: 8px 10px;
           text-align: left;
+          font-size: 10px;
+          font-weight: 700;
         }
 
         td {
-          padding: 12px;
+          padding: 8px 10px;
           border-bottom: 1px solid #e5e7eb;
-          font-size: 14px;
-          color: #374151;
+          vertical-align: top;
+        }
+
+        .item-desc {
+          font-size: 12px;
+          font-weight: 700;
+          color: #111827;
+        }
+        .item-sub {
+          font-size: 10px;
+          color: #6b7280;
+          margin-top: 2px;
         }
 
         .text-right { text-align: right; }
         .text-center { text-align: center; }
-        
-        .item-row:last-child td {
-            border-bottom: none;
-        }
 
         /* Totals */
-        .totals-container {
+        .totals {
           display: flex;
           justify-content: flex-end;
-          margin-bottom: 40px;
         }
 
-        .totals-box {
-          width: 300px;
-          border-top: 2px solid #111827;
-          padding-top: 10px;
+        .totals-table {
+          width: 250px;
+          border-collapse: collapse;
         }
 
-        .total-row {
-          display: flex;
-          justify-content: space-between;
-          padding: 5px 0;
+        .totals-table td {
+          padding: 4px 0;
+          border: none;
+        }
+
+        .grand-total {
+          border-top: 2px solid #111827 !important;
+          padding-top: 8px !important;
           font-size: 14px;
-        }
-
-        .total-row.final {
-          font-size: 18px;
           font-weight: 800;
           color: #111827;
-          border-top: 1px solid #e5e7eb;
-          margin-top: 5px;
-          padding-top: 10px;
         }
 
         /* Footer */
         .footer {
-          border-top: 2px solid #f3f4f6;
-          padding-top: 20px;
+          position: absolute;
+          bottom: 15mm;
+          left: 15mm;
+          right: 15mm;
+          border-top: 1px solid #e5e7eb;
+          padding-top: 10px;
+          font-size: 10px;
+          color: #9ca3af;
           display: flex;
           justify-content: space-between;
           align-items: flex-end;
         }
 
-        .terms {
-          flex: 1;
-          font-size: 11px;
-          color: #9ca3af;
-          padding-right: 40px;
-        }
+        .terms p { margin: 2px 0; }
         
-        .terms h5 {
-            margin: 0 0 5px 0;
-            color: #6b7280;
-            text-transform: uppercase;
-        }
-
         .signature {
           text-align: center;
-          width: 200px;
+          width: 150px;
         }
-
         .sign-line {
           border-bottom: 1px solid #111827;
-          height: 40px;
-          margin-bottom: 5px;
+          height: 30px;
+          margin-bottom: 4px;
+        }
+
+        /* Action Buttons */
+        .actions-bar {
+          position: fixed;
+          bottom: 30px;
+          left: 50%;
+          transform: translateX(-50%);
+          background: white;
+          padding: 10px;
+          border-radius: 12px;
+          box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+          display: flex;
+          gap: 12px;
+          z-index: 1000;
+          border: 1px solid #e5e7eb;
+        }
+
+        .btn {
+            padding: 10px 24px;
+            border-radius: 8px;
+            font-weight: 700;
+            cursor: pointer;
+            border: none;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+            font-family: 'Inter', sans-serif;
         }
         
-        .sign-text {
-            font-size: 12px;
-            font-weight: 600;
-            color: #111827;
+        .btn-print { 
+            background: #f3f4f6; 
+            color: #374151; 
+            border: 1px solid #d1d5db;
         }
+        .btn-print:hover { background: #e5e7eb; }
 
-        .print-btn {
-          position: fixed;
-          bottom: 20px;
-          right: 20px;
-          background: #2563eb;
-          color: white;
-          border: none;
-          padding: 10px 20px;
-          border-radius: 5px;
-          font-weight: 600;
-          cursor: pointer;
-          box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        .btn-download { 
+            background: #2563eb; 
+            color: white; 
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
         }
+        .btn-download:hover { background: #1d4ed8; transform: translateY(-1px); }
 
         @media print {
-          body { background: white; padding: 0; }
-          .invoice-box { border: none; box-shadow: none; max-width: 100%; padding: 0; }
-          .print-btn { display: none; }
+          body { padding: 0; background: white; display: block; }
+          .invoice-page { 
+            width: 100%; 
+            height: 100%; 
+            margin: 0; 
+            box-shadow: none; 
+            padding: 10mm; /* Slightly tighter for print */
+          }
+          .no-print { display: none !important; }
         }
       </style>
     </head>
     <body>
-      <div class="invoice-box">
+      <div id="invoice-element" class="invoice-page">
         
         <!-- Header -->
         <div class="header">
-           <img src="${LOGO_URL}" class="logo" alt="Logo" onerror="this.style.display='none'"/>
-           <div class="company-name">MAHAVEER HAIR SOLUTION</div>
-           <div class="company-details">
-              First Floor, Opp. Ayurvedic College & Anupam Garden, Near Amit Sales, G.E. Road, Raipur, Chhattisgarh<br>
-              <strong>Mobile:</strong> +91-9691699382, +91-9144939828, +91-9993239828<br>
-              <strong>Email:</strong> info@mahaveerhairsolution.com, mahaveerhairwig@gmail.com
+           <img src="${LOGO_URL}" class="logo" alt="Mahaveer Logo" onerror="this.style.display='none'" />
+           <div class="brand">Mahaveer Hair Solution</div>
+           <div class="address">
+              First Floor, Opp. Ayurvedic College & Anupam Garden, Near Amit Sales, G.E. Road, Raipur (C.G.)<br>
+              <strong>Contact:</strong> +91-9691699382, +91-9144939828 | <strong>Email:</strong> info@mahaveerhairsolution.com
            </div>
         </div>
 
-        <!-- Meta Bar -->
-        <div class="invoice-meta">
-            <div class="meta-item"><strong>Invoice No:</strong> ${invoiceNumber}</div>
-            <div class="meta-item"><strong>Date:</strong> ${entry.date}</div>
-            <div class="meta-item"><strong>Branch:</strong> ${entry.branch}</div>
+        <!-- Meta -->
+        <div class="meta-row">
+            <span>Invoice #: ${invoiceNumber}</span>
+            <span>Date: ${entry.date}</span>
+            <span>Branch: ${entry.branch}</span>
         </div>
 
-        <!-- Info Columns -->
-        <div class="info-columns">
-            <div class="info-col">
-                <div class="section-title">Billed To</div>
-                <div class="info-text" style="font-size: 16px; font-weight: 700;">${entry.clientName}</div>
-                <div class="info-sub">${entry.address || 'Address not provided'}</div>
-                <div class="info-sub">Phone: ${entry.contactNo}</div>
+        <!-- Info Grid -->
+        <div class="grid-container">
+            <div class="box">
+                <div class="box-title">Bill To</div>
+                <div class="box-content">${entry.clientName}</div>
+                <div class="box-sub">${entry.address || 'Address N/A'}</div>
+                <div class="box-sub">Ph: ${entry.contactNo}</div>
             </div>
-            <div class="info-col" style="text-align: right;">
-                <div class="section-title">Service Details</div>
-                <div class="info-text">Technician: <span style="font-weight: 400;">${entry.technician}</span></div>
-                <div class="info-text">Method: <span style="font-weight: 400;">${entry.patchMethod}</span></div>
-                <div class="info-text">Service #: <span style="font-weight: 400;">${entry.numberOfService}</span></div>
+            <div class="box">
+                <div class="box-title">Service Details</div>
+                <div class="box-sub">Type: <strong style="color:#111">${entry.serviceType}</strong></div>
+                <div class="box-sub">Tech: ${entry.technician}</div>
+                <div class="box-sub">Method: ${entry.patchMethod}</div>
             </div>
         </div>
 
@@ -290,71 +318,107 @@ export const generateInvoice = (entry: Entry) => {
         <table>
             <thead>
                 <tr>
-                    <th style="width: 50%;">Description</th>
+                    <th style="width: 50%">Description</th>
                     <th class="text-center">Qty</th>
                     <th class="text-right">Price</th>
                     <th class="text-right">Total</th>
                 </tr>
             </thead>
             <tbody>
-                <tr class="item-row">
+                <tr>
                     <td>
-                        <div style="font-weight: 600; color: #111827;">${entry.serviceType} APPLICATION</div>
-                        <div style="font-size: 12px; color: #6b7280; margin-top: 2px;">
-                            ${entry.patchSize ? `Size/Item: ${entry.patchSize} | ` : ''}
-                            ${entry.remark ? `Note: ${entry.remark}` : 'Standard Service'}
+                        <div class="item-desc">${entry.serviceType} APPLICATION</div>
+                        <div class="item-sub">
+                            ${entry.patchSize ? `Patch Size: ${entry.patchSize}` : ''}
+                            ${entry.remark ? `<br/>Note: ${entry.remark}` : ''}
                         </div>
                     </td>
                     <td class="text-center">1</td>
                     <td class="text-right">₹${entry.amount}</td>
-                    <td class="text-right">₹${entry.amount}</td>
+                    <td class="text-right"><strong>₹${entry.amount}</strong></td>
                 </tr>
             </tbody>
         </table>
 
         <!-- Totals -->
-        <div class="totals-container">
-            <div class="totals-box">
-                <div class="total-row">
-                    <span>Subtotal</span>
-                    <span>₹${entry.amount}</span>
-                </div>
-                <div class="total-row">
-                    <span>Tax (0%)</span>
-                    <span>₹0.00</span>
-                </div>
-                <div class="total-row final">
-                    <span>Grand Total</span>
-                    <span>₹${entry.amount}</span>
-                </div>
-                <div class="total-row" style="margin-top: 10px; font-size: 12px; color: #6b7280;">
-                    <span>Paid via ${entry.paymentMethod}</span>
-                </div>
-            </div>
+        <div class="totals">
+            <table class="totals-table">
+                <tr>
+                    <td>Subtotal</td>
+                    <td class="text-right">₹${entry.amount}</td>
+                </tr>
+                <tr>
+                    <td>Pending Due</td>
+                    <td class="text-right" style="color: #dc2626;">₹${entry.pendingAmount || 0}</td>
+                </tr>
+                <tr>
+                    <td>Payment Mode</td>
+                    <td class="text-right" style="text-transform: uppercase;">${entry.paymentMethod}</td>
+                </tr>
+                <tr>
+                    <td class="grand-total">Grand Total</td>
+                    <td class="text-right grand-total">₹${entry.amount}</td>
+                </tr>
+            </table>
         </div>
 
         <!-- Footer -->
         <div class="footer">
             <div class="terms">
-                <h5>Terms & Conditions</h5>
-                <p>1. Goods once sold will not be taken back.<br>
-                2. Please retain this invoice for future service references.<br>
-                3. Hair patch maintenance guidelines must be followed for warranty.</p>
+                <strong style="color: #6b7280; text-transform: uppercase;">Terms & Conditions:</strong>
+                <p>1. Goods once sold will not be returned.</p>
+                <p>2. Subject to Raipur Jurisdiction.</p>
+                <p style="margin-top: 5px;">Thank you for your business!</p>
             </div>
             <div class="signature">
                 <div class="sign-line"></div>
-                <div class="sign-text">Authorized Signatory</div>
+                <strong>Authorized Signatory</strong>
             </div>
         </div>
-        
-        <div style="text-align: center; margin-top: 30px; padding-top: 10px; border-top: 1px dashed #e5e7eb; font-size: 10px; color: #9ca3af;">
-            <p style="margin: 0;">Copyright © ${new Date().getFullYear()} Mahaveer Hair Solution. All Rights Reserved.</p>
-            <p style="margin: 2px 0 0 0;">Developed by <strong>Deepak Sahu</strong></p>
-        </div>
-
-        <button class="print-btn" onclick="window.print()">Print Invoice</button>
-
       </div>
+
+      <!-- Action Buttons -->
+      <div class="actions-bar no-print">
+          <button onclick="handleDownload()" class="btn btn-download">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Download PDF
+          </button>
+          <button onclick="window.print()" class="btn btn-print">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+            Print
+          </button>
+      </div>
+
+      <script>
+        function handleDownload() {
+            const element = document.getElementById('invoice-element');
+            const btns = document.querySelector('.actions-bar');
+            const originalShadow = element.style.boxShadow;
+            
+            // Clean up visual styles before capture
+            btns.style.display = 'none';
+            element.style.boxShadow = 'none'; // Remove shadow for clean PDF
+            
+            const opt = {
+              margin: 0,
+              filename: 'Invoice_${entry.clientName}_${entry.date}.pdf',
+              image: { type: 'jpeg', quality: 0.98 },
+              html2canvas: { scale: 2, useCORS: true, logging: false },
+              jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+
+            html2pdf().set(opt).from(element).save().then(() => {
+                // Restore buttons
+                btns.style.display = 'flex';
+                element.style.boxShadow = originalShadow;
+            }).catch(err => {
+                console.error(err);
+                alert('Error generating PDF. Please use the Print button.');
+                btns.style.display = 'flex';
+                element.style.boxShadow = originalShadow;
+            });
+        }
+      </script>
     </body>
     </html>
   `;
