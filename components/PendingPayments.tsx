@@ -24,8 +24,11 @@ const PendingPayments: React.FC = () => {
     setLoading(true);
     try {
         const allEntries = await api.getEntries(true);
-        // Filter only those with pending dues
-        const pending = allEntries.filter(e => e.paymentMethod === 'PENDING' || (e.pendingAmount && e.pendingAmount > 0));
+        // Filter only those with actual pending dues > 0
+        const pending = allEntries.filter(e => {
+             const due = e.paymentMethod === 'PENDING' ? (e.amount || 0) : (e.pendingAmount || 0);
+             return due > 0;
+        });
         setEntries(pending);
     } catch (e) {
         console.error(e);

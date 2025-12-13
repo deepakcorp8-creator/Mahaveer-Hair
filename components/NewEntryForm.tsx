@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { Client, Item, Technician, Entry, ServicePackage } from '../types';
-import { Save, AlertCircle, User, CreditCard, Scissors, Calendar, MapPin, RefreshCw, CheckCircle2, Ticket, FileDown, ShieldCheck, Search, PenSquare, Wallet, X, Clock, AlertTriangle, Loader2, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Save, AlertCircle, User, CreditCard, Scissors, Calendar, MapPin, RefreshCw, CheckCircle2, Ticket, FileDown, ShieldCheck, Search, PenSquare, Wallet, X, Clock, AlertTriangle, Loader2, IndianRupee } from 'lucide-react';
 import { SearchableSelect } from './SearchableSelect';
 import { generateInvoice } from '../utils/invoiceGenerator';
 
@@ -55,10 +55,15 @@ const NewEntryForm: React.FC = () => {
   
   // Main form received amount (manual entry)
   const [receivedAmount, setReceivedAmount] = useState<number | string>('');
-  const [showPartPaymentToggle, setShowPartPaymentToggle] = useState(false);
   const [isFormPartPayment, setIsFormPartPayment] = useState(false);
   
-  const [notification, setNotification] = useState<{msg: string, type: 'success' | 'error' | 'warning'} | null>(null);
+  // Notification State extended to support 'action'
+  const [notification, setNotification] = useState<{
+      msg: string, 
+      type: 'success' | 'error' | 'warning', 
+      hasAction?: boolean 
+  } | null>(null);
+  
   const [lastSubmittedEntry, setLastSubmittedEntry] = useState<Entry | null>(null);
 
   useEffect(() => {
@@ -170,11 +175,6 @@ const NewEntryForm: React.FC = () => {
       return;
     }
 
-    // Logic:
-    // If PENDING method -> Amount is total bill, pending is equal to total.
-    // If PART PAYMENT -> Pending = Total - Received.
-    // If FULL PAYMENT -> Pending = 0.
-
     let pending = 0;
     const totalBill = Number(formData.amount || 0);
 
@@ -184,7 +184,6 @@ const NewEntryForm: React.FC = () => {
         const paid = Number(receivedAmount || 0);
         pending = Math.max(0, totalBill - paid);
     } else {
-        // Full Payment assumption if not pending and not part payment
         pending = 0;
     }
 
@@ -195,11 +194,20 @@ const NewEntryForm: React.FC = () => {
 
     try {
       const result = await api.addEntry(entryToSubmit);
-      setLastSubmittedEntry(result as Entry);
+      const savedEntry = result as Entry;
+      setLastSubmittedEntry(savedEntry);
+      
       const isPackage = activePackage && !activePackage.isExpired;
+      
+      // NOTIFICATION LOGIC based on Pending Amount
+      const hasPending = savedEntry.pendingAmount && savedEntry.pendingAmount > 0;
+      
       setNotification({ 
-          msg: isPackage ? 'Package Service Recorded Successfully!' : 'Transaction recorded successfully!', 
-          type: 'success' 
+          msg: hasPending 
+              ? `Entry Added! ₹${savedEntry.pendingAmount} AMOUNT PENDING` 
+              : (isPackage ? 'Package Service Recorded Successfully!' : 'Transaction recorded successfully!'), 
+          type: hasPending ? 'warning' : 'success',
+          hasAction: !!hasPending
       });
       
       // Reset Form
@@ -210,7 +218,9 @@ const NewEntryForm: React.FC = () => {
       
       await loadTodayEntries(); 
       document.querySelector('main')?.scrollTo({ top: 0, behavior: 'smooth' });
-      setTimeout(() => setNotification(null), 8000);
+      
+      // Clear notification after 10s
+      setTimeout(() => setNotification(null), 10000);
     } catch (error) {
       setNotification({ msg: 'Failed to add entry. Please check your connection.', type: 'error' });
     } finally {
@@ -227,7 +237,6 @@ const NewEntryForm: React.FC = () => {
       const hasPending = entry.pendingAmount && entry.pendingAmount > 0;
       setIsPartPayment(!!hasPending);
       
-      // If partial, Received = Total - Pending. If Full, Received = Total.
       if (hasPending) {
           setEditReceivedAmount(entry.amount - (entry.pendingAmount || 0));
       } else {
@@ -245,39 +254,30 @@ const NewEntryForm: React.FC = () => {
       try {
           const total = Number(editTotalAmount);
           let newPending = 0;
-          
-          if (editingEntry.paymentMethod === 'PENDING') {
-              // If keeping pending, assume total is pending. But modal allows changing method.
-              // If method changed to something else, we calc pending.
-              // Logic: If user sets Part Payment ON, calc pending.
-              // If OFF, assuming full payment unless Method is PENDING.
-              if (isPartPayment) {
-                  const recv = Number(editReceivedAmount);
-                  newPending = Math.max(0, total - recv);
-              } else {
-                  newPending = total; // Stays fully pending if method is PENDING? Or 0 if method is CASH?
-                  // NOTE: Logic is tricky. If method is PENDING, pending = total.
-                  // If method is CASH and part payment OFF, pending = 0.
-                  // Let's rely on Payment Method dropdown in modal.
-              }
+          let newMethod = editingEntry.paymentMethod;
+
+          if (isPartPayment) {
+              const recv = Number(editReceivedAmount);
+              newPending = Math.max(0, total - recv);
           } else {
-              // Standard Update
-              if (isPartPayment) {
-                  const recv = Number(editReceivedAmount);
-                  newPending = Math.max(0, total - recv);
-              } else {
-                  newPending = 0;
-              }
+              newPending = 0;
           }
           
-          // Override: If method is specifically set to PENDING in modal, force full pending
-          if (editingEntry.paymentMethod === 'PENDING') {
-              newPending = total;
+          // CRITICAL: If pending became 0, we must switch method from 'PENDING' to something else (e.g., CASH)
+          // Otherwise it stays stuck as "Pending" in UI.
+          if (newPending === 0 && newMethod === 'PENDING') {
+              newMethod = 'CASH'; // Default to CASH if fully paid now
+          }
+          
+          // Force pending if method explicitly set to pending
+          if (newMethod === 'PENDING' && newPending === 0) {
+              newPending = total; 
           }
 
           const updatedEntry = { 
               ...editingEntry, 
               amount: total,
+              paymentMethod: newMethod,
               pendingAmount: newPending 
           };
 
@@ -285,8 +285,10 @@ const NewEntryForm: React.FC = () => {
           
           setIsEditModalOpen(false);
           setEditingEntry(null);
+          setNotification({ msg: 'Payment Updated Successfully!', type: 'success' });
+          
+          // Refresh List immediately so buttons disappear
           await loadTodayEntries();
-          setNotification({ msg: 'Entry updated successfully!', type: 'success' });
       } catch (e) {
           setNotification({ msg: 'Failed to update entry.', type: 'error' });
       } finally {
@@ -321,7 +323,6 @@ const NewEntryForm: React.FC = () => {
       <div className="mb-10 relative group">
          <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-[2rem] blur-xl opacity-40 transform group-hover:scale-[1.02] transition-transform duration-500"></div>
          <div className="relative bg-gradient-to-r from-indigo-700 to-purple-700 rounded-[2rem] p-8 text-white shadow-2xl overflow-hidden border border-white/20">
-            <div className="absolute top-0 right-0 w-80 h-80 bg-white opacity-5 rounded-full -mr-20 -mt-20 blur-3xl"></div>
             <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-4xl font-black tracking-tight mb-2 drop-shadow-md">New Transaction</h1>
@@ -338,33 +339,49 @@ const NewEntryForm: React.FC = () => {
       <form onSubmit={handleSubmit} className="animate-in fade-in slide-in-from-bottom-4 duration-500 mb-16">
         
         {notification && (
-          <div className={`mb-8 p-4 rounded-2xl border flex flex-col md:flex-row items-center justify-between shadow-xl gap-4 
-            ${notification.type === 'success' ? 'bg-emerald-50 border-emerald-300 text-emerald-800' : 'bg-red-50 border-red-300 text-red-800'}`}>
+          <div className={`mb-8 p-6 rounded-2xl border flex flex-col md:flex-row items-center justify-between shadow-2xl gap-4 
+            ${notification.type === 'success' 
+                ? 'bg-emerald-50 border-emerald-300 text-emerald-800' 
+                : notification.type === 'warning'
+                    ? 'bg-amber-50 border-amber-300 text-amber-900'
+                    : 'bg-red-50 border-red-300 text-red-800'}`}>
             <div className="flex items-center">
-                {notification.type === 'success' ? <CheckCircle2 className="w-8 h-8 mr-4 text-emerald-600" /> : <AlertCircle className="w-8 h-8 mr-4 text-red-600" />}
+                {notification.type === 'success' ? <CheckCircle2 className="w-10 h-10 mr-4 text-emerald-600" /> : 
+                 notification.type === 'warning' ? <AlertTriangle className="w-10 h-10 mr-4 text-amber-600" /> :
+                 <AlertCircle className="w-10 h-10 mr-4 text-red-600" />}
                 <div>
-                    <h4 className="font-black text-lg">
-                        {notification.type === 'success' ? 'Success' : 'Error'}
+                    <h4 className="font-black text-xl">
+                        {notification.type === 'success' ? 'Success' : notification.type === 'warning' ? 'Action Needed' : 'Error'}
                     </h4>
-                    <p className="font-medium">{notification.msg}</p>
+                    <p className="font-bold text-lg mt-1">{notification.msg}</p>
                 </div>
             </div>
-            {notification.type === 'success' && lastSubmittedEntry && (
-                <button
-                    type="button"
-                    onClick={() => {
-                        if (lastSubmittedEntry.invoiceUrl && lastSubmittedEntry.invoiceUrl.startsWith('http')) {
-                            window.open(lastSubmittedEntry.invoiceUrl, '_blank');
-                        } else {
-                            generateInvoice(lastSubmittedEntry);
-                        }
-                    }}
-                    className="flex items-center bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-xl font-bold text-sm shadow-lg shadow-emerald-500/30 transition-all active:scale-95 hover:-translate-y-0.5 border border-emerald-700"
-                >
-                    <FileDown className="w-5 h-5 mr-2" />
-                    Download Invoice
-                </button>
-            )}
+            
+            <div className="flex gap-3 w-full md:w-auto">
+                {/* BUTTON: UPDATE AMOUNT - Shows if Pending */}
+                {notification.hasAction && lastSubmittedEntry && (
+                     <button
+                        type="button"
+                        onClick={() => openEditModal(lastSubmittedEntry)}
+                        className="flex-1 md:flex-none flex items-center justify-center bg-slate-900 hover:bg-slate-800 text-white px-6 py-3 rounded-xl font-bold text-sm shadow-lg shadow-slate-500/30 transition-all active:scale-95 border border-slate-700 whitespace-nowrap"
+                    >
+                        <Wallet className="w-5 h-5 mr-2" />
+                        Update Payment
+                    </button>
+                )}
+
+                {/* BUTTON: INVOICE - Shows on Success */}
+                {notification.type === 'success' && lastSubmittedEntry && (
+                    <button
+                        type="button"
+                        onClick={() => generateInvoice(lastSubmittedEntry)}
+                        className="flex-1 md:flex-none flex items-center justify-center bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-xl font-bold text-sm shadow-lg shadow-emerald-500/30 transition-all active:scale-95 border border-emerald-700 whitespace-nowrap"
+                    >
+                        <FileDown className="w-5 h-5 mr-2" />
+                        Invoice
+                    </button>
+                )}
+            </div>
           </div>
         )}
 
@@ -616,31 +633,30 @@ const NewEntryForm: React.FC = () => {
                             </div>
                         )}
 
-                        {/* Received & Pending Inputs */}
+                        {/* Received & Pending Inputs - Refined as Requested */}
                         {isFormPartPayment && formData.paymentMethod !== 'PENDING' && (
                             <div className="animate-in fade-in slide-in-from-top-2 space-y-4">
-                                <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200">
-                                    <label className={labelClass}>Received Amount</label>
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-slate-400 font-bold text-xl">₹</span>
-                                        <input 
-                                            type="number" 
-                                            value={receivedAmount}
-                                            onChange={(e) => setReceivedAmount(e.target.value)}
-                                            className="w-full bg-transparent text-xl font-black text-slate-800 focus:outline-none border-b-2 border-slate-300 focus:border-indigo-500 placeholder-slate-300"
-                                            placeholder="0"
-                                        />
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="bg-emerald-50 rounded-2xl p-3 border border-emerald-100">
+                                        <label className="block text-[10px] font-black uppercase tracking-widest text-emerald-600 mb-1 ml-1">Received</label>
+                                        <div className="flex items-center gap-1">
+                                            <span className="text-emerald-400 font-bold text-lg">₹</span>
+                                            <input 
+                                                type="number" 
+                                                value={receivedAmount}
+                                                onChange={(e) => setReceivedAmount(e.target.value)}
+                                                className="w-full bg-transparent text-lg font-black text-emerald-800 focus:outline-none border-b border-emerald-200 placeholder-emerald-200"
+                                                placeholder="0"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="bg-red-50 rounded-2xl p-3 border border-red-100">
+                                        <label className="block text-[10px] font-black uppercase tracking-widest text-red-600 mb-1 ml-1">Pending</label>
+                                        <div className="flex items-center gap-1 h-[30px]">
+                                            <span className="text-red-600 font-black text-lg">₹ {formPending}</span>
+                                        </div>
                                     </div>
                                 </div>
-
-                                {formPending > 0 && (
-                                    <div className="flex items-center justify-between bg-red-50 p-4 rounded-2xl border border-red-100 shadow-sm">
-                                        <div className="flex items-center text-red-600 font-bold text-xs uppercase tracking-wide">
-                                            <AlertTriangle className="w-4 h-4 mr-2" /> Pending
-                                        </div>
-                                        <div className="text-xl font-black text-red-600">₹{formPending}</div>
-                                    </div>
-                                )}
                             </div>
                         )}
                         
@@ -731,18 +747,19 @@ const NewEntryForm: React.FC = () => {
                  </div>
              ) : (
                  filteredTodayEntries.map((entry) => {
-                     // Check if purely pending method
-                     const isPurePending = entry.paymentMethod === 'PENDING';
+                     // Check if purely pending method OR has partial pending due
+                     const isPending = entry.paymentMethod === 'PENDING';
                      const hasPartialDue = entry.pendingAmount && entry.pendingAmount > 0;
+                     const showAction = isPending || hasPartialDue;
                      
                      return (
                          <div key={entry.id} className={`p-6 transition-colors hover:bg-slate-50 flex flex-col md:flex-row items-center justify-between gap-6
-                             ${isPurePending ? 'bg-amber-50/40' : ''}
+                             ${showAction ? 'bg-amber-50/40' : ''}
                          `}>
                              {/* Client Info */}
                              <div className="flex items-center gap-4 w-full md:w-1/3">
                                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-black text-lg shadow-sm border
-                                    ${isPurePending ? 'bg-amber-100 text-amber-600 border-amber-200' : 'bg-slate-100 text-slate-600 border-slate-200'}
+                                    ${showAction ? 'bg-amber-100 text-amber-600 border-amber-200' : 'bg-slate-100 text-slate-600 border-slate-200'}
                                  `}>
                                      {entry.clientName.charAt(0)}
                                  </div>
@@ -750,7 +767,7 @@ const NewEntryForm: React.FC = () => {
                                      <h4 className="font-black text-slate-800 text-lg leading-tight">{entry.clientName}</h4>
                                      <div className="text-xs font-bold text-slate-400 flex items-center gap-2 mt-1">
                                          <span>{entry.contactNo}</span>
-                                         {isPurePending && (
+                                         {showAction && (
                                             <span className="flex items-center text-amber-600 bg-amber-100 px-1.5 py-0.5 rounded border border-amber-200">
                                                 <AlertTriangle className="w-3 h-3 mr-1" /> 
                                                 Payment Pending
@@ -768,7 +785,7 @@ const NewEntryForm: React.FC = () => {
 
                              {/* Amount & Status */}
                              <div className="w-full md:w-1/6 text-right md:text-left">
-                                 <div className={`font-black text-xl ${isPurePending ? 'text-amber-600' : 'text-slate-800'}`}>
+                                 <div className={`font-black text-xl ${showAction ? 'text-amber-600' : 'text-slate-800'}`}>
                                      ₹{entry.amount}
                                  </div>
                                  <div className="text-[10px] font-black uppercase tracking-wider text-slate-400">
@@ -778,7 +795,7 @@ const NewEntryForm: React.FC = () => {
 
                              {/* Actions - Only show Amount button if PURELY PENDING */}
                              <div className="flex items-center gap-2 w-full md:w-auto justify-end">
-                                 {isPurePending && (
+                                 {showAction && (
                                      <button 
                                         onClick={() => openEditModal(entry)}
                                         className="px-4 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-xl font-bold text-sm shadow-lg shadow-emerald-500/30 hover:-translate-y-0.5 transition-all flex items-center border border-emerald-600"
