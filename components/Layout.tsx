@@ -15,7 +15,8 @@ import {
   FileText,
   History,
   X,
-  Code2
+  Code2,
+  Wallet
 } from 'lucide-react';
 import { User, Role } from '../types';
 
@@ -34,6 +35,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
   const allMenuItems = [
     { path: '/', label: 'Dashboard', icon: LayoutDashboard, adminOnly: true },
     { path: '/new-entry', label: 'New Entry', icon: PlusCircle, adminOnly: false },
+    { path: '/pending-dues', label: 'Pending Dues', icon: Wallet, adminOnly: false },
     { path: '/daily-report', label: 'Today Report', icon: FileText, adminOnly: false },
     { path: '/history', label: 'Client History', icon: History, adminOnly: false },
     { path: '/appointments', label: 'Bookings', icon: Calendar, adminOnly: false },

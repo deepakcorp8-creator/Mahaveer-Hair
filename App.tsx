@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
@@ -8,6 +9,7 @@ import AppointmentBooking from './components/AppointmentBooking';
 import ServicePackages from './components/ServicePackages';
 import DailyReport from './components/DailyReport';
 import ClientHistory from './components/ClientHistory'; 
+import PendingPayments from './components/PendingPayments';
 import AdminPanel from './components/AdminPanel';
 import Login from './components/Login';
 import { User, Role } from './types';
@@ -160,6 +162,10 @@ function App() {
               <ProtectedRoute user={user} path="/new-entry"><NewEntryForm /></ProtectedRoute>
           } />
           
+          <Route path="/pending-dues" element={
+              <ProtectedRoute user={user} path="/pending-dues"><PendingPayments /></ProtectedRoute>
+          } />
+
           <Route path="/daily-report" element={
               <ProtectedRoute user={user} path="/daily-report"><DailyReport /></ProtectedRoute>
           } />

@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { Client, Item, Technician, Entry, ServicePackage } from '../types';
-import { Save, AlertCircle, User, CreditCard, Scissors, Calendar, MapPin, RefreshCw, CheckCircle2, Ticket, FileDown, ShieldCheck, Search, PenSquare, Wallet, X, Clock, AlertTriangle, Loader2 } from 'lucide-react';
+import { Save, AlertCircle, User, CreditCard, Scissors, Calendar, MapPin, RefreshCw, CheckCircle2, Ticket, FileDown, ShieldCheck, Search, PenSquare, Wallet, X, Clock, AlertTriangle, Loader2, ToggleLeft, ToggleRight } from 'lucide-react';
 import { SearchableSelect } from './SearchableSelect';
 import { generateInvoice } from '../utils/invoiceGenerator';
 
@@ -15,13 +15,16 @@ const NewEntryForm: React.FC = () => {
   const [todayEntries, setTodayEntries] = useState<Entry[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   
-  // NEW: Store names of clients who have active packages
   const [activePackageClients, setActivePackageClients] = useState<Set<string>>(new Set());
   
   // Edit Modal State
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<Entry | null>(null);
+  
+  // Modal Fields
+  const [editTotalAmount, setEditTotalAmount] = useState<number | string>('');
   const [editReceivedAmount, setEditReceivedAmount] = useState<number | string>('');
+  const [isPartPayment, setIsPartPayment] = useState(false);
 
   const [activePackage, setActivePackage] = useState<{
       package: ServicePackage,
@@ -50,8 +53,10 @@ const NewEntryForm: React.FC = () => {
   
   const [formData, setFormData] = useState<Partial<Entry>>(initialFormState);
   
-  // NEW: Track Received Amount separate from Total Bill. Default empty for manual entry.
+  // Main form received amount (manual entry)
   const [receivedAmount, setReceivedAmount] = useState<number | string>('');
+  const [showPartPaymentToggle, setShowPartPaymentToggle] = useState(false);
+  const [isFormPartPayment, setIsFormPartPayment] = useState(false);
   
   const [notification, setNotification] = useState<{msg: string, type: 'success' | 'error' | 'warning'} | null>(null);
   const [lastSubmittedEntry, setLastSubmittedEntry] = useState<Entry | null>(null);
@@ -65,11 +70,11 @@ const NewEntryForm: React.FC = () => {
       if (formData.serviceType === 'DEMO') {
           setFormData(prev => ({ ...prev, amount: 0, paymentMethod: 'CASH' }));
           setReceivedAmount(0);
+          setIsFormPartPayment(false);
       }
   }, [formData.serviceType]);
 
   const init = async () => {
-    // Parallel fetch for speed
     const [options, packages] = await Promise.all([
         api.getOptions(),
         api.getPackages()
@@ -79,7 +84,6 @@ const NewEntryForm: React.FC = () => {
     setTechnicians(options.technicians);
     setItems(options.items);
     
-    // Identify clients with ACTIVE or APPROVED packages
     const activeNames = new Set(
         packages
             .filter(p => p.status === 'ACTIVE' || p.status === 'APPROVED')
@@ -91,7 +95,7 @@ const NewEntryForm: React.FC = () => {
   };
 
   const loadTodayEntries = async () => {
-      const allEntries = await api.getEntries(true); // Force refresh
+      const allEntries = await api.getEntries(true);
       const today = new Date().toISOString().split('T')[0];
       const todays = allEntries.filter(e => e.date === today);
       setTodayEntries(todays);
@@ -108,23 +112,19 @@ const NewEntryForm: React.FC = () => {
 
     if (!clientName) return;
 
-    // 1. Try to find client details in Master List
     const client = clients.find(c => c.name.toLowerCase() === clientName.toLowerCase());
-    
     let contactToUse = '';
 
     if (client) {
       setFormData(prev => ({
         ...prev,
-        clientName: client.name, // Use exact casing from master
+        clientName: client.name,
         contactNo: client.contact,
         address: client.address
       }));
       contactToUse = client.contact;
     }
 
-    // 2. Check for Package (Always check, even if not in master list)
-    // Use the name found in master list if available, otherwise use typed name
     const nameToCheck = client ? client.name : clientName;
     checkPackage(nameToCheck, contactToUse);
   };
@@ -170,10 +170,23 @@ const NewEntryForm: React.FC = () => {
       return;
     }
 
-    // Calculate Pending Amount
+    // Logic:
+    // If PENDING method -> Amount is total bill, pending is equal to total.
+    // If PART PAYMENT -> Pending = Total - Received.
+    // If FULL PAYMENT -> Pending = 0.
+
+    let pending = 0;
     const totalBill = Number(formData.amount || 0);
-    const paid = receivedAmount === '' ? 0 : Number(receivedAmount);
-    const pending = Math.max(0, totalBill - paid);
+
+    if (formData.paymentMethod === 'PENDING') {
+        pending = totalBill;
+    } else if (isFormPartPayment) {
+        const paid = Number(receivedAmount || 0);
+        pending = Math.max(0, totalBill - paid);
+    } else {
+        // Full Payment assumption if not pending and not part payment
+        pending = 0;
+    }
 
     const entryToSubmit: Entry = {
         ...formData,
@@ -188,16 +201,15 @@ const NewEntryForm: React.FC = () => {
           msg: isPackage ? 'Package Service Recorded Successfully!' : 'Transaction recorded successfully!', 
           type: 'success' 
       });
-      setFormData({
-          ...initialFormState, 
-          date: formData.date 
-      });
-      setReceivedAmount(''); // Reset to empty for manual input next time
+      
+      // Reset Form
+      setFormData({ ...initialFormState, date: formData.date });
+      setReceivedAmount('');
+      setIsFormPartPayment(false);
       setActivePackage(null);
-      await loadTodayEntries(); // Refresh the list
       
+      await loadTodayEntries(); 
       document.querySelector('main')?.scrollTo({ top: 0, behavior: 'smooth' });
-      
       setTimeout(() => setNotification(null), 8000);
     } catch (error) {
       setNotification({ msg: 'Failed to add entry. Please check your connection.', type: 'error' });
@@ -209,21 +221,19 @@ const NewEntryForm: React.FC = () => {
   // --- EDIT / COMPLETE PAYMENT LOGIC ---
   const openEditModal = (entry: Entry) => {
       setEditingEntry(entry);
-      // Determine what was received previously
-      // If it has a pendingAmount, Received = Amount - Pending
-      // If payment method is PENDING and no pending amount recorded (legacy), assume received 0
-      let paid: number | string = '';
+      setEditTotalAmount(entry.amount);
       
-      if (entry.pendingAmount !== undefined) {
-          paid = Number(entry.amount) - Number(entry.pendingAmount);
-      } else if (entry.paymentMethod === 'PENDING') {
-          paid = 0;
+      // Determine initial toggle state
+      const hasPending = entry.pendingAmount && entry.pendingAmount > 0;
+      setIsPartPayment(!!hasPending);
+      
+      // If partial, Received = Total - Pending. If Full, Received = Total.
+      if (hasPending) {
+          setEditReceivedAmount(entry.amount - (entry.pendingAmount || 0));
       } else {
-          // Assuming full payment if not specified otherwise
-          paid = Number(entry.amount);
+          setEditReceivedAmount(entry.amount);
       }
       
-      setEditReceivedAmount(paid);
       setIsEditModalOpen(true);
   };
 
@@ -233,14 +243,41 @@ const NewEntryForm: React.FC = () => {
 
       setLoading(true);
       try {
-          // Sanitise amounts
-          const totalBill = Number(editingEntry.amount || 0);
-          const received = editReceivedAmount === '' ? 0 : Number(editReceivedAmount);
-          const newPending = Math.max(0, totalBill - received);
+          const total = Number(editTotalAmount);
+          let newPending = 0;
           
+          if (editingEntry.paymentMethod === 'PENDING') {
+              // If keeping pending, assume total is pending. But modal allows changing method.
+              // If method changed to something else, we calc pending.
+              // Logic: If user sets Part Payment ON, calc pending.
+              // If OFF, assuming full payment unless Method is PENDING.
+              if (isPartPayment) {
+                  const recv = Number(editReceivedAmount);
+                  newPending = Math.max(0, total - recv);
+              } else {
+                  newPending = total; // Stays fully pending if method is PENDING? Or 0 if method is CASH?
+                  // NOTE: Logic is tricky. If method is PENDING, pending = total.
+                  // If method is CASH and part payment OFF, pending = 0.
+                  // Let's rely on Payment Method dropdown in modal.
+              }
+          } else {
+              // Standard Update
+              if (isPartPayment) {
+                  const recv = Number(editReceivedAmount);
+                  newPending = Math.max(0, total - recv);
+              } else {
+                  newPending = 0;
+              }
+          }
+          
+          // Override: If method is specifically set to PENDING in modal, force full pending
+          if (editingEntry.paymentMethod === 'PENDING') {
+              newPending = total;
+          }
+
           const updatedEntry = { 
               ...editingEntry, 
-              amount: totalBill,
+              amount: total,
               pendingAmount: newPending 
           };
 
@@ -257,36 +294,30 @@ const NewEntryForm: React.FC = () => {
       }
   };
 
-  const techOptions = technicians.map(t => ({ label: t.name, value: t.name }));
-  const patchSizeOptions = items.map(i => ({ label: i.name, value: i.name, subtext: i.category }));
-
   // Styles
   const cardClass = "bg-white rounded-3xl shadow-[0_15px_40px_-5px_rgba(0,0,0,0.1)] border-2 border-slate-200 relative overflow-hidden transition-all duration-300 hover:shadow-[0_20px_50px_-5px_rgba(0,0,0,0.15)] hover:border-slate-300";
   const inputClass = "w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3.5 text-gray-900 shadow-inner focus:ring-2 focus:ring-indigo-500 focus:bg-white focus:border-indigo-500 transition-all font-bold placeholder:font-normal placeholder:text-slate-400";
   const labelClass = "block text-xs font-black uppercase tracking-widest text-slate-500 mb-2 ml-1";
 
-  // Filter Today's List
   const filteredTodayEntries = todayEntries.filter(e => 
       e.clientName.toLowerCase().includes(searchTerm.toLowerCase()) || 
       String(e.contactNo).includes(searchTerm)
   );
 
-  // Dynamic Calculation for Main Form UI
-  const currentTotal = Number(formData.amount || 0);
-  const currentReceived = receivedAmount === '' ? 0 : Number(receivedAmount);
-  const pendingCalc = Math.max(0, currentTotal - currentReceived);
-
-  // Dynamic Calculation for Edit Modal UI
-  const editTotal = Number(editingEntry?.amount || 0);
-  const editReceived = editReceivedAmount === '' ? 0 : Number(editReceivedAmount);
-  const editPending = Math.max(0, editTotal - editReceived);
-
   const isDemo = formData.serviceType === 'DEMO';
+  
+  // Calculate Pending for Main Form Display
+  const currentTotal = Number(formData.amount || 0);
+  const currentReceived = isFormPartPayment ? Number(receivedAmount || 0) : currentTotal;
+  const formPending = Math.max(0, currentTotal - currentReceived);
+
+  // Edit Modal Calculation
+  const editPendingCalc = isPartPayment ? Math.max(0, Number(editTotalAmount) - Number(editReceivedAmount)) : 0;
 
   return (
     <div className="max-w-6xl mx-auto pb-20">
       
-      {/* 3D Floating Header */}
+      {/* Header */}
       <div className="mb-10 relative group">
          <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-[2rem] blur-xl opacity-40 transform group-hover:scale-[1.02] transition-transform duration-500"></div>
          <div className="relative bg-gradient-to-r from-indigo-700 to-purple-700 rounded-[2rem] p-8 text-white shadow-2xl overflow-hidden border border-white/20">
@@ -338,8 +369,9 @@ const NewEntryForm: React.FC = () => {
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            {/* Left Column: Client & Service Details */}
             <div className="lg:col-span-8 space-y-8">
-                {/* 1. Client Card (3D) */}
+                {/* 1. Client Card */}
                 <div className={cardClass}>
                     <div className="px-8 py-6 bg-gradient-to-r from-blue-50 to-white border-b border-blue-100 flex items-center">
                         <div className="p-3 bg-blue-100 text-blue-600 rounded-2xl mr-4 shadow-sm border border-blue-200">
@@ -371,10 +403,7 @@ const NewEntryForm: React.FC = () => {
                         </div>
                         {activePackage && (
                              <div className={`col-span-full rounded-2xl border-2 p-5 flex items-start gap-4 shadow-lg transition-all duration-300 transform hover:scale-[1.01] animate-in fade-in slide-in-from-top-4
-                                ${activePackage.isExpired 
-                                    ? 'bg-red-50 border-red-300' 
-                                    : 'bg-emerald-50 border-emerald-300'}
-                             `}>
+                                ${activePackage.isExpired ? 'bg-red-50 border-red-300' : 'bg-emerald-50 border-emerald-300'}`}>
                                  <div className={`p-3 rounded-xl shadow-sm border ${activePackage.isExpired ? 'bg-red-100 border-red-200 text-red-600' : 'bg-emerald-100 border-emerald-200 text-emerald-600'}`}>
                                      <Ticket className="w-8 h-8" />
                                  </div>
@@ -424,7 +453,7 @@ const NewEntryForm: React.FC = () => {
                     </div>
                 </div>
 
-                {/* 2. Service Card (3D) */}
+                {/* 2. Service Card */}
                 <div className={cardClass}>
                     <div className="px-8 py-6 bg-gradient-to-r from-violet-50 to-white border-b border-violet-100 flex items-center">
                         <div className="p-3 bg-violet-100 text-violet-600 rounded-2xl mr-4 shadow-sm border border-violet-200">
@@ -447,8 +476,7 @@ const NewEntryForm: React.FC = () => {
                                         className={`flex-1 py-3 rounded-xl font-bold text-sm transition-all duration-200 border
                                             ${formData.branch === b 
                                                 ? 'bg-violet-600 text-white shadow-lg shadow-violet-500/30 transform scale-105 border-violet-700' 
-                                                : 'text-slate-500 hover:bg-white hover:text-slate-700 border-transparent hover:border-slate-200'
-                                            }`}
+                                                : 'text-slate-500 hover:bg-white hover:text-slate-700 border-transparent hover:border-slate-200'}`}
                                     >
                                         {b}
                                     </button>
@@ -491,7 +519,7 @@ const NewEntryForm: React.FC = () => {
                         <div className="animate-in fade-in slide-in-from-top-2 duration-300">
                              <SearchableSelect 
                                 label="Patch Size"
-                                options={patchSizeOptions}
+                                options={items.map(i => ({ label: i.name, value: i.name, subtext: i.category }))}
                                 value={formData.patchSize || ''}
                                 onChange={(val) => setFormData(prev => ({ ...prev, patchSize: val }))}
                                 placeholder="Select Patch Size..."
@@ -519,7 +547,7 @@ const NewEntryForm: React.FC = () => {
                          <div className="md:col-span-2">
                              <SearchableSelect 
                                 label="Technician Assigned"
-                                options={techOptions}
+                                options={technicians.map(t => ({ label: t.name, value: t.name }))}
                                 value={formData.technician || ''}
                                 onChange={(val) => setFormData(prev => ({ ...prev, technician: val }))}
                                 placeholder="Select Technician..."
@@ -542,8 +570,10 @@ const NewEntryForm: React.FC = () => {
                 </div>
             </div>
 
+            {/* Right Column: Payment */}
             <div className="lg:col-span-4 space-y-8">
-                {/* 3. Payment Card (3D) */}
+                {/* 3. Payment Card */}
+                {!isDemo && (
                 <div className={`${cardClass} sticky top-6 bg-gradient-to-b from-white to-emerald-50/20`}>
                     <div className="px-8 py-6 bg-gradient-to-r from-emerald-50 to-white border-b border-emerald-100 flex items-center">
                         <div className="p-3 bg-emerald-100 text-emerald-600 rounded-2xl mr-4 shadow-sm border border-emerald-200">
@@ -555,7 +585,6 @@ const NewEntryForm: React.FC = () => {
                          
                          {/* Total Amount */}
                          <div className="bg-white rounded-3xl p-6 border border-emerald-200 text-center shadow-inner relative overflow-hidden">
-                            {isDemo && <div className="absolute inset-0 bg-slate-100/80 z-10 flex items-center justify-center font-bold text-slate-400">DEMO (No Charge)</div>}
                             <label className="text-emerald-800 font-black text-xs uppercase tracking-widest mb-2 block">Total Bill Amount</label>
                             <div className="relative flex justify-center items-center">
                                 <span className="text-emerald-500 text-3xl font-black mr-2">₹</span>
@@ -568,14 +597,28 @@ const NewEntryForm: React.FC = () => {
                                     className="w-40 bg-transparent text-4xl font-black text-slate-800 text-center border-b-4 border-emerald-300 focus:border-emerald-500 focus:outline-none placeholder-slate-200 transition-colors"
                                     placeholder="0"
                                     min="0"
-                                    required
+                                    required={formData.paymentMethod !== 'PENDING'}
                                 />
                             </div>
                         </div>
 
-                        {/* Received Amount & Pending */}
-                        {!isDemo && (
-                            <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
+                        {/* Part Payment Toggle (Only if NOT Pending Method) */}
+                        {formData.paymentMethod !== 'PENDING' && (
+                            <div className="flex items-center justify-between bg-slate-50 px-4 py-2 rounded-xl border border-slate-200">
+                                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Part Payment?</span>
+                                <button 
+                                    type="button" 
+                                    onClick={() => setIsFormPartPayment(!isFormPartPayment)}
+                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${isFormPartPayment ? 'bg-indigo-600' : 'bg-slate-300'}`}
+                                >
+                                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${isFormPartPayment ? 'translate-x-6' : 'translate-x-1'}`} />
+                                </button>
+                            </div>
+                        )}
+
+                        {/* Received & Pending Inputs */}
+                        {isFormPartPayment && formData.paymentMethod !== 'PENDING' && (
+                            <div className="animate-in fade-in slide-in-from-top-2 space-y-4">
                                 <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200">
                                     <label className={labelClass}>Received Amount</label>
                                     <div className="flex items-center gap-2">
@@ -590,12 +633,12 @@ const NewEntryForm: React.FC = () => {
                                     </div>
                                 </div>
 
-                                {pendingCalc > 0 && (
+                                {formPending > 0 && (
                                     <div className="flex items-center justify-between bg-red-50 p-4 rounded-2xl border border-red-100 shadow-sm">
                                         <div className="flex items-center text-red-600 font-bold text-xs uppercase tracking-wide">
                                             <AlertTriangle className="w-4 h-4 mr-2" /> Pending
                                         </div>
-                                        <div className="text-xl font-black text-red-600">₹{pendingCalc}</div>
+                                        <div className="text-xl font-black text-red-600">₹{formPending}</div>
                                     </div>
                                 )}
                             </div>
@@ -618,12 +661,10 @@ const NewEntryForm: React.FC = () => {
                                             type="button"
                                             key={method}
                                             onClick={() => setFormData(prev => ({ ...prev, paymentMethod: method as any }))}
-                                            disabled={isDemo}
                                             className={`py-4 px-2 text-sm font-black rounded-2xl border transition-all duration-200 shadow-sm
                                                 ${isActive 
                                                     ? `${activeColors[method]} transform scale-105 shadow-lg` 
                                                     : 'bg-white text-slate-400 border-slate-300 hover:bg-slate-50 hover:text-slate-600'}
-                                                ${isDemo ? 'opacity-50 cursor-not-allowed' : ''}
                                             `}
                                         >
                                             {method}
@@ -654,13 +695,13 @@ const NewEntryForm: React.FC = () => {
                         </button>
                      </div>
                 </div>
+                )}
             </div>
         </div>
       </form>
 
       {/* --- TODAY'S ACTIVITY LIST --- */}
       <div className="bg-white rounded-[2.5rem] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)] border border-slate-200 overflow-hidden relative">
-          {/* Header */}
           <div className="px-8 py-6 bg-slate-50/50 border-b border-slate-200 flex flex-col md:flex-row justify-between items-center gap-4">
               <div className="flex items-center gap-3">
                   <div className="p-2.5 bg-indigo-100 text-indigo-600 rounded-xl border border-indigo-200">
@@ -683,7 +724,6 @@ const NewEntryForm: React.FC = () => {
               </div>
           </div>
 
-          {/* List */}
           <div className="divide-y divide-slate-100">
              {filteredTodayEntries.length === 0 ? (
                  <div className="p-12 text-center text-slate-400 font-medium">
@@ -691,16 +731,18 @@ const NewEntryForm: React.FC = () => {
                  </div>
              ) : (
                  filteredTodayEntries.map((entry) => {
-                     const isPending = entry.paymentMethod === 'PENDING' || Number(entry.pendingAmount) > 0;
+                     // Check if purely pending method
+                     const isPurePending = entry.paymentMethod === 'PENDING';
+                     const hasPartialDue = entry.pendingAmount && entry.pendingAmount > 0;
                      
                      return (
                          <div key={entry.id} className={`p-6 transition-colors hover:bg-slate-50 flex flex-col md:flex-row items-center justify-between gap-6
-                             ${isPending ? 'bg-amber-50/40' : ''}
+                             ${isPurePending ? 'bg-amber-50/40' : ''}
                          `}>
                              {/* Client Info */}
                              <div className="flex items-center gap-4 w-full md:w-1/3">
                                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-black text-lg shadow-sm border
-                                    ${isPending ? 'bg-amber-100 text-amber-600 border-amber-200' : 'bg-slate-100 text-slate-600 border-slate-200'}
+                                    ${isPurePending ? 'bg-amber-100 text-amber-600 border-amber-200' : 'bg-slate-100 text-slate-600 border-slate-200'}
                                  `}>
                                      {entry.clientName.charAt(0)}
                                  </div>
@@ -708,10 +750,10 @@ const NewEntryForm: React.FC = () => {
                                      <h4 className="font-black text-slate-800 text-lg leading-tight">{entry.clientName}</h4>
                                      <div className="text-xs font-bold text-slate-400 flex items-center gap-2 mt-1">
                                          <span>{entry.contactNo}</span>
-                                         {isPending && (
+                                         {isPurePending && (
                                             <span className="flex items-center text-amber-600 bg-amber-100 px-1.5 py-0.5 rounded border border-amber-200">
                                                 <AlertTriangle className="w-3 h-3 mr-1" /> 
-                                                {entry.pendingAmount && entry.pendingAmount > 0 ? `Due: ₹${entry.pendingAmount}` : 'Payment Pending'}
+                                                Payment Pending
                                             </span>
                                          )}
                                      </div>
@@ -726,7 +768,7 @@ const NewEntryForm: React.FC = () => {
 
                              {/* Amount & Status */}
                              <div className="w-full md:w-1/6 text-right md:text-left">
-                                 <div className={`font-black text-xl ${isPending ? 'text-amber-600' : 'text-slate-800'}`}>
+                                 <div className={`font-black text-xl ${isPurePending ? 'text-amber-600' : 'text-slate-800'}`}>
                                      ₹{entry.amount}
                                  </div>
                                  <div className="text-[10px] font-black uppercase tracking-wider text-slate-400">
@@ -734,9 +776,9 @@ const NewEntryForm: React.FC = () => {
                                  </div>
                              </div>
 
-                             {/* Actions */}
+                             {/* Actions - Only show Amount button if PURELY PENDING */}
                              <div className="flex items-center gap-2 w-full md:w-auto justify-end">
-                                 {isPending && (
+                                 {isPurePending && (
                                      <button 
                                         onClick={() => openEditModal(entry)}
                                         className="px-4 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-xl font-bold text-sm shadow-lg shadow-emerald-500/30 hover:-translate-y-0.5 transition-all flex items-center border border-emerald-600"
@@ -760,14 +802,14 @@ const NewEntryForm: React.FC = () => {
           </div>
       </div>
 
-      {/* EDIT / COMPLETE PAYMENT MODAL */}
+      {/* EDIT MODAL */}
       {isEditModalOpen && editingEntry && (
           <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
               <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 border border-white/20">
                   <div className="bg-slate-900 px-8 py-6 flex justify-between items-center text-white">
                       <div>
                           <h3 className="font-black text-lg flex items-center tracking-tight">
-                              {editingEntry.pendingAmount && editingEntry.pendingAmount > 0 ? 'Complete Payment' : 'Edit Transaction'}
+                              {editingEntry.paymentMethod === 'PENDING' ? 'Complete Payment' : 'Edit Transaction'}
                           </h3>
                           <p className="text-slate-400 text-xs font-bold">{editingEntry.clientName}</p>
                       </div>
@@ -775,62 +817,53 @@ const NewEntryForm: React.FC = () => {
                   </div>
                   
                   <form onSubmit={handleEditSubmit} className="p-8 space-y-6">
+                      
                       <div className="grid grid-cols-2 gap-6">
                           <div>
-                              <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Technician</label>
-                              <select 
-                                  value={editingEntry.technician}
-                                  onChange={e => setEditingEntry({...editingEntry, technician: e.target.value})}
-                                  className="w-full rounded-xl border-slate-200 border bg-slate-50 px-4 py-3 font-bold focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
-                              >
-                                  {technicians.map(t => <option key={t.name} value={t.name}>{t.name}</option>)}
-                              </select>
-                          </div>
-                          <div>
-                              <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Service Type</label>
-                              <select 
-                                  value={editingEntry.serviceType}
-                                  onChange={e => setEditingEntry({...editingEntry, serviceType: e.target.value as any})}
-                                  className="w-full rounded-xl border-slate-200 border bg-slate-50 px-4 py-3 font-bold focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
-                              >
-                                  <option value="SERVICE">SERVICE</option>
-                                  <option value="NEW">NEW</option>
-                                  <option value="DEMO">DEMO</option>
-                                  <option value="MUNDAN">MUNDAN</option>
-                              </select>
-                          </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-6">
-                          <div>
-                              <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Total Bill Amount</label>
+                              <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Total Bill</label>
                               <input 
                                   type="number"
-                                  value={editingEntry.amount}
-                                  onChange={e => setEditingEntry({...editingEntry, amount: e.target.value as any})}
-                                  onFocus={(e) => (editingEntry.amount === 0 || (editingEntry.amount as any) === '0') && setEditingEntry({...editingEntry, amount: '' as any})}
+                                  value={editTotalAmount}
+                                  onChange={e => setEditTotalAmount(e.target.value)}
                                   className="w-full rounded-xl border-slate-200 border bg-slate-50 px-4 py-4 text-xl font-black text-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none"
                               />
                           </div>
-                          <div>
-                              <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Received Amount</label>
-                              <input 
-                                  type="number"
-                                  value={editReceivedAmount}
-                                  onChange={e => setEditReceivedAmount(e.target.value)}
-                                  className="w-full rounded-xl border-emerald-200 border-2 bg-emerald-50/50 px-4 py-4 text-xl font-black text-emerald-800 focus:ring-2 focus:ring-emerald-500 outline-none placeholder-emerald-300"
-                                  placeholder="0"
-                              />
+                          
+                          {/* Part Payment Toggle Area */}
+                          <div className="flex flex-col justify-center">
+                              <div className="flex items-center justify-between bg-slate-50 px-3 py-2 rounded-xl border border-slate-200 h-full">
+                                <span className="text-[10px] font-bold text-slate-500 uppercase">Part Pay?</span>
+                                <button 
+                                    type="button" 
+                                    onClick={() => setIsPartPayment(!isPartPayment)}
+                                    className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${isPartPayment ? 'bg-indigo-600' : 'bg-slate-300'}`}
+                                >
+                                    <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${isPartPayment ? 'translate-x-5' : 'translate-x-1'}`} />
+                                </button>
+                              </div>
                           </div>
                       </div>
-                      
-                      {/* Calculated Pending Amount Display */}
-                      <div className="bg-red-50 p-4 rounded-xl border border-red-100 flex items-center justify-between">
-                          <span className="text-xs font-bold text-red-500 uppercase tracking-wider flex items-center">
-                              <AlertTriangle className="w-4 h-4 mr-2" /> Pending Due
-                          </span>
-                          <span className="text-2xl font-black text-red-600">₹{editPending}</span>
-                      </div>
+
+                      {/* Dynamic Columns for Payment */}
+                      {isPartPayment && (
+                          <div className="grid grid-cols-2 gap-6 animate-in fade-in slide-in-from-top-1">
+                              <div>
+                                  <label className="block text-[10px] font-black uppercase tracking-widest text-emerald-600 mb-2">Received</label>
+                                  <input 
+                                      type="number"
+                                      value={editReceivedAmount}
+                                      onChange={e => setEditReceivedAmount(e.target.value)}
+                                      className="w-full rounded-xl border-emerald-200 border bg-emerald-50 px-4 py-4 text-xl font-black text-emerald-700 focus:ring-2 focus:ring-emerald-500 outline-none"
+                                  />
+                              </div>
+                              <div>
+                                  <label className="block text-[10px] font-black uppercase tracking-widest text-red-500 mb-2">Pending</label>
+                                  <div className="w-full rounded-xl border-red-100 border bg-red-50 px-4 py-4 text-xl font-black text-red-600 flex items-center h-[62px]">
+                                      ₹{editPendingCalc}
+                                  </div>
+                              </div>
+                          </div>
+                      )}
 
                       <div>
                           <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Payment Method</label>
@@ -850,16 +883,6 @@ const NewEntryForm: React.FC = () => {
                                   </button>
                               ))}
                           </div>
-                      </div>
-
-                      <div>
-                           <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Remarks</label>
-                           <textarea
-                                value={editingEntry.remark}
-                                onChange={e => setEditingEntry({...editingEntry, remark: e.target.value})}
-                                rows={2}
-                                className="w-full rounded-xl border-slate-200 border bg-slate-50 px-4 py-3 font-medium text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
-                           />
                       </div>
 
                       <button 
