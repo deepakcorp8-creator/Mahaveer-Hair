@@ -13,6 +13,19 @@ export const generateInvoice = (entry: Entry) => {
 
   const invoiceNumber = `INV-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 10000)).padStart(4, '0')}`;
 
+  // BRANCH SPECIFIC ADDRESS LOGIC
+  let branchAddress = "2nd Floor Rais Reality, front Anupam garden, GE Road Raipur Chhattisgarh";
+  let branchContact = "+91-9144939828";
+
+  // Check branch code (Handle case insensitivity)
+  const branchCode = (entry.branch || 'RPR').toUpperCase();
+
+  if (branchCode === 'JDP') {
+      branchAddress = "Varghese Wings, Near Vishal Mega Mart Dharampura, Jagdalpur, Jagdalpur-494001, Chhattisgarh";
+      branchContact = "09725567348";
+  }
+  // Default (RPR and BSP) uses the Raipur Address defined above
+
   const htmlContent = `
     <!DOCTYPE html>
     <html lang="en">
@@ -286,8 +299,8 @@ export const generateInvoice = (entry: Entry) => {
            <img src="${LOGO_URL}" class="logo" alt="Mahaveer Logo" onerror="this.style.display='none'" />
            <div class="brand">Mahaveer Hair Solution</div>
            <div class="address">
-              First Floor, Opp. Ayurvedic College & Anupam Garden, Near Amit Sales, G.E. Road, Raipur (C.G.)<br>
-              <strong>Contact:</strong> +91-9691699382, +91-9144939828 | <strong>Email:</strong> info@mahaveerhairsolution.com
+              ${branchAddress}<br>
+              <strong>Contact:</strong> ${branchContact} | <strong>Email:</strong> info@mahaveerhairsolution.com
            </div>
         </div>
 

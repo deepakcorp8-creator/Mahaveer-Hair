@@ -250,6 +250,16 @@ function createInvoicePDF(data) {
 
   var invoiceNo = "INV-" + new Date().getFullYear() + "-" + Math.floor(Math.random() * 10000);
   
+  // Dynamic Address Logic based on Branch
+  var branchAddress = "2nd Floor Rais Reality, front Anupam garden, GE Road Raipur Chhattisgarh";
+  var branchContact = "+91-9144939828";
+
+  // Check branch if available in data
+  if (data.branch && data.branch.toString().toUpperCase() === 'JDP') {
+      branchAddress = "Varghese Wings, Near Vishal Mega Mart Dharampura, Jagdalpur, Jagdalpur-494001, Chhattisgarh";
+      branchContact = "09725567348";
+  }
+
   var html = 
     "<html><body style='font-family: sans-serif; color: #374151; padding: 0; margin: 0; background: white;'>" +
       "<div style='width: 90%; max-width: 700px; margin: 0 auto; padding: 20px; border: 1px solid #ddd;'>" +
@@ -258,8 +268,8 @@ function createInvoicePDF(data) {
         "<div style='text-align: center; border-bottom: 2px solid #111; padding-bottom: 10px; margin-bottom: 20px;'>" +
           "<h1 style='margin: 0; font-size: 20px; color: #111;'>MAHAVEER HAIR SOLUTION</h1>" +
           "<p style='margin: 5px 0; font-size: 10px; color: #555;'>" +
-             "First Floor, Opp. Ayurvedic College & Anupam Garden, Near Amit Sales, G.E. Road, Raipur<br>" +
-             "Mobile: +91-9691699382 | Email: info@mahaveerhairsolution.com" +
+             branchAddress + "<br>" +
+             "Mobile: " + branchContact + " | Email: info@mahaveerhairsolution.com" +
           "</p>" +
         "</div>" +
         

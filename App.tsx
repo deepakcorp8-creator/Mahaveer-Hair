@@ -54,9 +54,9 @@ function App() {
   const lastActivityRef = useRef<number>(Date.now());
   const checkIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // UPDATED TIME: 5 Minutes Total
-  const TIMEOUT_DURATION = 5 * 60 * 1000; 
-  const WARNING_DURATION = 4 * 60 * 1000; 
+  // UPDATED TIME: 20 Minutes Total
+  const TIMEOUT_DURATION = 20 * 60 * 1000; 
+  const WARNING_DURATION = 19 * 60 * 1000; 
   const CHECK_INTERVAL = 10 * 1000; 
 
   // Pre-fetch data on load
