@@ -1,23 +1,32 @@
 
-// COPY THIS CODE INTO YOUR GOOGLE APPS SCRIPT EDITOR
-// SAVE IT.
-// SELECT "requestPermissions" function from the top dropdown and click RUN.
-// YOU MUST APPROVE THE PERMISSIONS TO "CREATE/EDIT" FILES.
+// =====================================================================================
+// ⚠️ STEP 1: Select "fixPermissions" from the dropdown above and click RUN.
+// ⚠️ STEP 2: Review Permissions -> Allow.
+// ⚠️ STEP 3: Click "Deploy" > "New Deployment" > "Web App" > "Deploy".
+// ⚠️ IMPORTANT: In Deployment settings, set "Execute as" to "Me".
+// =====================================================================================
 
-function requestPermissions() {
-  // Folder ID from your URL
-  const folderId = "1yNT2OJZ192AmNLF_3xxwCew_h3jCnEP_";
+function fixPermissions() {
+  console.log("1. Initializing Drive Access...");
+  
+  // This line forces the script to ask for "Full Drive Scope" (https://www.googleapis.com/auth/drive)
+  // instead of just "drive.file". This is required to access folders you created manually.
+  const root = DriveApp.getRootFolder(); 
+  
+  const FOLDER_ID = "1KmraYm_2xR6IPaR83IM1BL5cuNYcvqkE"; // Your specific folder
   
   try {
-    const folder = DriveApp.getFolderById(folderId);
-    console.log("Folder found: " + folder.getName());
-    const testFile = folder.createFile("System_Check.txt", "This file verifies write permissions.");
-    console.log("Write permission verified.");
-    testFile.setTrashed(true);
-    console.log("System check complete. You can now Deploy.");
+    const folder = DriveApp.getFolderById(FOLDER_ID);
+    console.log("✅ FOLDER FOUND: " + folder.getName());
+    
+    const file = folder.createFile("Permission_Test.txt", "If you see this, permissions are fixed!");
+    file.setTrashed(true); // Delete immediately
+    
+    console.log("✅ WRITE ACCESS CONFIRMED.");
+    console.log("👉 You can now DEPLOY the app.");
   } catch (e) {
-    console.log("ERROR: " + e.message);
-    console.log("Please run this function again and approve all permissions.");
+    console.log("❌ ERROR: " + e.toString());
+    console.log("TIP: Ensure you are the owner of the folder, or have Edit access.");
   }
 }
 
@@ -38,6 +47,43 @@ function doPost(e) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const data = JSON.parse(e.postData.contents);
   const action = data.action;
+
+  if (action == 'addEntry') {
+    const sheet = ss.getSheetByName("DATA BASE");
+    if (!sheet) return response({error: "Sheet 'DATA BASE' not found"});
+
+    // GENERATE PDF & GET LINK
+    var invoiceUrl = "";
+    try { 
+      invoiceUrl = createInvoicePDF(data); 
+    } catch(e) { 
+      invoiceUrl = "Error: " + e.message; 
+    }
+
+    // Append Row
+    sheet.appendRow([
+      data.date, 
+      data.clientName, 
+      data.contactNo, 
+      data.address, 
+      data.branch,
+      data.serviceType, 
+      data.patchMethod, 
+      data.technician, 
+      data.workStatus,
+      data.amount, 
+      data.paymentMethod, 
+      data.remark, 
+      data.numberOfService,
+      invoiceUrl, 
+      data.patchSize || '', 
+      data.pendingAmount || 0
+    ]);
+    
+    return response({status: "success", invoiceUrl: invoiceUrl});
+  }
+
+  // --- OTHER ACTIONS ---
 
   if (action == 'addPackage') {
     const sheet = getPackageSheet(ss);
@@ -74,22 +120,6 @@ function doPost(e) {
         sheet.getRange(rowId, 5).setValue(data.totalServices);
         return response({status: "success"});
     } catch(e) { return response({error: e.message}); }
-  }
-
-  if (action == 'addEntry') {
-    const sheet = ss.getSheetByName("DATA BASE");
-    if (!sheet) return response({error: "Sheet 'DATA BASE' not found"});
-
-    var invoiceUrl = "";
-    try { invoiceUrl = createInvoicePDF(data); } catch(e) { invoiceUrl = "Error: " + e.message; }
-
-    sheet.appendRow([
-      data.date, data.clientName, data.contactNo, data.address, data.branch,
-      data.serviceType, data.patchMethod, data.technician, data.workStatus,
-      data.amount, data.paymentMethod, data.remark, data.numberOfService,
-      invoiceUrl, data.patchSize || '', data.pendingAmount || 0
-    ]);
-    return response({status: "success", invoiceUrl: invoiceUrl});
   }
 
   if (action == 'updateEntryStatus') {
@@ -147,7 +177,6 @@ function doPost(e) {
   if (action == 'addAppointment') {
     const sheet = ss.getSheetByName("APPOINTMNET");
     const id = 'appt_' + new Date().getTime();
-    // Updated to include Branch and Time
     sheet.appendRow([id, data.date, data.clientName, data.contact, data.address, data.note, data.status, data.branch, data.time]);
     return response({status: "success", id: id});
   }
@@ -172,6 +201,8 @@ function getPackageSheet(ss) {
     if (!sheet) sheet = ss.getSheetByName("PACKAGE PLAN"); 
     return sheet;
 }
+
+// --- DATA FETCHING FUNCTIONS ---
 
 function getPackages(ss) {
     const sheet = getPackageSheet(ss);
@@ -199,7 +230,6 @@ function getEntries(ss) {
 function getAppointments(ss) {
     const sheet = ss.getSheetByName("APPOINTMNET");
     if (!sheet || sheet.getLastRow() <= 1) return response([]);
-    // Read up to column 9 (I) for Branch and Time
     const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 9).getValues();
     return response(data.map((row) => ({
       id: row[0], 
@@ -210,7 +240,7 @@ function getAppointments(ss) {
       note: row[5], 
       status: row[6] || 'PENDING',
       branch: row[7] || '', 
-      time: row[8] ? String(row[8]) : '' // Ensure time is string
+      time: row[8] ? String(row[8]) : '' 
     })));
 }
 
@@ -251,30 +281,37 @@ function formatDate(date) {
   try { const d = new Date(date); d.setHours(12); return d.toISOString().split('T')[0]; } catch (e) { return String(date); }
 }
 
-// --- OPTIMIZED PDF GENERATOR FOR A4 SINGLE PAGE ---
+// --- OPTIMIZED PDF GENERATOR ---
 function createInvoicePDF(data) {
-  const folderId = "1yNT2OJZ192AmNLF_3xxwCew_h3jCnEP_";
-  var folder;
-  try { folder = DriveApp.getFolderById(folderId); } 
-  catch(e) { return "Error: Check Permissions"; }
+  // 1. SPECIFIC FOLDER ID
+  const FOLDER_ID = "1KmraYm_2xR6IPaR83IM1BL5cuNYcvqkE";
+  
+  // 2. Get Folder (This line requires FULL DRIVE permissions)
+  // If this fails, 'fixPermissions' was not run or user denied access.
+  var folder = DriveApp.getFolderById(FOLDER_ID);
 
   var invoiceNo = "INV-" + new Date().getFullYear() + "-" + Math.floor(Math.random() * 10000);
   
-  // Dynamic Address Logic based on Branch
   var branchAddress = "2nd Floor Rais Reality, front Anupam garden, GE Road Raipur Chhattisgarh";
   var branchContact = "+91-9144939828";
 
-  // Check branch if available in data
   if (data.branch && data.branch.toString().toUpperCase() === 'JDP') {
       branchAddress = "Varghese Wings, Near Vishal Mega Mart Dharampura, Jagdalpur, Jagdalpur-494001, Chhattisgarh";
       branchContact = "09725567348";
+  }
+
+  var formattedDate = data.date;
+  if (data.date && data.date.indexOf('-') > -1) {
+      var parts = data.date.split('-');
+      if (parts.length === 3 && parts[0].length === 4) {
+          formattedDate = parts[2] + '/' + parts[1] + '/' + parts[0];
+      }
   }
 
   var html = 
     "<html><body style='font-family: sans-serif; color: #374151; padding: 0; margin: 0; background: white;'>" +
       "<div style='width: 90%; max-width: 700px; margin: 0 auto; padding: 20px; border: 1px solid #ddd;'>" +
         
-        // Header
         "<div style='text-align: center; border-bottom: 2px solid #111; padding-bottom: 10px; margin-bottom: 20px;'>" +
           "<h1 style='margin: 0; font-size: 20px; color: #111;'>MAHAVEER HAIR SOLUTION</h1>" +
           "<p style='margin: 5px 0; font-size: 10px; color: #555;'>" +
@@ -283,21 +320,18 @@ function createInvoicePDF(data) {
           "</p>" +
         "</div>" +
         
-        // Meta
         "<div style='background: #f9f9f9; padding: 10px; font-size: 11px; display: flex; justify-content: space-between; border-bottom: 1px solid #eee; margin-bottom: 20px;'>" +
            "<span><strong>Invoice:</strong> " + invoiceNo + "</span>" +
-           "<span style='margin-left: 20px;'><strong>Date:</strong> " + data.date + "</span>" +
+           "<span style='margin-left: 20px;'><strong>Date:</strong> " + formattedDate + "</span>" +
            "<span style='float: right;'><strong>Branch:</strong> " + data.branch + "</span>" +
         "</div>" +
 
-        // Client
         "<div style='margin-bottom: 20px; font-size: 12px;'>" +
            "<div style='font-weight: bold; font-size: 14px;'>" + data.clientName + "</div>" +
            "<div>" + (data.address || "") + "</div>" +
            "<div>Phone: " + data.contactNo + "</div>" +
         "</div>" +
 
-        // Table
         "<table style='width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 11px;'>" +
           "<tr style='background: #111; color: white;'>" +
              "<th style='padding: 8px; text-align: left;'>Service</th>" +
@@ -312,12 +346,10 @@ function createInvoicePDF(data) {
           "</tr>" +
         "</table>" +
 
-        // Totals
         "<div style='text-align: right; margin-top: 10px; font-size: 14px; font-weight: bold;'>" +
            "Total: ₹" + data.amount +
         "</div>" +
         
-        // Footer
         "<div style='margin-top: 40px; font-size: 9px; color: #888; text-align: center; border-top: 1px solid #eee; padding-top: 10px;'>" +
            "Computer Generated Invoice" +
         "</div>" +
@@ -326,7 +358,8 @@ function createInvoicePDF(data) {
     "</body></html>";
 
   var blob = Utilities.newBlob(html, MimeType.HTML).getAs(MimeType.PDF);
-  blob.setName("INV_" + data.clientName + ".pdf");
+  blob.setName("INV_" + data.clientName + "_" + formattedDate.replace(/\//g, '-') + ".pdf");
+  
   var file = folder.createFile(blob);
   file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
   

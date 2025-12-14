@@ -206,11 +206,25 @@ const NewEntryForm: React.FC = () => {
       // NOTIFICATION LOGIC
       const hasPending = savedEntry.pendingAmount && savedEntry.pendingAmount > 0;
       
+      // Check if invoice URL has an error
+      let msg = '';
+      let type: 'success' | 'warning' | 'error' = 'success';
+
+      if (savedEntry.invoiceUrl && savedEntry.invoiceUrl.startsWith("Error")) {
+           msg = `Entry saved, BUT Invoice PDF failed: ${savedEntry.invoiceUrl}`;
+           type = 'warning';
+      } else if (hasPending) {
+           msg = `Entry Added! ₹${savedEntry.pendingAmount} AMOUNT PENDING`;
+           type = 'warning';
+      } else if (isPackage) {
+           msg = 'Package Service Recorded Successfully!';
+      } else {
+           msg = 'Transaction recorded successfully!';
+      }
+
       setNotification({ 
-          msg: hasPending 
-              ? `Entry Added! ₹${savedEntry.pendingAmount} AMOUNT PENDING` 
-              : (isPackage ? 'Package Service Recorded Successfully!' : 'Transaction recorded successfully!'), 
-          type: hasPending ? 'warning' : 'success',
+          msg: msg, 
+          type: type,
           hasAction: !!hasPending
       });
       

@@ -13,6 +13,26 @@ export const generateInvoice = (entry: Entry) => {
 
   const invoiceNumber = `INV-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 10000)).padStart(4, '0')}`;
 
+  // DATE FORMATTING (YYYY-MM-DD -> DD/MM/YYYY)
+  let formattedDate = entry.date;
+  try {
+      if (entry.date && entry.date.includes('-')) {
+          const parts = entry.date.split('-');
+          // Check if it's YYYY-MM-DD
+          if (parts.length === 3 && parts[0].length === 4) {
+              formattedDate = `${parts[2]}/${parts[1]}/${parts[0]}`;
+          }
+      } else if (entry.date) {
+          const d = new Date(entry.date);
+          const day = String(d.getDate()).padStart(2, '0');
+          const month = String(d.getMonth() + 1).padStart(2, '0');
+          const year = d.getFullYear();
+          formattedDate = `${day}/${month}/${year}`;
+      }
+  } catch (e) {
+      formattedDate = entry.date;
+  }
+
   // BRANCH SPECIFIC ADDRESS LOGIC
   let branchAddress = "2nd Floor Rais Reality, front Anupam garden, GE Road Raipur Chhattisgarh";
   let branchContact = "+91-9144939828";
@@ -307,7 +327,7 @@ export const generateInvoice = (entry: Entry) => {
         <!-- Meta -->
         <div class="meta-row">
             <span>Invoice #: ${invoiceNumber}</span>
-            <span>Date: ${entry.date}</span>
+            <span>Date: ${formattedDate}</span>
             <span>Branch: ${entry.branch}</span>
         </div>
 
