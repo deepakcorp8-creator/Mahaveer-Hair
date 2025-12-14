@@ -147,7 +147,8 @@ function doPost(e) {
   if (action == 'addAppointment') {
     const sheet = ss.getSheetByName("APPOINTMNET");
     const id = 'appt_' + new Date().getTime();
-    sheet.appendRow([id, data.date, data.clientName, data.contact, data.address, data.note, data.status]);
+    // Updated to include Branch and Time
+    sheet.appendRow([id, data.date, data.clientName, data.contact, data.address, data.note, data.status, data.branch, data.time]);
     return response({status: "success", id: id});
   }
 
@@ -198,9 +199,18 @@ function getEntries(ss) {
 function getAppointments(ss) {
     const sheet = ss.getSheetByName("APPOINTMNET");
     if (!sheet || sheet.getLastRow() <= 1) return response([]);
-    const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 7).getValues();
+    // Read up to column 9 (I) for Branch and Time
+    const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 9).getValues();
     return response(data.map((row) => ({
-      id: row[0], date: formatDate(row[1]), clientName: row[2], contact: row[3], address: row[4], note: row[5], status: row[6] || 'PENDING' 
+      id: row[0], 
+      date: formatDate(row[1]), 
+      clientName: row[2], 
+      contact: row[3], 
+      address: row[4], 
+      note: row[5], 
+      status: row[6] || 'PENDING',
+      branch: row[7] || '', 
+      time: row[8] ? String(row[8]) : '' // Ensure time is string
     })));
 }
 

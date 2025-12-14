@@ -48,6 +48,8 @@ export interface Appointment {
   address: string;
   note: string;
   status: 'PENDING' | 'FOLLOWUP' | 'CLOSED';
+  branch?: string;
+  time?: string;
 }
 
 export interface Item {

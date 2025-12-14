@@ -1,3 +1,4 @@
+
 import { Client, Entry, Item, Technician, Appointment, ServicePackage } from './types';
 
 // Expanded Mock Clients (REALISTIC DATA)
@@ -130,11 +131,11 @@ export const MOCK_ENTRIES: Entry[] = [
 ];
 
 export const MOCK_APPOINTMENTS: Appointment[] = [
-  { id: '101', date: '2025-05-05', clientName: 'Manish Gupta', contact: '9584801901', address: 'Umaiyara', note: 'Checkup', status: 'PENDING' },
-  { id: '102', date: '2025-05-06', clientName: 'Rakesh Sahu', contact: '5544332211', address: 'Raigarh', note: 'Inquiry for new patch', status: 'FOLLOWUP' },
-  { id: '103', date: '2025-05-07', clientName: 'Suresh Patel', contact: '9123456780', address: 'Jagdalpur', note: 'Maintenance', status: 'PENDING' },
-  { id: '104', date: '2025-12-04', clientName: 'Sita Verma', contact: '7778889990', address: 'Raipur', note: 'KAL AYEGI', status: 'PENDING' },
-  { id: '105', date: '2025-12-25', clientName: 'Vikram Yadav', contact: '7766554433', address: 'Durg', note: 'AUNGA BOLA HAI', status: 'CLOSED' },
+  { id: '101', date: '2025-05-05', clientName: 'Manish Gupta', contact: '9584801901', address: 'Umaiyara', note: 'Checkup', status: 'PENDING', branch: 'RPR', time: '10:00' },
+  { id: '102', date: '2025-05-06', clientName: 'Rakesh Sahu', contact: '5544332211', address: 'Raigarh', note: 'Inquiry for new patch', status: 'FOLLOWUP', branch: 'RPR', time: '14:30' },
+  { id: '103', date: '2025-05-07', clientName: 'Suresh Patel', contact: '9123456780', address: 'Jagdalpur', note: 'Maintenance', status: 'PENDING', branch: 'JDP', time: '11:00' },
+  { id: '104', date: '2025-12-04', clientName: 'Sita Verma', contact: '7778889990', address: 'Raipur', note: 'KAL AYEGI', status: 'PENDING', branch: 'RPR', time: '16:00' },
+  { id: '105', date: '2025-12-25', clientName: 'Vikram Yadav', contact: '7766554433', address: 'Durg', note: 'AUNGA BOLA HAI', status: 'CLOSED', branch: 'BSP', time: '12:00' },
 ];
 
 export const MOCK_PACKAGES: ServicePackage[] = [
@@ -150,4 +151,4 @@ export const MOCK_PACKAGES: ServicePackage[] = [
     }
 ];
 
-export const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw8ow0xIF-0GgDzuxD2hBSpKUjmxEDg_UyI8-12iysz-tccsanvC7_fjLqG9s_tfO3dlA/exec';
+export const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzcKLg3ruQhWeFNC4PF9fv-wIaMdwnuw7vjo1N5jMzdsRIBZGlrFXRMS6wLBU8SdeYDdw/exec';

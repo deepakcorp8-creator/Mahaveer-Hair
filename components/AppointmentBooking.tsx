@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { Appointment, Client } from '../types';
-import { Calendar, CheckCircle, Clock, Filter, Activity, CheckSquare, Plus, Search, Phone, MessageCircle, RefreshCw, CalendarClock, History, ArrowRightCircle, Megaphone, UserCheck, XCircle } from 'lucide-react';
+import { Calendar, CheckCircle, Clock, Filter, Activity, CheckSquare, Plus, Search, Phone, MessageCircle, RefreshCw, CalendarClock, History, ArrowRightCircle, Megaphone, UserCheck, XCircle, MapPin } from 'lucide-react';
 
 const AppointmentBooking: React.FC = () => {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -13,13 +13,22 @@ const AppointmentBooking: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'SCHEDULE' | 'LEADS' | 'HISTORY'>('SCHEDULE');
   const [searchFilter, setSearchFilter] = useState('');
   
+  // Time Parts State for 12H Format
+  const [timeParts, setTimeParts] = useState({
+      hour: '10',
+      minute: '00',
+      period: 'AM'
+  });
+
   const [newAppt, setNewAppt] = useState<Partial<Appointment>>({
     date: new Date().toISOString().split('T')[0],
     clientName: '',
     contact: '',
     address: '',
     note: '',
-    status: 'PENDING'
+    status: 'PENDING',
+    branch: 'RPR', // Default
+    time: '10:00 AM'
   });
 
   const todayStr = new Date().toISOString().split('T')[0];
@@ -27,6 +36,14 @@ const AppointmentBooking: React.FC = () => {
   useEffect(() => {
     loadData();
   }, []);
+
+  // Update newAppt.time whenever parts change
+  useEffect(() => {
+      setNewAppt(prev => ({
+          ...prev,
+          time: `${timeParts.hour}:${timeParts.minute} ${timeParts.period}`
+      }));
+  }, [timeParts]);
 
   const loadData = async () => {
     const [apptData, options] = await Promise.all([
@@ -51,8 +68,11 @@ const AppointmentBooking: React.FC = () => {
           contact: appt.contact,
           address: appt.address,
           note: `Re-booking: Last visit was on ${appt.date}`,
-          status: 'PENDING'
+          status: 'PENDING',
+          branch: appt.branch || 'RPR',
+          time: '10:00 AM'
       });
+      setTimeParts({ hour: '10', minute: '00', period: 'AM' });
       // Scroll to top of main container
       document.querySelector('main')?.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -65,7 +85,16 @@ const AppointmentBooking: React.FC = () => {
     try {
       if (newAppt.clientName && newAppt.date) {
         await api.addAppointment(newAppt as Appointment);
-        setNewAppt({ ...newAppt, clientName: '', contact: '', address: '', note: '' }); // Keep date
+        // Reset form but keep Branch/Date potentially
+        setNewAppt({ 
+            ...newAppt, 
+            clientName: '', 
+            contact: '', 
+            address: '', 
+            note: '',
+            time: '10:00 AM'
+        }); 
+        setTimeParts({ hour: '10', minute: '00', period: 'AM' });
         await loadData();
         // Scroll to top of main container after successful booking
         document.querySelector('main')?.scrollTo({ top: 0, behavior: 'smooth' });
@@ -105,8 +134,6 @@ const AppointmentBooking: React.FC = () => {
   const todayCount = appointments.filter(a => a.date === todayStr && a.status === 'PENDING').length;
   const pendingCount = appointments.filter(a => a.status === 'PENDING').length;
   const followupCount = appointments.filter(a => a.status === 'FOLLOWUP').length;
-
-  const card3D = "bg-white rounded-2xl shadow-[0_10px_20px_-5px_rgba(0,0,0,0.1)] border border-slate-200 p-4 relative overflow-hidden transition-transform hover:-translate-y-1";
 
   const renderAppointmentCard = (appt: Appointment, isToday: boolean = false) => {
       const isOverdue = !isToday && new Date(appt.date) < new Date(todayStr) && appt.status === 'PENDING';
@@ -159,13 +186,17 @@ const AppointmentBooking: React.FC = () => {
                     </div>
                     <div>
                         <h4 className={`font-black text-lg ${isClosed ? 'text-slate-500 line-through decoration-slate-400' : 'text-slate-800'}`}>{appt.clientName}</h4>
-                        <div className="flex items-center gap-3 text-sm text-slate-500 font-bold">
+                        <div className="flex flex-wrap items-center gap-3 text-sm text-slate-500 font-bold">
                             <span>{appt.contact}</span>
-                            {appt.address && (
-                                <>
-                                <span className="w-1.5 h-1.5 bg-slate-300 rounded-full"></span>
-                                <span className="truncate max-w-[120px]">{appt.address}</span>
-                                </>
+                            {appt.time && (
+                                <span className="flex items-center text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100 text-xs uppercase">
+                                    <Clock className="w-3 h-3 mr-1" /> {appt.time}
+                                </span>
+                            )}
+                            {appt.branch && (
+                                <span className="flex items-center text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 text-xs uppercase">
+                                    <MapPin className="w-3 h-3 mr-1" /> {appt.branch}
+                                </span>
                             )}
                         </div>
                         {appt.note && (
@@ -253,10 +284,14 @@ const AppointmentBooking: React.FC = () => {
       );
   };
 
+  // Generate options for time selects
+  const hours = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0'));
+  const minutes = Array.from({ length: 12 }, (_, i) => String(i * 5).padStart(2, '0')); // 00, 05, 10...
+
   return (
     <div className="flex flex-col gap-8 animate-in fade-in duration-500 pb-20">
         
-        {/* Top Stats - Dashboard Style 3D Cards */}
+        {/* Top Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="relative rounded-3xl p-6 bg-gradient-to-br from-indigo-600 to-indigo-800 text-white shadow-xl shadow-indigo-500/30 border border-indigo-500 overflow-hidden transform hover:-translate-y-1 transition-transform duration-300">
                 <div className="absolute right-0 top-0 w-32 h-32 bg-white/10 rounded-full -mr-8 -mt-8 blur-2xl"></div>
@@ -318,17 +353,66 @@ const AppointmentBooking: React.FC = () => {
                 </div>
                 
                 <form onSubmit={handleSubmit} className="p-6 space-y-5">
-                    <div>
-                        <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5 ml-1">Date</label>
-                        <input
-                            type="date"
-                            value={newAppt.date}
-                            onChange={e => setNewAppt({...newAppt, date: e.target.value})}
-                            className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3.5 text-slate-900 shadow-inner focus:ring-2 focus:ring-indigo-500 font-bold"
-                            required
-                        />
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5 ml-1">Date</label>
+                            <input
+                                type="date"
+                                value={newAppt.date}
+                                onChange={e => setNewAppt({...newAppt, date: e.target.value})}
+                                className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-3 py-3.5 text-slate-900 shadow-inner focus:ring-2 focus:ring-indigo-500 font-bold text-sm"
+                                required
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5 ml-1">Time (12H)</label>
+                            <div className="flex gap-1">
+                                <select 
+                                    className="flex-1 rounded-xl border border-slate-300 bg-slate-50 py-3.5 text-slate-900 text-sm font-bold focus:ring-2 focus:ring-indigo-500 appearance-none text-center"
+                                    value={timeParts.hour}
+                                    onChange={(e) => setTimeParts(prev => ({...prev, hour: e.target.value}))}
+                                >
+                                    {hours.map(h => <option key={h} value={h}>{h}</option>)}
+                                </select>
+                                <select 
+                                    className="flex-1 rounded-xl border border-slate-300 bg-slate-50 py-3.5 text-slate-900 text-sm font-bold focus:ring-2 focus:ring-indigo-500 appearance-none text-center"
+                                    value={timeParts.minute}
+                                    onChange={(e) => setTimeParts(prev => ({...prev, minute: e.target.value}))}
+                                >
+                                    {minutes.map(m => <option key={m} value={m}>{m}</option>)}
+                                </select>
+                                <select 
+                                    className="flex-1 rounded-xl border border-slate-300 bg-slate-50 py-3.5 text-slate-900 text-sm font-bold focus:ring-2 focus:ring-indigo-500 appearance-none text-center"
+                                    value={timeParts.period}
+                                    onChange={(e) => setTimeParts(prev => ({...prev, period: e.target.value}))}
+                                >
+                                    <option value="AM">AM</option>
+                                    <option value="PM">PM</option>
+                                </select>
+                            </div>
+                        </div>
                     </div>
                     
+                    <div>
+                        <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5 ml-1">Branch</label>
+                        <div className="flex gap-2 p-1 bg-slate-100 rounded-2xl border border-slate-200">
+                            {['RPR', 'JDP', 'BSP'].map(b => (
+                                <button
+                                    type="button"
+                                    key={b}
+                                    onClick={() => setNewAppt(prev => ({ ...prev, branch: b }))}
+                                    className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all border
+                                    ${newAppt.branch === b 
+                                        ? 'bg-white text-indigo-700 shadow-sm border-indigo-200' 
+                                        : 'text-slate-400 hover:text-slate-600 border-transparent'}
+                                    `}
+                                >
+                                    {b}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
                     <div>
                         <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5 ml-1">Client Name</label>
                         <input
