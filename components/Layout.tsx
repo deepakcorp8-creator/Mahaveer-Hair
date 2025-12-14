@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, 
@@ -16,9 +16,12 @@ import {
   History,
   X,
   Code2,
-  Wallet
+  Wallet,
+  Bell,
+  Home
 } from 'lucide-react';
 import { User, Role } from '../types';
+import { api } from '../services/api';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -28,7 +31,37 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
+  const [pendingCount, setPendingCount] = useState(0);
   const location = useLocation();
+  const mainContentRef = useRef<HTMLDivElement>(null);
+
+  // SCROLL TO TOP ON ROUTE CHANGE
+  useEffect(() => {
+    if (mainContentRef.current) {
+        mainContentRef.current.scrollTop = 0;
+    }
+  }, [location.pathname]);
+
+  useEffect(() => {
+    // Check for pending packages if user is Admin
+    if (user?.role === Role.ADMIN) {
+        const checkPending = async () => {
+            try {
+                // Force refresh true only occasionally, otherwise use cache for speed
+                const pkgs = await api.getPackages(); 
+                const count = pkgs.filter(p => p.status === 'PENDING' || !p.status).length;
+                setPendingCount(count);
+            } catch (e) {
+                console.error("Failed to check pending packages", e);
+            }
+        };
+        
+        checkPending();
+        // Poll every 60 seconds
+        const interval = setInterval(checkPending, 60000);
+        return () => clearInterval(interval);
+    }
+  }, [user]);
 
   if (!user) return <>{children}</>;
 
@@ -55,6 +88,9 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
   });
 
   const isActive = (path: string) => location.pathname === path;
+
+  // Formatting date for header
+  const todayDate = new Date().toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short' });
 
   return (
     <div className="flex h-screen bg-[#F0F4F8] overflow-hidden font-sans">
@@ -116,6 +152,9 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
               
               {menuItems.map((item) => {
                 const active = isActive(item.path);
+                const isPackageItem = item.path === '/packages';
+                const showBadge = isPackageItem && user.role === Role.ADMIN && pendingCount > 0;
+                
                 return (
                   <Link
                     key={item.path}
@@ -131,6 +170,13 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
                     <span className={`font-bold text-sm tracking-wide ${active ? 'text-white' : ''}`}>{item.label}</span>
                     
                     {active && <div className="absolute right-3 w-1.5 h-1.5 bg-white rounded-full shadow-[0_0_8px_rgba(255,255,255,0.8)] animate-pulse"></div>}
+
+                    {/* Pending Count Badge for Packages */}
+                    {showBadge && (
+                        <span className="absolute right-3 bg-red-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full shadow-sm animate-pulse border border-red-400">
+                            {pendingCount}
+                        </span>
+                    )}
                   </Link>
                 );
               })}
@@ -178,6 +224,37 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
         {/* Top Gradient Line */}
         <div className="h-1 w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 absolute top-0 left-0 z-50 shadow-[0_2px_10px_rgba(99,102,241,0.5)]"></div>
 
+        {/* DESKTOP TOP BAR (Sticky Header) - Prevents Overlap */}
+        <header className="hidden lg:flex items-center justify-between px-8 py-3 bg-white/80 backdrop-blur-md border-b border-slate-200/50 sticky top-0 z-40 shrink-0 h-16 shadow-sm">
+             {/* Left: Breadcrumb / Date */}
+             <div className="flex items-center gap-2">
+                 <div className="flex items-center text-slate-400 text-xs font-bold uppercase tracking-wider bg-slate-50 px-2 py-1 rounded border border-slate-200">
+                    <Calendar className="w-3 h-3 mr-1.5" />
+                    {todayDate}
+                 </div>
+             </div>
+
+             {/* Right: Notification Area */}
+             <div className="flex items-center gap-4">
+                 {/* Notification Icon */}
+                 {user.role === Role.ADMIN && pendingCount > 0 && (
+                    <Link 
+                        to="/packages" 
+                        className="relative p-2.5 rounded-full bg-white text-indigo-600 border border-indigo-100 shadow-sm hover:shadow-md hover:bg-indigo-50 transition-all group hover:border-indigo-200"
+                        title={`${pendingCount} Approvals Pending`}
+                    >
+                        <Bell className="w-5 h-5 group-hover:rotate-12 transition-transform duration-300" />
+                        
+                        {/* Red Dot Badge */}
+                        <span className="absolute top-1.5 right-2 flex h-2.5 w-2.5">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500 border-2 border-white"></span>
+                        </span>
+                    </Link>
+                 )}
+             </div>
+        </header>
+
         {/* Mobile Header - High Visibility */}
         <header className="bg-white/90 backdrop-blur-md shadow-sm lg:hidden flex items-center justify-between p-4 z-40 sticky top-0 border-b border-slate-200">
           <div className="flex items-center gap-3">
@@ -192,15 +269,30 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
               </span>
           </div>
           
-          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 p-[2px] shadow-md">
-             <div className="w-full h-full rounded-full bg-white flex items-center justify-center text-indigo-700 font-black text-sm">
-                 {user.username.charAt(0).toUpperCase()}
+          <div className="flex items-center gap-3">
+             {/* NOTIFICATION BELL FOR ADMIN (Mobile) */}
+             {user.role === Role.ADMIN && pendingCount > 0 && (
+                <Link to="/packages" className="relative p-2 mr-1 text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-full transition-colors border border-indigo-100 shadow-sm">
+                    <Bell className="w-5 h-5" />
+                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[9px] font-black flex items-center justify-center rounded-full border-2 border-white animate-bounce">
+                        {pendingCount}
+                    </span>
+                </Link>
+             )}
+
+             <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 p-[2px] shadow-md">
+                <div className="w-full h-full rounded-full bg-white flex items-center justify-center text-indigo-700 font-black text-sm">
+                    {user.username.charAt(0).toUpperCase()}
+                </div>
              </div>
           </div>
         </header>
 
-        {/* Content Area */}
-        <main className="flex-1 overflow-x-hidden overflow-y-auto p-4 lg:p-8 scroll-smooth relative perspective-1000">
+        {/* Content Area - Added ref for scrolling */}
+        <main 
+            ref={mainContentRef}
+            className="flex-1 overflow-x-hidden overflow-y-auto p-4 lg:p-8 scroll-smooth relative perspective-1000"
+        >
            <div className="max-w-7xl mx-auto space-y-8 pb-20">
               {children}
            </div>

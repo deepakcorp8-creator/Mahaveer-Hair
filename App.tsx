@@ -54,13 +54,15 @@ function App() {
   const lastActivityRef = useRef<number>(Date.now());
   const checkIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const TIMEOUT_DURATION = 30 * 60 * 1000; 
-  const WARNING_DURATION = 25 * 60 * 1000; 
+  // UPDATED TIME: 5 Minutes Total
+  const TIMEOUT_DURATION = 5 * 60 * 1000; 
+  const WARNING_DURATION = 4 * 60 * 1000; 
   const CHECK_INTERVAL = 10 * 1000; 
 
   // Pre-fetch data on load
   useEffect(() => {
     if (user) {
+        // Initial fetch to populate cache
         api.getOptions();
         api.getEntries();
         api.getAppointments();
@@ -130,7 +132,7 @@ function App() {
               </div>
               <h3 className="text-xl font-bold text-slate-800 mb-2">Session Expiring</h3>
               <p className="text-slate-500 text-sm mb-6">
-                You have been inactive for a while. For security, you will be logged out in <span className="font-bold text-amber-600">5 minutes</span>.
+                You have been inactive for a while. For security, you will be logged out in <span className="font-bold text-amber-600">1 minute</span>.
               </p>
               <div className="flex gap-3 w-full">
                 <button 

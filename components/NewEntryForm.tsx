@@ -17,14 +17,18 @@ const NewEntryForm: React.FC = () => {
   
   const [activePackageClients, setActivePackageClients] = useState<Set<string>>(new Set());
   
-  // Edit Modal State
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  // --- MODAL STATES ---
   const [editingEntry, setEditingEntry] = useState<Entry | null>(null);
   
-  // Modal Fields
+  // 1. Payment Modal State (For Amount Button)
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [editTotalAmount, setEditTotalAmount] = useState<number | string>('');
   const [editReceivedAmount, setEditReceivedAmount] = useState<number | string>('');
   const [isPartPayment, setIsPartPayment] = useState(false);
+
+  // 2. Details Modal State (For Pencil Icon)
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [detailForm, setDetailForm] = useState<Partial<Entry>>({});
 
   const [activePackage, setActivePackage] = useState<{
       package: ServicePackage,
@@ -57,7 +61,7 @@ const NewEntryForm: React.FC = () => {
   const [receivedAmount, setReceivedAmount] = useState<number | string>('');
   const [isFormPartPayment, setIsFormPartPayment] = useState(false);
   
-  // Notification State extended to support 'action'
+  // Notification State
   const [notification, setNotification] = useState<{
       msg: string, 
       type: 'success' | 'error' | 'warning', 
@@ -199,7 +203,7 @@ const NewEntryForm: React.FC = () => {
       
       const isPackage = activePackage && !activePackage.isExpired;
       
-      // NOTIFICATION LOGIC based on Pending Amount
+      // NOTIFICATION LOGIC
       const hasPending = savedEntry.pendingAmount && savedEntry.pendingAmount > 0;
       
       setNotification({ 
@@ -228,12 +232,11 @@ const NewEntryForm: React.FC = () => {
     }
   };
 
-  // --- EDIT / COMPLETE PAYMENT LOGIC ---
-  const openEditModal = (entry: Entry) => {
+  // --- 1. PAYMENT MODAL FUNCTIONS (AMOUNT BUTTON) ---
+  const openPaymentModal = (entry: Entry) => {
       setEditingEntry(entry);
       setEditTotalAmount(entry.amount);
       
-      // Determine initial toggle state
       const hasPending = entry.pendingAmount && entry.pendingAmount > 0;
       setIsPartPayment(!!hasPending);
       
@@ -243,10 +246,10 @@ const NewEntryForm: React.FC = () => {
           setEditReceivedAmount(entry.amount);
       }
       
-      setIsEditModalOpen(true);
+      setIsPaymentModalOpen(true);
   };
 
-  const handleEditSubmit = async (e: React.FormEvent) => {
+  const handlePaymentSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
       if (!editingEntry) return;
 
@@ -263,13 +266,9 @@ const NewEntryForm: React.FC = () => {
               newPending = 0;
           }
           
-          // CRITICAL: If pending became 0, we must switch method from 'PENDING' to something else (e.g., CASH)
-          // Otherwise it stays stuck as "Pending" in UI.
           if (newPending === 0 && newMethod === 'PENDING') {
-              newMethod = 'CASH'; // Default to CASH if fully paid now
+              newMethod = 'CASH'; 
           }
-          
-          // Force pending if method explicitly set to pending
           if (newMethod === 'PENDING' && newPending === 0) {
               newPending = total; 
           }
@@ -282,15 +281,48 @@ const NewEntryForm: React.FC = () => {
           };
 
           await api.updateEntry(updatedEntry);
-          
-          setIsEditModalOpen(false);
+          setIsPaymentModalOpen(false);
           setEditingEntry(null);
           setNotification({ msg: 'Payment Updated Successfully!', type: 'success' });
-          
-          // Refresh List immediately so buttons disappear
           await loadTodayEntries();
       } catch (e) {
-          setNotification({ msg: 'Failed to update entry.', type: 'error' });
+          setNotification({ msg: 'Failed to update payment.', type: 'error' });
+      } finally {
+          setLoading(false);
+      }
+  };
+
+  // --- 2. DETAILS MODAL FUNCTIONS (PENCIL BUTTON) ---
+  const openDetailsModal = (entry: Entry) => {
+      setEditingEntry(entry);
+      setDetailForm({
+          technician: entry.technician,
+          serviceType: entry.serviceType,
+          patchMethod: entry.patchMethod,
+          remark: entry.remark,
+          branch: entry.branch
+      });
+      setIsDetailsModalOpen(true);
+  };
+
+  const handleDetailsSubmit = async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!editingEntry) return;
+
+      setLoading(true);
+      try {
+          const updatedEntry = {
+              ...editingEntry,
+              ...detailForm
+          };
+
+          await api.updateEntry(updatedEntry);
+          setIsDetailsModalOpen(false);
+          setEditingEntry(null);
+          setNotification({ msg: 'Details Updated Successfully!', type: 'success' });
+          await loadTodayEntries();
+      } catch (e) {
+          setNotification({ msg: 'Failed to update details.', type: 'error' });
       } finally {
           setLoading(false);
       }
@@ -308,7 +340,7 @@ const NewEntryForm: React.FC = () => {
 
   const isDemo = formData.serviceType === 'DEMO';
   
-  // Calculate Pending for Main Form Display
+  // Calculate Pending for Main Form
   const currentTotal = Number(formData.amount || 0);
   const currentReceived = isFormPartPayment ? Number(receivedAmount || 0) : currentTotal;
   const formPending = Math.max(0, currentTotal - currentReceived);
@@ -362,7 +394,7 @@ const NewEntryForm: React.FC = () => {
                 {notification.hasAction && lastSubmittedEntry && (
                      <button
                         type="button"
-                        onClick={() => openEditModal(lastSubmittedEntry)}
+                        onClick={() => openPaymentModal(lastSubmittedEntry)}
                         className="flex-1 md:flex-none flex items-center justify-center bg-slate-900 hover:bg-slate-800 text-white px-6 py-3 rounded-xl font-bold text-sm shadow-lg shadow-slate-500/30 transition-all active:scale-95 border border-slate-700 whitespace-nowrap"
                     >
                         <Wallet className="w-5 h-5 mr-2" />
@@ -633,7 +665,7 @@ const NewEntryForm: React.FC = () => {
                             </div>
                         )}
 
-                        {/* Received & Pending Inputs - Refined as Requested */}
+                        {/* Received & Pending Inputs */}
                         {isFormPartPayment && formData.paymentMethod !== 'PENDING' && (
                             <div className="animate-in fade-in slide-in-from-top-2 space-y-4">
                                 <div className="grid grid-cols-2 gap-4">
@@ -747,10 +779,12 @@ const NewEntryForm: React.FC = () => {
                  </div>
              ) : (
                  filteredTodayEntries.map((entry) => {
-                     // Check if purely pending method OR has partial pending due
+                     // Check if purely pending method OR has partial pending due OR amount is 0/missing for non-demos
                      const isPending = entry.paymentMethod === 'PENDING';
                      const hasPartialDue = entry.pendingAmount && entry.pendingAmount > 0;
-                     const showAction = isPending || hasPartialDue;
+                     const isZeroAmount = (entry.amount === 0 || !entry.amount) && entry.serviceType !== 'DEMO' && entry.serviceType !== 'MUNDAN';
+                     
+                     const showAction = isPending || hasPartialDue || isZeroAmount;
                      
                      return (
                          <div key={entry.id} className={`p-6 transition-colors hover:bg-slate-50 flex flex-col md:flex-row items-center justify-between gap-6
@@ -793,11 +827,11 @@ const NewEntryForm: React.FC = () => {
                                  </div>
                              </div>
 
-                             {/* Actions - Only show Amount button if PURELY PENDING */}
+                             {/* Actions - Amount Button for Payment, Pencil for Details */}
                              <div className="flex items-center gap-2 w-full md:w-auto justify-end">
                                  {showAction && (
                                      <button 
-                                        onClick={() => openEditModal(entry)}
+                                        onClick={() => openPaymentModal(entry)}
                                         className="px-4 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-xl font-bold text-sm shadow-lg shadow-emerald-500/30 hover:-translate-y-0.5 transition-all flex items-center border border-emerald-600"
                                      >
                                          <Wallet className="w-4 h-4 mr-2" />
@@ -805,9 +839,9 @@ const NewEntryForm: React.FC = () => {
                                      </button>
                                  )}
                                  <button 
-                                    onClick={() => openEditModal(entry)}
+                                    onClick={() => openDetailsModal(entry)}
                                     className="p-2.5 bg-white border border-slate-200 text-slate-500 rounded-xl hover:text-indigo-600 hover:border-indigo-200 hover:bg-indigo-50 transition-all shadow-sm"
-                                    title="Edit Entry"
+                                    title="Edit Entry Details"
                                  >
                                      <PenSquare className="w-4 h-4" />
                                  </button>
@@ -819,21 +853,21 @@ const NewEntryForm: React.FC = () => {
           </div>
       </div>
 
-      {/* EDIT MODAL */}
-      {isEditModalOpen && editingEntry && (
+      {/* PAYMENT MODAL (Via Amount Button) */}
+      {isPaymentModalOpen && editingEntry && (
           <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
               <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 border border-white/20">
                   <div className="bg-slate-900 px-8 py-6 flex justify-between items-center text-white">
                       <div>
                           <h3 className="font-black text-lg flex items-center tracking-tight">
-                              {editingEntry.paymentMethod === 'PENDING' ? 'Complete Payment' : 'Edit Transaction'}
+                              Complete Payment
                           </h3>
                           <p className="text-slate-400 text-xs font-bold">{editingEntry.clientName}</p>
                       </div>
-                      <button onClick={() => setIsEditModalOpen(false)} className="hover:bg-slate-800 p-2 rounded-full transition-colors"><X className="w-5 h-5" /></button>
+                      <button onClick={() => setIsPaymentModalOpen(false)} className="hover:bg-slate-800 p-2 rounded-full transition-colors"><X className="w-5 h-5" /></button>
                   </div>
                   
-                  <form onSubmit={handleEditSubmit} className="p-8 space-y-6">
+                  <form onSubmit={handlePaymentSubmit} className="p-8 space-y-6">
                       
                       <div className="grid grid-cols-2 gap-6">
                           <div>
@@ -907,7 +941,89 @@ const NewEntryForm: React.FC = () => {
                         disabled={loading}
                         className="w-full py-4 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-300 transition-all flex items-center justify-center border border-indigo-700 text-lg"
                       >
-                          {loading ? <RefreshCw className="w-5 h-5 animate-spin" /> : 'Update Transaction'}
+                          {loading ? <RefreshCw className="w-5 h-5 animate-spin" /> : 'Confirm Payment'}
+                      </button>
+                  </form>
+              </div>
+          </div>
+      )}
+
+      {/* DETAILS MODAL (Via Pencil Button) */}
+      {isDetailsModalOpen && editingEntry && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+              <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 border border-white/20">
+                  <div className="bg-slate-900 px-8 py-6 flex justify-between items-center text-white">
+                      <div>
+                          <h3 className="font-black text-lg flex items-center tracking-tight">
+                              Edit Entry Details
+                          </h3>
+                          <p className="text-slate-400 text-xs font-bold">{editingEntry.clientName}</p>
+                      </div>
+                      <button onClick={() => setIsDetailsModalOpen(false)} className="hover:bg-slate-800 p-2 rounded-full transition-colors"><X className="w-5 h-5" /></button>
+                  </div>
+                  
+                  <form onSubmit={handleDetailsSubmit} className="p-8 space-y-6">
+                      
+                      <div className="grid grid-cols-1 gap-6">
+                          
+                          <div>
+                               <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Technician</label>
+                               <select
+                                    value={detailForm.technician || ''}
+                                    onChange={e => setDetailForm({...detailForm, technician: e.target.value})}
+                                    className="w-full rounded-xl border-slate-200 border bg-slate-50 px-4 py-3 font-bold focus:ring-2 focus:ring-indigo-500 outline-none appearance-none"
+                                >
+                                    {technicians.map(t => (
+                                        <option key={t.name} value={t.name}>{t.name}</option>
+                                    ))}
+                                </select>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                   <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Service Type</label>
+                                   <select
+                                        value={detailForm.serviceType || ''}
+                                        onChange={e => setDetailForm({...detailForm, serviceType: e.target.value as any})}
+                                        className="w-full rounded-xl border-slate-200 border bg-slate-50 px-4 py-3 font-bold focus:ring-2 focus:ring-indigo-500 outline-none"
+                                    >
+                                        <option value="SERVICE">SERVICE</option>
+                                        <option value="NEW">NEW</option>
+                                        <option value="DEMO">DEMO</option>
+                                        <option value="MUNDAN">MUNDAN</option>
+                                    </select>
+                              </div>
+                              <div>
+                                   <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Method</label>
+                                   <select
+                                        value={detailForm.patchMethod || ''}
+                                        onChange={e => setDetailForm({...detailForm, patchMethod: e.target.value as any})}
+                                        className="w-full rounded-xl border-slate-200 border bg-slate-50 px-4 py-3 font-bold focus:ring-2 focus:ring-indigo-500 outline-none"
+                                    >
+                                        <option value="TAPING">TAPING</option>
+                                        <option value="BONDING">BONDING</option>
+                                        <option value="CLIPPING">CLIPPING</option>
+                                    </select>
+                              </div>
+                          </div>
+
+                           <div>
+                               <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Remarks</label>
+                               <textarea
+                                    value={detailForm.remark || ''}
+                                    onChange={e => setDetailForm({...detailForm, remark: e.target.value})}
+                                    rows={2}
+                                    className="w-full rounded-xl border-slate-200 border bg-slate-50 px-4 py-3 font-bold focus:ring-2 focus:ring-indigo-500 outline-none"
+                                />
+                          </div>
+                      </div>
+
+                      <button 
+                        type="submit"
+                        disabled={loading}
+                        className="w-full py-4 bg-slate-800 text-white font-bold rounded-xl hover:bg-slate-900 shadow-lg transition-all flex items-center justify-center border border-slate-900 text-lg"
+                      >
+                          {loading ? <RefreshCw className="w-5 h-5 animate-spin" /> : 'Save Details'}
                       </button>
                   </form>
               </div>

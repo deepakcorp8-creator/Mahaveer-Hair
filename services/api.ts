@@ -7,7 +7,7 @@ const isLive = GOOGLE_SCRIPT_URL && GOOGLE_SCRIPT_URL.startsWith('http');
 
 // --- LOCAL CACHE & STATE MANAGEMENT ---
 // 1. Temporary storage for items added in this session (shows up immediately)
-let LOCAL_NEW_ENTRIES: Entry[] = []; // Changed to let to allow filtering
+let LOCAL_NEW_ENTRIES: Entry[] = [];
 const LOCAL_NEW_APPOINTMENTS: Appointment[] = [];
 
 // 2. Data Cache to prevent "Slow" performance (prevents fetching on every keystroke)
@@ -25,9 +25,10 @@ let DATA_CACHE: {
     lastFetch: {}
 };
 
-// Increased Cache Duration for speed
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minute cache for entries/appts
-const OPTIONS_CACHE_DURATION = 15 * 60 * 1000; // 15 minutes for clients/items
+// PERFORMANCE: Increased Cache Duration for speed
+// Data will persist for 30 minutes before refetching from server unless forced.
+const CACHE_DURATION = 30 * 60 * 1000; 
+const OPTIONS_CACHE_DURATION = 60 * 60 * 1000; // 1 hour for clients/items
 
 export const api = {
   // --- OPTION HELPERS (Clients, Technicians, Items) ---
@@ -143,15 +144,10 @@ export const api = {
     }
 
     // INTELLIGENT DE-DUPLICATION
-    // We create a "signature" for every entry coming from the server.
-    // If a local temporary entry matches a server entry (Client + Date + Amount + Type), we remove the local one.
-    // This prevents "Double Data" when the sheet updates faster than the local cache clears.
-    
     const serverSignatures = new Set(allEntries.map(e => 
         `${e.date}-${e.clientName.toLowerCase()}-${e.amount}-${e.serviceType}`
     ));
 
-    // Filter local entries: Keep only those that DO NOT match a server entry
     LOCAL_NEW_ENTRIES = LOCAL_NEW_ENTRIES.filter(local => {
         const sig = `${local.date}-${local.clientName.toLowerCase()}-${local.amount}-${local.serviceType}`;
         return !serverSignatures.has(sig);
@@ -185,7 +181,6 @@ export const api = {
     return true;
   },
   
-  // NEW: Update Full Entry (Edit Mode)
   updateEntry: async (entry: Entry) => {
       // 1. Update Local Caches
       const localIdx = LOCAL_NEW_ENTRIES.findIndex(e => e.id === entry.id);
@@ -321,10 +316,9 @@ export const api = {
   addPackage: async (pkg: Omit<ServicePackage, 'id'>) => {
       DATA_CACHE.packages = null; // Invalidate cache immediately
       
-      const pkgPayload = { ...pkg, status: 'PENDING' }; // Always default to PENDING
+      const pkgPayload = { ...pkg, status: 'PENDING' }; 
       
       if (isLive) {
-        // Critical: Do NOT return a fake object here.
         await fetch(GOOGLE_SCRIPT_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -333,7 +327,6 @@ export const api = {
         return true; 
       }
       
-      // Mock mode only
       const newPkg = { ...pkgPayload, id: 'pkg_' + MOCK_PACKAGES.length };
       MOCK_PACKAGES.push(newPkg as ServicePackage);
       return newPkg;
@@ -396,22 +389,17 @@ export const api = {
       const normalizedName = clientName ? clientName.trim().toLowerCase() : '';
       const normalizedContact = contactNo ? String(contactNo).trim() : '';
 
-      // 1. Fetch latest packages (Use Cache!)
       const packages = await api.getPackages();
       
-      // 2. Find active package - CHECK BOTH ACTIVE AND APPROVED STATUS
       const pkg = packages.find((p: any) => {
           const isActive = p.status === 'ACTIVE' || p.status === 'APPROVED';
           const nameMatch = p.clientName.trim().toLowerCase() === normalizedName;
-          // Fallback: Check contact if name fails but contact is provided
           const contactMatch = normalizedContact && String(p.contact || '').trim() === normalizedContact;
-          
           return isActive && (nameMatch || contactMatch);
       });
       
       if (!pkg) return null;
 
-      // 3. Count entries
       const entries = await api.getEntries();
       
       const pkgStartDate = new Date(pkg.startDate);
@@ -421,7 +409,6 @@ export const api = {
           const entryDate = new Date(e.date);
           entryDate.setHours(0,0,0,0);
           
-          // Match entry to package (by name mostly)
           const entryName = e.clientName.trim().toLowerCase();
           const entryContact = String(e.contactNo || '').trim();
           
@@ -436,7 +423,6 @@ export const api = {
           );
       }).length;
 
-      // 4. Return status
       const currentServiceNumber = usedCount + 1;
       const isExpired = currentServiceNumber > pkg.totalServices;
 
@@ -514,10 +500,7 @@ export const api = {
         api.getOptions()
     ]);
     
-    // UPDATED: Use the length of the Client Master list (total registered clients)
-    // instead of just unique clients found in transactions.
     const totalClients = options.clients.length;
-    
     const totalAmount = entries.reduce((sum: number, e: any) => sum + Number(e.amount || 0), 0);
     const today = new Date().toISOString().split('T')[0];
     const newClientsToday = entries.filter((e: any) => e.date === today && e.serviceType === 'NEW').length;
