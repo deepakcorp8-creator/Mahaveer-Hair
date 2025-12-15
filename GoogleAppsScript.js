@@ -1,20 +1,17 @@
 
 // =====================================================================================
-// ⚠️ NEW SHEET SETUP CODE
-// 1. Create a NEW Google Sheet.
-// 2. Create these Tabs (Sheets) at the bottom with EXACT names:
-//    - DATA BASE
-//    - CLIENT MASTER
-//    - APPOINTMNET
-//    - PACKAG PLAN
-//    - LOGIN
-//    - EMPLOYEE DETAILS
-//    - ITEM MASTER
+// ⚠️ MAHUVEER WEB APP - BACKEND SCRIPT (V2 - Robust)
+// =====================================================================================
 //
-// 3. Paste this code into Extensions > Apps Script.
-// 4. Click "Deploy" -> "New Deployment" -> Select type "Web App".
-// 5. Description: "v1", Execute as: "Me", Who has access: "Anyone".
-// 6. Copy the Web App URL and paste it into 'constants.ts' in your code.
+// 📋 REQUIRED SHEET TABS (Create these tabs in your Google Sheet):
+// 1. "DATA BASE"       (Cols: Date, Name, Contact, Address, Branch, Service, Method, Tech, Status, Amount, PayMode, Remark, Svc#, Invoice, Size, Pending)
+// 2. "CLIENT MASTER"   (Cols: Name, Contact, Address, Gender, Email, DOB)
+// 3. "APPOINTMENT"     (Cols: ID, Date, Name, Contact, Address, Note, Status, Branch, Time)
+// 4. "PACKAGE PLAN"    (Cols: StartDate, Client, PkgName, Cost, Services, Status)
+// 5. "LOGIN"           (Cols: Username, Password, Role, Dept, Permissions)
+// 6. "EMPLOYEE DETAILS"(Cols: Name, Contact)
+// 7. "ITEM MASTER"     (Cols: Code, Name, Category)
+//
 // =====================================================================================
 
 function doGet(e) {
@@ -37,46 +34,47 @@ function doPost(e) {
 
   // 1. ADD ENTRY
   if (action == 'addEntry') {
-    const dbSheet = ss.getSheetByName("DATA BASE");
-    if (!dbSheet) return response({error: "Sheet 'DATA BASE' not found. Please create it."});
+    const dbSheet = getSheet(ss, "DATA BASE");
+    if (!dbSheet) return response({error: "Sheet 'DATA BASE' not found"});
 
     var invoiceUrl = "";
-    try { invoiceUrl = createInvoice(data); } catch (e) { invoiceUrl = "Error: " + e.toString(); }
+    try { invoiceUrl = createInvoice(data); } catch (e) { invoiceUrl = ""; }
 
+    // APPEND ROW - Strict Order
     dbSheet.appendRow([
-      data.date, 
-      data.clientName, 
-      data.contactNo, 
-      data.address, 
-      data.branch,
-      data.serviceType, 
-      data.patchMethod, 
-      data.technician, 
-      data.workStatus, 
-      data.amount, 
-      data.paymentMethod, 
-      data.remark, 
-      data.numberOfService,
-      invoiceUrl, 
-      data.patchSize || '', 
-      data.pendingAmount || 0
+      data.date,              // Col 1
+      data.clientName,        // Col 2
+      data.contactNo,         // Col 3
+      data.address,           // Col 4
+      data.branch,            // Col 5
+      data.serviceType,       // Col 6
+      data.patchMethod,       // Col 7
+      data.technician,        // Col 8
+      data.workStatus,        // Col 9
+      data.amount,            // Col 10
+      data.paymentMethod,     // Col 11
+      data.remark,            // Col 12
+      data.numberOfService,   // Col 13
+      invoiceUrl,             // Col 14
+      data.patchSize || '',   // Col 15
+      data.pendingAmount || 0 // Col 16
     ]);
+    
     return response({status: "success", invoiceUrl: invoiceUrl});
   }
 
   // 2. ADD PACKAGE
   if (action == 'addPackage') {
-    const pkgSheet = getSheet(ss, "PACKAG PLAN");
-    if (!pkgSheet) return response({error: "Sheet 'PACKAG PLAN' not found"});
+    const pkgSheet = getSheet(ss, "PACKAGE PLAN");
     pkgSheet.appendRow([
       data.startDate, data.clientName, data.packageName, data.totalCost, data.totalServices, data.status || 'PENDING'
     ]);
     return response({status: "success"});
   }
 
-  // 3. UPDATE PACKAGE STATUS
+  // 3. UPDATE PACKAGE
   if (action == 'updatePackageStatus') {
-    const pkgSheet = getSheet(ss, "PACKAG PLAN");
+    const pkgSheet = getSheet(ss, "PACKAGE PLAN");
     try {
         const rowId = parseInt(data.id.split('_')[1]);
         pkgSheet.getRange(rowId, 6).setValue(data.status); 
@@ -86,7 +84,7 @@ function doPost(e) {
 
   // 4. DELETE PACKAGE
   if (action == 'deletePackage') {
-    const pkgSheet = getSheet(ss, "PACKAG PLAN");
+    const pkgSheet = getSheet(ss, "PACKAGE PLAN");
     try {
         const rowId = parseInt(data.id.split('_')[1]);
         pkgSheet.deleteRow(rowId);
@@ -96,10 +94,9 @@ function doPost(e) {
 
   // 5. EDIT PACKAGE
   if (action == 'editPackage') {
-    const pkgSheet = getSheet(ss, "PACKAG PLAN");
+    const pkgSheet = getSheet(ss, "PACKAGE PLAN");
     try {
         const rowId = parseInt(data.id.split('_')[1]);
-        // Assumes columns: StartDate(1), Client(2), PkgName(3), Cost(4), Services(5)
         pkgSheet.getRange(rowId, 1).setValue(data.startDate);
         pkgSheet.getRange(rowId, 3).setValue(data.packageName);
         pkgSheet.getRange(rowId, 4).setValue(data.totalCost);
@@ -110,41 +107,39 @@ function doPost(e) {
 
   // 6. UPDATE ENTRY STATUS
   if (action == 'updateEntryStatus') {
-    const dbSheet = ss.getSheetByName("DATA BASE");
+    const dbSheet = getSheet(ss, "DATA BASE");
     try {
         const rowId = parseInt(data.id.split('_')[1]);
-        dbSheet.getRange(rowId, 9).setValue(data.status);
+        dbSheet.getRange(rowId, 9).setValue(data.status); // Col 9 is Status
         return response({status: "success"});
     } catch(e) { return response({error: "Failed"}); }
   }
 
   // 7. EDIT ENTRY
   if (action == 'editEntry') {
-    const dbSheet = ss.getSheetByName("DATA BASE");
+    const dbSheet = getSheet(ss, "DATA BASE");
     try {
         const rowId = parseInt(data.id.split('_')[1]);
-        // Update specific columns based on index (1-based)
-        dbSheet.getRange(rowId, 8).setValue(data.technician);
-        dbSheet.getRange(rowId, 6).setValue(data.serviceType);
-        dbSheet.getRange(rowId, 10).setValue(data.amount);
-        dbSheet.getRange(rowId, 11).setValue(data.paymentMethod);
-        dbSheet.getRange(rowId, 12).setValue(data.remark);
-        dbSheet.getRange(rowId, 16).setValue(data.pendingAmount || 0);
+        dbSheet.getRange(rowId, 8).setValue(data.technician);     // Col 8
+        dbSheet.getRange(rowId, 6).setValue(data.serviceType);    // Col 6
+        dbSheet.getRange(rowId, 10).setValue(data.amount);        // Col 10
+        dbSheet.getRange(rowId, 11).setValue(data.paymentMethod); // Col 11
+        dbSheet.getRange(rowId, 12).setValue(data.remark);        // Col 12
+        dbSheet.getRange(rowId, 16).setValue(data.pendingAmount || 0); // Col 16
         return response({status: "success"});
     } catch(e) { return response({error: "Failed"}); }
   }
 
   // 8. ADD CLIENT
   if (action == 'addClient') {
-      const clientSheet = ss.getSheetByName("CLIENT MASTER");
-      if (clientSheet) clientSheet.appendRow([data.name, data.contact, data.address, data.gender, data.email, data.dob]);
+      const clientSheet = getSheet(ss, "CLIENT MASTER");
+      clientSheet.appendRow([data.name, data.contact, data.address, data.gender, data.email, data.dob]);
       return response({status: "success"});
   }
 
   // 9. ADD USER
   if (action == 'addUser') {
       const loginSheet = getSheet(ss, "LOGIN");
-      if (!loginSheet) return response({error: "Sheet 'LOGIN' not found"});
       const users = loginSheet.getDataRange().getValues();
       if (users.some(row => row[0].toString().toLowerCase() === data.username.toLowerCase())) {
           return response({status: "error", message: "Exists"});
@@ -169,7 +164,7 @@ function doPost(e) {
 
   // 11. ADD APPOINTMENT
   if (action == 'addAppointment') {
-    const apptSheet = ss.getSheetByName("APPOINTMNET");
+    const apptSheet = getSheet(ss, "APPOINTMENT");
     const id = 'appt_' + new Date().getTime();
     apptSheet.appendRow([id, data.date, data.clientName, data.contact, data.address, data.note, data.status, data.branch, data.time]);
     return response({status: "success", id: id});
@@ -177,11 +172,11 @@ function doPost(e) {
 
   // 12. UPDATE APPOINTMENT
   if (action == 'updateAppointmentStatus') {
-    const apptSheet = ss.getSheetByName("APPOINTMNET");
+    const apptSheet = getSheet(ss, "APPOINTMENT");
     const values = apptSheet.getDataRange().getValues();
     for (let i = 1; i < values.length; i++) {
         if (values[i][0] == data.id) {
-            apptSheet.getRange(i + 1, 7).setValue(data.status);
+            apptSheet.getRange(i + 1, 7).setValue(data.status); // Col 7 is Status
             return response({status: "success"});
         }
     }
@@ -191,40 +186,27 @@ function doPost(e) {
   return response({error: "Unknown action"});
 }
 
-// --- HELPERS ---
+// --- HELPER TO HANDLE SHEET NAME TYPOS ---
 function getSheet(ss, name) {
     var sheet = ss.getSheetByName(name);
-    if (!sheet && name == "PACKAG PLAN") sheet = ss.getSheetByName("PACKAGE PLAN"); 
-    if (!sheet && name == "LOGIN") sheet = ss.getSheetByName("Login");
-    return sheet;
+    if (sheet) return sheet;
+
+    // Try Common Variations
+    if (name == "APPOINTMENT") return ss.getSheetByName("APPOINTMNET") || ss.getSheetByName("Appointment") || ss.getSheetByName("Appointments");
+    if (name == "PACKAGE PLAN") return ss.getSheetByName("PACKAG PLAN") || ss.getSheetByName("Package Plan") || ss.getSheetByName("Packages");
+    if (name == "CLIENT MASTER") return ss.getSheetByName("Client Master") || ss.getSheetByName("Clients");
+    if (name == "DATA BASE") return ss.getSheetByName("Data Base") || ss.getSheetByName("Database") || ss.getSheetByName("DB");
+    if (name == "LOGIN") return ss.getSheetByName("Login") || ss.getSheetByName("Users");
+    if (name == "EMPLOYEE DETAILS") return ss.getSheetByName("Employee Details") || ss.getSheetByName("Technicians");
+    if (name == "ITEM MASTER") return ss.getSheetByName("Item Master") || ss.getSheetByName("Items");
+
+    // If still not found, create it (Safety Fallback)
+    return ss.insertSheet(name);
 }
 
-function response(data) {
-  return ContentService.createTextOutput(JSON.stringify(data)).setMimeType(ContentService.MimeType.JSON);
-}
-
-function createInvoice(data) {
-  try {
-      var html = `<html><body><h1>Invoice</h1><p>${data.clientName} - ${data.amount}</p></body></html>`;
-      var blob = Utilities.newBlob(html, MimeType.HTML).getAs(MimeType.PDF);
-      var folder = DriveApp.getRootFolder();
-      var file = folder.createFile(blob).setName("Inv_" + data.clientName + ".pdf");
-      file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-      return file.getUrl();
-  } catch (e) { return ""; }
-}
-
-function formatDate(date) {
-  if (!date) return "";
-  if (Object.prototype.toString.call(date) === '[object Date]') {
-     try { const d = new Date(date); d.setHours(12); return d.toISOString().split('T')[0]; } catch (e) { return ""; }
-  }
-  return String(date);
-}
-
-// --- GETTERS ---
+// --- DATA FETCHING ---
 function getPackages(ss) {
-    const sheet = getSheet(ss, "PACKAG PLAN");
+    const sheet = getSheet(ss, "PACKAGE PLAN");
     if (!sheet || sheet.getLastRow() <= 1) return response([]);
     const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 6).getValues();
     return response(data.map((row, index) => ({
@@ -234,20 +216,34 @@ function getPackages(ss) {
 }
 
 function getEntries(ss) {
-    const sheet = ss.getSheetByName("DATA BASE");
+    const sheet = getSheet(ss, "DATA BASE");
     if (!sheet || sheet.getLastRow() <= 1) return response([]);
     const lastCol = Math.max(16, sheet.getLastColumn());
     const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, lastCol).getValues();
+    // Maps exact columns to JSON properties
     return response(data.map((row, index) => ({
-      id: 'row_' + (index + 2), date: formatDate(row[0]), clientName: row[1], contactNo: row[2], address: row[3],
-      branch: row[4], serviceType: row[5], patchMethod: row[6], technician: row[7], workStatus: row[8],
-      amount: Number(row[9]), paymentMethod: row[10], remark: row[11], numberOfService: row[12],
-      invoiceUrl: row[13], patchSize: row[14], pendingAmount: Number(row[15] || 0)
+      id: 'row_' + (index + 2), 
+      date: formatDate(row[0]), 
+      clientName: row[1], 
+      contactNo: row[2], 
+      address: row[3],
+      branch: row[4], 
+      serviceType: row[5], 
+      patchMethod: row[6], 
+      technician: row[7], 
+      workStatus: row[8],
+      amount: Number(row[9]), 
+      paymentMethod: row[10], 
+      remark: row[11], 
+      numberOfService: row[12],
+      invoiceUrl: row[13], 
+      patchSize: row[14], 
+      pendingAmount: Number(row[15] || 0)
     })).reverse());
 }
 
 function getAppointments(ss) {
-    const sheet = ss.getSheetByName("APPOINTMNET");
+    const sheet = getSheet(ss, "APPOINTMENT");
     if (!sheet || sheet.getLastRow() <= 1) return response([]);
     const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 9).getValues();
     return response(data.map((row) => ({
@@ -256,9 +252,9 @@ function getAppointments(ss) {
 }
 
 function getOptions(ss) {
-    const clientSheet = ss.getSheetByName("CLIENT MASTER");
-    const techSheet = ss.getSheetByName("EMPLOYEE DETAILS");
-    const itemSheet = ss.getSheetByName("ITEM MASTER");
+    const clientSheet = getSheet(ss, "CLIENT MASTER");
+    const techSheet = getSheet(ss, "EMPLOYEE DETAILS");
+    const itemSheet = getSheet(ss, "ITEM MASTER");
     
     let clients = [], technicians = [], items = [];
     if (clientSheet && clientSheet.getLastRow() > 1) {
@@ -281,4 +277,60 @@ function getUsers(ss) {
     if (!sheet || sheet.getLastRow() <= 1) return response([]);
     const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 5).getValues();
     return response(data.map(row => ({ username: row[0], password: row[1], role: row[2], department: row[3], permissions: row[4] })));
+}
+
+// --- PDF GENERATOR (IMPROVED DETAILS) ---
+function createInvoice(data) {
+  try {
+      var html = `
+        <html>
+          <body style="font-family: sans-serif; padding: 20px;">
+            <h2 style="color: #333;">Mahaveer Hair Solution</h2>
+            <p style="font-size: 12px; color: #555;">Date: ${data.date} | Branch: ${data.branch}</p>
+            <hr style="border: 0; border-top: 1px solid #ddd;" />
+            
+            <h3>INVOICE</h3>
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+              <tr><td style="padding: 5px;"><strong>Client:</strong></td><td>${data.clientName}</td></tr>
+              <tr><td style="padding: 5px;"><strong>Service:</strong></td><td>${data.serviceType}</td></tr>
+              <tr><td style="padding: 5px;"><strong>Technician:</strong></td><td>${data.technician}</td></tr>
+            </table>
+
+            <table style="width: 100%; border: 1px solid #000; border-collapse: collapse;">
+                <tr style="background: #f0f0f0;">
+                    <th style="border: 1px solid #000; padding: 8px;">Description</th>
+                    <th style="border: 1px solid #000; padding: 8px;">Amount</th>
+                </tr>
+                <tr>
+                    <td style="border: 1px solid #000; padding: 8px;">${data.serviceType} (${data.patchMethod})</td>
+                    <td style="border: 1px solid #000; padding: 8px;">Rs. ${data.amount}</td>
+                </tr>
+            </table>
+            
+            <p style="text-align: right; margin-top: 10px;"><strong>Total Paid: Rs. ${data.amount}</strong></p>
+            ${data.pendingAmount > 0 ? `<p style="text-align: right; color: red;">Pending Due: Rs. ${data.pendingAmount}</p>` : ''}
+            
+            <br/><br/>
+            <p style="text-align: center; font-size: 10px;">Thank you for your business!</p>
+          </body>
+        </html>
+      `;
+      var blob = Utilities.newBlob(html, MimeType.HTML).getAs(MimeType.PDF);
+      var folder = DriveApp.getRootFolder();
+      var file = folder.createFile(blob).setName("Inv_" + data.clientName + "_" + data.date + ".pdf");
+      file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+      return file.getUrl();
+  } catch (e) { return "Error: " + e.toString(); }
+}
+
+function response(data) {
+  return ContentService.createTextOutput(JSON.stringify(data)).setMimeType(ContentService.MimeType.JSON);
+}
+
+function formatDate(date) {
+  if (!date) return "";
+  if (Object.prototype.toString.call(date) === '[object Date]') {
+     try { const d = new Date(date); d.setHours(12); return d.toISOString().split('T')[0]; } catch (e) { return ""; }
+  }
+  return String(date);
 }

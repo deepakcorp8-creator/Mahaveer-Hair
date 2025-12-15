@@ -6,7 +6,6 @@ export const MOCK_CLIENTS: Client[] = [
   { name: 'Manish Gupta', contact: '9584801901', address: 'Umaiyara', gender: 'Male', email: 'manish@example.com', dob: '1990-01-01' },
   { name: 'A.P. Tiwari', contact: '9876543210', address: 'Bilaspur', gender: 'Male', email: 'ap@example.com', dob: '1985-05-20' },
   { name: 'Sita Verma', contact: '7778889990', address: 'Raipur', gender: 'Female', email: 'sita@example.com', dob: '1992-11-15' },
-  // ... (Feel free to add more mock data here for testing)
 ];
 
 // Mock Technicians
@@ -30,7 +29,6 @@ export const MOCK_APPOINTMENTS: Appointment[] = [];
 export const MOCK_PACKAGES: ServicePackage[] = [];
 
 // =========================================================================================
-// ⚠️ IMPORTANT: PASTE YOUR NEW GOOGLE APPS SCRIPT WEB APP URL BELOW
+// ⚠️ PASTE YOUR NEW WEB APP URL HERE
 // =========================================================================================
-export const GOOGLE_SCRIPT_URL: string = 'https://script.google.com/macros/s/AKfycbyrPq-mVvc2AOlXTJVsd5j4YRdoePTD4UKObc7Yvym2wTWCg7hcza5A-SGdQWSToJStqQ/exec'; 
-// Example: 'https://script.google.com/macros/s/AKfycbx.../exec'
+export const GOOGLE_SCRIPT_URL: string = 'https://script.google.com/macros/s/AKfycbxH1-F3F7KgCvcChIOH0NB90fw8dCgewS_rFmwv7rNhuPIYrWMq7mPekPfVUbUehyxR1Q/exec'; 
