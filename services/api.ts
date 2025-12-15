@@ -7,7 +7,7 @@ const isLive = GOOGLE_SCRIPT_URL && GOOGLE_SCRIPT_URL.startsWith('http');
 
 // --- LOCAL CACHE & STATE MANAGEMENT ---
 // 1. Temporary storage for items added in this session (shows up immediately)
-let LOCAL_NEW_ENTRIES: Entry[] = [];
+const LOCAL_NEW_ENTRIES: Entry[] = [];
 const LOCAL_NEW_APPOINTMENTS: Appointment[] = [];
 
 // 2. Data Cache to prevent "Slow" performance (prevents fetching on every keystroke)
@@ -25,15 +25,13 @@ let DATA_CACHE: {
     lastFetch: {}
 };
 
-// PERFORMANCE: Increased Cache Duration for speed
-// Data will persist for 30 minutes before refetching from server unless forced.
-const CACHE_DURATION = 30 * 60 * 1000; 
-const OPTIONS_CACHE_DURATION = 60 * 60 * 1000; // 1 hour for clients/items
+// Cache Duration
+const CACHE_DURATION = 2 * 60 * 1000; // 2 minutes
+const OPTIONS_CACHE_DURATION = 15 * 60 * 1000; // 15 minutes for options
 
 export const api = {
-  // --- OPTION HELPERS (Clients, Technicians, Items) ---
+  // --- OPTIONS (Clients, Techs, Items) ---
   getOptions: async (forceRefresh = false) => {
-    // Return cached if valid
     const now = Date.now();
     if (!forceRefresh && DATA_CACHE.options && (now - (DATA_CACHE.lastFetch['options'] || 0) < OPTIONS_CACHE_DURATION)) {
         return DATA_CACHE.options;
@@ -49,17 +47,16 @@ export const api = {
                 technicians: data.technicians || MOCK_TECHNICIANS,
                 items: data.items || MOCK_ITEMS
             };
-            // Update Cache
             DATA_CACHE.options = result;
             DATA_CACHE.lastFetch['options'] = now;
             return result;
         }
       } catch (e) {
-        console.warn("Failed to fetch options, using mock/cache", e);
+        console.warn("Failed to fetch options, using mock", e);
       }
     }
     
-    // Fallback or Initial Mock
+    // RESTORED FALLBACK: Return Mock Data
     return {
       clients: MOCK_CLIENTS,
       technicians: MOCK_TECHNICIANS,
@@ -68,17 +65,14 @@ export const api = {
   },
 
   getClientDetails: async (name: string) => {
-    // Optimized: Use cache instead of fetching
     const options = await api.getOptions();
     return options.clients.find((c: any) => c.name.toLowerCase() === name.toLowerCase());
   },
 
   addClient: async (client: Client) => {
-    // Invalidate Cache
-    DATA_CACHE.options = null;
+    DATA_CACHE.options = null; 
     
     if (isLive) {
-        // Fire and forget - don't await
         fetch(GOOGLE_SCRIPT_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -94,20 +88,13 @@ export const api = {
   addEntry: async (entry: Omit<Entry, 'id'>) => {
     const newEntry = { ...entry, id: 'temp_' + Date.now() + Math.random().toString(36).substr(2, 5) };
     
-    // Add to local cache immediately
     LOCAL_NEW_ENTRIES.push(newEntry as Entry);
     
     if (isLive) {
-      // OPTIMISTIC UI: Don't await the fetch. Let it run in background.
       fetch(GOOGLE_SCRIPT_URL, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'text/plain;charset=utf-8', 
-        },
-        body: JSON.stringify({
-          action: 'addEntry',
-          ...entry
-        })
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'addEntry', ...entry })
       }).catch(e => console.error("Error sending to sheet", e));
     } else {
         MOCK_ENTRIES.push(newEntry as Entry);
@@ -120,7 +107,6 @@ export const api = {
     let allEntries: Entry[] = [];
     const now = Date.now();
 
-    // Check Cache
     if (!forceRefresh && DATA_CACHE.entries && (now - (DATA_CACHE.lastFetch['entries'] || 0) < CACHE_DURATION)) {
         allEntries = DATA_CACHE.entries;
     } else {
@@ -134,8 +120,7 @@ export const api = {
                 DATA_CACHE.lastFetch['entries'] = now;
             }
            } catch (e) {
-             console.warn("Using mock entries due to fetch failure");
-             // If fetch fails, keep old cache if available
+             console.warn("Fetch failed, using mock entries");
              allEntries = DATA_CACHE.entries || [...MOCK_ENTRIES];
            }
         } else {
@@ -143,21 +128,14 @@ export const api = {
         }
     }
 
-    // INTELLIGENT DE-DUPLICATION
-    const serverSignatures = new Set(allEntries.map(e => 
-        `${e.date}-${e.clientName.toLowerCase()}-${e.amount}-${e.serviceType}`
-    ));
-
-    LOCAL_NEW_ENTRIES = LOCAL_NEW_ENTRIES.filter(local => {
-        const sig = `${local.date}-${local.clientName.toLowerCase()}-${local.amount}-${local.serviceType}`;
-        return !serverSignatures.has(sig);
-    });
+    // Merge Local Entries
+    const serverIds = new Set(allEntries.map(e => e.id));
+    const uniqueLocal = LOCAL_NEW_ENTRIES.filter(e => !serverIds.has(e.id));
     
-    return [...LOCAL_NEW_ENTRIES, ...allEntries];
+    return [...uniqueLocal, ...allEntries];
   },
 
   updateEntryStatus: async (id: string, status: string) => {
-    // 1. Update Local Cache
     const localEntry = LOCAL_NEW_ENTRIES.find(e => e.id === id);
     if(localEntry) localEntry.workStatus = status as any;
 
@@ -166,11 +144,9 @@ export const api = {
         if(cacheEntry) cacheEntry.workStatus = status as any;
     }
 
-    // 2. Mock Data Update
     const mockEntry = MOCK_ENTRIES.find(e => e.id === id);
     if(mockEntry) mockEntry.workStatus = status as any;
 
-    // 3. Live Update (Fire & Forget)
     if (isLive) {
         fetch(GOOGLE_SCRIPT_URL, {
             method: 'POST',
@@ -182,7 +158,6 @@ export const api = {
   },
   
   updateEntry: async (entry: Entry) => {
-      // 1. Update Local Caches
       const localIdx = LOCAL_NEW_ENTRIES.findIndex(e => e.id === entry.id);
       if (localIdx !== -1) LOCAL_NEW_ENTRIES[localIdx] = entry;
 
@@ -191,11 +166,9 @@ export const api = {
           if (cacheIdx !== -1) DATA_CACHE.entries[cacheIdx] = entry;
       }
       
-      // 2. Mock Update
       const mockIdx = MOCK_ENTRIES.findIndex(e => e.id === entry.id);
       if (mockIdx !== -1) MOCK_ENTRIES[mockIdx] = entry;
 
-      // 3. Live Update
       if (isLive) {
          await fetch(GOOGLE_SCRIPT_URL, {
             method: 'POST',
@@ -224,7 +197,6 @@ export const api = {
                 DATA_CACHE.lastFetch['appointments'] = now;
             }
            } catch (e) {
-             // Fallback
              allAppts = DATA_CACHE.appointments || [...MOCK_APPOINTMENTS];
            }
         } else {
@@ -232,21 +204,17 @@ export const api = {
         }
     }
 
-    // Merge Local Appointments
     const serverIds = new Set(allAppts.map(a => a.id));
     const uniqueLocal = LOCAL_NEW_APPOINTMENTS.filter(a => !serverIds.has(a.id));
-    
     return [...uniqueLocal, ...allAppts];
   },
 
   addAppointment: async (appt: Omit<Appointment, 'id'>) => {
     const newAppt = { ...appt, id: 'temp_' + Date.now() + Math.random().toString(36).substr(2, 5) };
     
-    // Add to local cache immediately so it shows in UI
     LOCAL_NEW_APPOINTMENTS.push(newAppt as Appointment);
     
     if (isLive) {
-        // Fire & Forget
         fetch(GOOGLE_SCRIPT_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -260,7 +228,6 @@ export const api = {
   },
   
   updateAppointmentStatus: async (id: string, status: Appointment['status']) => {
-    // Update local caches immediately
     const localEntry = LOCAL_NEW_APPOINTMENTS.find(a => a.id === id);
     if(localEntry) localEntry.status = status;
 
@@ -270,7 +237,6 @@ export const api = {
     }
 
     if (isLive) {
-        // Fire & Forget
         fetch(GOOGLE_SCRIPT_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -283,7 +249,7 @@ export const api = {
     return { id, status };
   },
 
-  // --- PACKAGE METHODS ---
+  // --- PACKAGES ---
   getPackages: async (forceRefresh = false) => {
       const now = Date.now();
       if (!forceRefresh && DATA_CACHE.packages && (now - (DATA_CACHE.lastFetch['packages'] || 0) < CACHE_DURATION)) {
@@ -292,16 +258,13 @@ export const api = {
 
       if (isLive) {
           try {
-              // Add timestamp to bypass browser caching of GET requests
               const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getPackages&t=${now}`);
               const data = await response.json();
               if (Array.isArray(data)) {
-                  // Ensure status defaults to PENDING if coming back as undefined/empty string
                   const formattedData = data.map((pkg: any) => ({
                       ...pkg,
                       status: pkg.status ? pkg.status : 'PENDING'
                   }));
-                  
                   DATA_CACHE.packages = formattedData;
                   DATA_CACHE.lastFetch['packages'] = now;
                   return formattedData;
@@ -314,9 +277,8 @@ export const api = {
   },
 
   addPackage: async (pkg: Omit<ServicePackage, 'id'>) => {
-      DATA_CACHE.packages = null; // Invalidate cache immediately
-      
-      const pkgPayload = { ...pkg, status: 'PENDING' }; 
+      DATA_CACHE.packages = null; 
+      const pkgPayload = { ...pkg, status: 'PENDING' };
       
       if (isLive) {
         await fetch(GOOGLE_SCRIPT_URL, {
@@ -325,16 +287,15 @@ export const api = {
             body: JSON.stringify({ action: 'addPackage', ...pkgPayload })
         });
         return true; 
+      } else {
+        const newPkg = { ...pkgPayload, id: 'pkg_' + Date.now() };
+        MOCK_PACKAGES.push(newPkg as ServicePackage);
+        return true;
       }
-      
-      const newPkg = { ...pkgPayload, id: 'pkg_' + MOCK_PACKAGES.length };
-      MOCK_PACKAGES.push(newPkg as ServicePackage);
-      return newPkg;
   },
 
   updatePackageStatus: async (id: string, status: ServicePackage['status']) => {
-      DATA_CACHE.packages = null; // Invalidate cache
-
+      DATA_CACHE.packages = null;
       if (isLive) {
           await fetch(GOOGLE_SCRIPT_URL, {
               method: 'POST',
@@ -349,8 +310,7 @@ export const api = {
   },
   
   deletePackage: async (id: string) => {
-      DATA_CACHE.packages = null; // Invalidate cache
-      
+      DATA_CACHE.packages = null;
       if (isLive) {
           await fetch(GOOGLE_SCRIPT_URL, {
               method: 'POST',
@@ -358,28 +318,20 @@ export const api = {
               body: JSON.stringify({ action: 'deletePackage', id })
           });
       } else {
-          const index = MOCK_PACKAGES.findIndex(p => p.id === id);
-          if (index !== -1) {
-              MOCK_PACKAGES.splice(index, 1);
-          }
+           const idx = MOCK_PACKAGES.findIndex(p => p.id === id);
+           if (idx !== -1) MOCK_PACKAGES.splice(idx, 1);
       }
       return true;
   },
 
   editPackage: async (pkg: ServicePackage) => {
-      DATA_CACHE.packages = null; // Invalidate cache
-
+      DATA_CACHE.packages = null;
       if (isLive) {
           await fetch(GOOGLE_SCRIPT_URL, {
               method: 'POST',
               headers: { 'Content-Type': 'text/plain;charset=utf-8' },
               body: JSON.stringify({ action: 'editPackage', ...pkg })
           });
-      } else {
-          const index = MOCK_PACKAGES.findIndex(p => p.id === pkg.id);
-          if (index !== -1) {
-              MOCK_PACKAGES[index] = { ...MOCK_PACKAGES[index], ...pkg };
-          }
       }
       return true;
   },
@@ -401,7 +353,6 @@ export const api = {
       if (!pkg) return null;
 
       const entries = await api.getEntries();
-      
       const pkgStartDate = new Date(pkg.startDate);
       pkgStartDate.setHours(0,0,0,0);
 
@@ -435,7 +386,7 @@ export const api = {
       };
   },
 
-  // --- USER MANAGEMENT ---
+  // --- USERS ---
   getUsers: async () => {
       if (isLive) {
           try {
@@ -455,62 +406,47 @@ export const api = {
   },
 
   addUser: async (user: User & { password: string }) => {
-      const payload = {
-          ...user,
-          permissions: user.permissions ? user.permissions.join(',') : ''
-      };
-
       if (isLive) {
-          try {
              await fetch(GOOGLE_SCRIPT_URL, {
                   method: 'POST',
                   headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                  body: JSON.stringify({ action: 'addUser', ...payload })
+                  body: JSON.stringify({ action: 'addUser', ...user, permissions: user.permissions?.join(',') })
              });
              return true;
-          } catch (e) {
-              console.error("Failed to add user", e);
-              return false;
-          }
       }
-      return true; 
+      return false; 
   },
   
   deleteUser: async (username: string) => {
        if (isLive) {
-          try {
              await fetch(GOOGLE_SCRIPT_URL, {
                   method: 'POST',
                   headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                   body: JSON.stringify({ action: 'deleteUser', username })
              });
              return true;
-          } catch (e) {
-              console.error("Failed to delete user", e);
-              return false;
-          }
       }
-      return true; 
+      return false; 
   },
 
   getDashboardStats: async (): Promise<DashboardStats> => {
-    // Parallel fetch for better performance
-    const [entries, options] = await Promise.all([
-        api.getEntries(),
-        api.getOptions()
-    ]);
+    const entries = await api.getEntries();
     
-    const totalClients = options.clients.length;
+    // Safety check in case entries are empty
+    if (!entries || entries.length === 0) {
+        return { totalClients: 0, totalAmount: 0, newClientsToday: 0, serviceCount: 0 };
+    }
+    
+    const uniqueClients = new Set(entries.map((e: any) => e.clientName)).size;
     const totalAmount = entries.reduce((sum: number, e: any) => sum + Number(e.amount || 0), 0);
     const today = new Date().toISOString().split('T')[0];
     const newClientsToday = entries.filter((e: any) => e.date === today && e.serviceType === 'NEW').length;
-    const serviceCount = entries.length;
 
     return {
-      totalClients,
+      totalClients: uniqueClients,
       totalAmount,
       newClientsToday,
-      serviceCount
+      serviceCount: entries.length
     };
   }
 };

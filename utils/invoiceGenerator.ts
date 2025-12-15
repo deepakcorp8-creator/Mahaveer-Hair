@@ -18,16 +18,12 @@ export const generateInvoice = (entry: Entry) => {
   try {
       if (entry.date && entry.date.includes('-')) {
           const parts = entry.date.split('-');
-          // Check if it's YYYY-MM-DD
-          if (parts.length === 3 && parts[0].length === 4) {
+          if (parts.length === 3) {
               formattedDate = `${parts[2]}/${parts[1]}/${parts[0]}`;
           }
       } else if (entry.date) {
           const d = new Date(entry.date);
-          const day = String(d.getDate()).padStart(2, '0');
-          const month = String(d.getMonth() + 1).padStart(2, '0');
-          const year = d.getFullYear();
-          formattedDate = `${day}/${month}/${year}`;
+          formattedDate = d.toLocaleDateString('en-GB'); // dd/mm/yyyy
       }
   } catch (e) {
       formattedDate = entry.date;
