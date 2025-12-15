@@ -385,8 +385,11 @@ export const api = {
       // 1. Fetch latest packages (Use Cache!)
       const packages = await api.getPackages();
       
-      // 2. Find active package
-      const pkg = packages.find((p: any) => p.clientName.trim().toLowerCase() === normalizedName && p.status === 'ACTIVE');
+      // 2. Find active package (Include 'APPROVED' status)
+      const pkg = packages.find((p: any) => 
+          p.clientName.trim().toLowerCase() === normalizedName && 
+          (p.status === 'ACTIVE' || p.status === 'APPROVED')
+      );
       
       if (!pkg) return null;
 
