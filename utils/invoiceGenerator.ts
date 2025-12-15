@@ -311,7 +311,7 @@ export const generateInvoice = (entry: Entry) => {
         
         <!-- Header -->
         <div class="header">
-           <img src="${LOGO_URL}" class="logo" alt="Mahaveer Logo" onerror="this.style.display='none'" />
+           <img src="${LOGO_URL}" class="logo" alt="Mahaveer Logo" crossorigin="anonymous" />
            <div class="address">
               ${branchAddress}<br>
               <span style="color:#000; font-weight:700;">Contact: ${branchContact} | Email: info@mahaveerhairsolution.com</span>

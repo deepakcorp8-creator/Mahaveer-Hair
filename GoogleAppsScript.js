@@ -1,6 +1,6 @@
 
 // =====================================================================================
-// ⚠️ MAHUVEER WEB APP - BACKEND SCRIPT (V5 - Final Logo Fix)
+// ⚠️ MAHUVEER WEB APP - BACKEND SCRIPT (V6 - Logo Base64 Fix)
 // =====================================================================================
 
 function doGet(e) {
@@ -265,7 +265,7 @@ function getUsers(ss) {
     return response(data.map(row => ({ username: row[0], password: row[1], role: row[2], department: row[3], permissions: row[4] })));
 }
 
-// --- PROFESSIONAL PDF GENERATOR (FIXED LOGO) ---
+// --- PROFESSIONAL PDF GENERATOR (BASE64 LOGO FIX) ---
 function createInvoice(data) {
   try {
     // 1. Branch Address Logic
@@ -287,10 +287,22 @@ function createInvoice(data) {
     } catch(e) {}
     
     var invoiceNo = "INV-" + new Date().getFullYear() + "-" + Math.floor(Math.random() * 10000);
-    // NEW DIRECT PNG LINK
+    
+    // 3. IMAGE HANDLING: FETCH AND CONVERT TO BASE64
+    // This is required because GAS PDF rendering often blocks external image URLs.
     var logoUrl = "https://i.ibb.co/wFDKjmJS/MAHAVEER-Logo-1920x1080.png";
+    var logoSrc = logoUrl;
+    
+    try {
+        var imageBlob = UrlFetchApp.fetch(logoUrl).getBlob();
+        var base64Image = Utilities.base64Encode(imageBlob.getBytes());
+        logoSrc = "data:image/png;base64," + base64Image;
+    } catch(e) {
+        // Fallback to URL if fetch fails
+        logoSrc = logoUrl; 
+    }
 
-    // 3. HTML Template (Centered Professional Layout)
+    // 4. HTML Template (Centered Professional Layout)
     var html = `
       <html>
         <head>
@@ -346,7 +358,7 @@ function createInvoice(data) {
           
             <!-- Header -->
             <div class="header">
-               <img src="${logoUrl}" class="logo" />
+               <img src="${logoSrc}" class="logo" />
                <!-- Brand Name removed as it is likely in the logo, but keeping address -->
                <div class="address-line">${address}</div>
                <div class="address-line">Contact: ${contact} | Email: info@mahaveerhairsolution.com</div>
