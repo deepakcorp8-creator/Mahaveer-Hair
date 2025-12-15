@@ -396,7 +396,7 @@ const AppointmentBooking: React.FC = () => {
                     <div>
                         <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5 ml-1">Branch</label>
                         <div className="flex gap-2 p-1 bg-slate-100 rounded-2xl border border-slate-200">
-                            {['RPR', 'JDP', 'BSP'].map(b => (
+                            {['RPR', 'JDP'].map(b => (
                                 <button
                                     type="button"
                                     key={b}

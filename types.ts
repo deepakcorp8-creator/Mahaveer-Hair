@@ -26,7 +26,7 @@ export interface Entry {
   clientName: string;
   contactNo: string;
   address: string;
-  branch: 'BSP' | 'RPR' | 'JDP';
+  branch: 'RPR' | 'JDP';
   serviceType: 'SERVICE' | 'NEW' | 'DEMO' | 'MUNDAN';
   patchMethod: 'TAPING' | 'BONDING' | 'CLIPPING' | '';
   technician: string;

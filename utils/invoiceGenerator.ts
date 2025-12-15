@@ -40,7 +40,7 @@ export const generateInvoice = (entry: Entry) => {
       branchAddress = "Varghese Wings, Near Vishal Mega Mart Dharampura, Jagdalpur, Jagdalpur-494001, Chhattisgarh";
       branchContact = "09725567348";
   }
-  // Default (RPR and BSP) uses the Raipur Address defined above
+  // Default (RPR) uses the Raipur Address defined above
 
   const htmlContent = `
     <!DOCTYPE html>
