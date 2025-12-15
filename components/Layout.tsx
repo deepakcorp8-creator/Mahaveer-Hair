@@ -78,7 +78,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
     { path: '/admin', label: 'Admin Panel', icon: Shield, adminOnly: true },
   ];
 
-  const LOGO_URL = "https://i.ibb.co/hhB5D9r/MAHAVEER-Logo-1920x1080-1.png";
+  const LOGO_URL = "https://i.ibb.co/wFDKjmJS/MAHAVEER-Logo-1920x1080.png";
 
   const menuItems = allMenuItems.filter(item => {
       if (user.role === Role.ADMIN) return true;

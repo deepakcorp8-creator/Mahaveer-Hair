@@ -1,17 +1,6 @@
 
 // =====================================================================================
-// ⚠️ MAHUVEER WEB APP - BACKEND SCRIPT (V2 - Robust)
-// =====================================================================================
-//
-// 📋 REQUIRED SHEET TABS (Create these tabs in your Google Sheet):
-// 1. "DATA BASE"       (Cols: Date, Name, Contact, Address, Branch, Service, Method, Tech, Status, Amount, PayMode, Remark, Svc#, Invoice, Size, Pending)
-// 2. "CLIENT MASTER"   (Cols: Name, Contact, Address, Gender, Email, DOB)
-// 3. "APPOINTMENT"     (Cols: ID, Date, Name, Contact, Address, Note, Status, Branch, Time)
-// 4. "PACKAGE PLAN"    (Cols: StartDate, Client, PkgName, Cost, Services, Status)
-// 5. "LOGIN"           (Cols: Username, Password, Role, Dept, Permissions)
-// 6. "EMPLOYEE DETAILS"(Cols: Name, Contact)
-// 7. "ITEM MASTER"     (Cols: Code, Name, Category)
-//
+// ⚠️ MAHUVEER WEB APP - BACKEND SCRIPT (V5 - Final Logo Fix)
 // =====================================================================================
 
 function doGet(e) {
@@ -40,7 +29,7 @@ function doPost(e) {
     var invoiceUrl = "";
     // Only generate invoice if amount is greater than 0
     if (Number(data.amount) > 0) {
-      try { invoiceUrl = createInvoice(data); } catch (e) { invoiceUrl = ""; }
+      try { invoiceUrl = createInvoice(data); } catch (e) { invoiceUrl = "Error: " + e.toString(); }
     }
 
     // APPEND ROW - Strict Order
@@ -193,8 +182,6 @@ function doPost(e) {
 function getSheet(ss, name) {
     var sheet = ss.getSheetByName(name);
     if (sheet) return sheet;
-
-    // Try Common Variations
     if (name == "APPOINTMENT") return ss.getSheetByName("APPOINTMNET") || ss.getSheetByName("Appointment") || ss.getSheetByName("Appointments");
     if (name == "PACKAGE PLAN") return ss.getSheetByName("PACKAG PLAN") || ss.getSheetByName("Package Plan") || ss.getSheetByName("Packages");
     if (name == "CLIENT MASTER") return ss.getSheetByName("Client Master") || ss.getSheetByName("Clients");
@@ -202,12 +189,10 @@ function getSheet(ss, name) {
     if (name == "LOGIN") return ss.getSheetByName("Login") || ss.getSheetByName("Users");
     if (name == "EMPLOYEE DETAILS") return ss.getSheetByName("Employee Details") || ss.getSheetByName("Technicians");
     if (name == "ITEM MASTER") return ss.getSheetByName("Item Master") || ss.getSheetByName("Items");
-
-    // If still not found, create it (Safety Fallback)
     return ss.insertSheet(name);
 }
 
-// --- DATA FETCHING ---
+// --- DATA FETCHING HELPERS ---
 function getPackages(ss) {
     const sheet = getSheet(ss, "PACKAGE PLAN");
     if (!sheet || sheet.getLastRow() <= 1) return response([]);
@@ -223,7 +208,6 @@ function getEntries(ss) {
     if (!sheet || sheet.getLastRow() <= 1) return response([]);
     const lastCol = Math.max(16, sheet.getLastColumn());
     const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, lastCol).getValues();
-    // Maps exact columns to JSON properties
     return response(data.map((row, index) => ({
       id: 'row_' + (index + 2), 
       date: formatDate(row[0]), 
@@ -258,7 +242,6 @@ function getOptions(ss) {
     const clientSheet = getSheet(ss, "CLIENT MASTER");
     const techSheet = getSheet(ss, "EMPLOYEE DETAILS");
     const itemSheet = getSheet(ss, "ITEM MASTER");
-    
     let clients = [], technicians = [], items = [];
     if (clientSheet && clientSheet.getLastRow() > 1) {
         clients = clientSheet.getRange(2, 1, clientSheet.getLastRow()-1, 6).getValues().filter(r => r[0])
@@ -282,47 +265,198 @@ function getUsers(ss) {
     return response(data.map(row => ({ username: row[0], password: row[1], role: row[2], department: row[3], permissions: row[4] })));
 }
 
-// --- PDF GENERATOR (IMPROVED DETAILS) ---
+// --- PROFESSIONAL PDF GENERATOR (FIXED LOGO) ---
 function createInvoice(data) {
   try {
-      var html = `
-        <html>
-          <body style="font-family: sans-serif; padding: 20px;">
-            <h2 style="color: #333;">Mahaveer Hair Solution</h2>
-            <p style="font-size: 12px; color: #555;">Date: ${data.date} | Branch: ${data.branch}</p>
-            <hr style="border: 0; border-top: 1px solid #ddd;" />
+    // 1. Branch Address Logic
+    var address = "2nd Floor Rais Reality, front Anupam garden, GE Road Raipur Chhattisgarh";
+    var contact = "+91-9144939828";
+    
+    if (data.branch && data.branch.toString().toUpperCase().trim() === 'JDP') {
+       address = "Varghese Wings, Near Vishal Mega Mart Dharampura, Jagdalpur, Jagdalpur-494001, Chhattisgarh";
+       contact = "09725567348";
+    }
+
+    // 2. Date Formatting
+    var dateStr = data.date;
+    try {
+        var dateParts = data.date.split('-'); // Assumes YYYY-MM-DD
+        if (dateParts.length === 3) {
+            dateStr = dateParts[2] + '/' + dateParts[1] + '/' + dateParts[0];
+        }
+    } catch(e) {}
+    
+    var invoiceNo = "INV-" + new Date().getFullYear() + "-" + Math.floor(Math.random() * 10000);
+    // NEW DIRECT PNG LINK
+    var logoUrl = "https://i.ibb.co/wFDKjmJS/MAHAVEER-Logo-1920x1080.png";
+
+    // 3. HTML Template (Centered Professional Layout)
+    var html = `
+      <html>
+        <head>
+          <style>
+            body { font-family: 'Helvetica', 'Arial', sans-serif; font-size: 11px; color: #333; padding: 40px; margin: 0; }
+            .container { max-width: 700px; margin: 0 auto; }
             
-            <h3>INVOICE</h3>
-            <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
-              <tr><td style="padding: 5px;"><strong>Client:</strong></td><td>${data.clientName}</td></tr>
-              <tr><td style="padding: 5px;"><strong>Service:</strong></td><td>${data.serviceType}</td></tr>
-              <tr><td style="padding: 5px;"><strong>Technician:</strong></td><td>${data.technician}</td></tr>
+            /* Header */
+            .header { text-align: center; margin-bottom: 25px; }
+            /* Logo CSS specifically for wide/landscape logos */
+            .logo { width: 300px; height: auto; max-height: 100px; object-fit: contain; margin-bottom: 15px; display: block; margin-left: auto; margin-right: auto; }
+            
+            .brand-name { font-size: 18px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; color: #000; margin-top: 10px; }
+            .address-line { font-size: 10px; color: #555; margin-top: 5px; line-height: 1.4; max-width: 80%; margin-left: auto; margin-right: auto; }
+            .divider { border-bottom: 1px solid #ddd; margin: 20px 0; }
+            
+            /* Meta Row */
+            .meta-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-weight: bold; font-size: 10px; color: #444; }
+            .meta-table td { padding: 5px; }
+            .meta-label { text-transform: uppercase; color: #888; }
+            
+            /* Boxes */
+            .box-container { width: 100%; border-collapse: separate; border-spacing: 10px 0; margin-bottom: 20px; }
+            .info-box { border: 1px solid #eee; padding: 15px; border-radius: 4px; vertical-align: top; width: 48%; background-color: #fcfcfc; }
+            .box-header { font-size: 9px; font-weight: bold; text-transform: uppercase; color: #888; margin-bottom: 8px; letter-spacing: 0.5px; }
+            .box-text { font-size: 11px; font-weight: bold; color: #000; line-height: 1.4; }
+            .box-sub { font-size: 10px; color: #555; font-weight: normal; }
+            
+            /* Item Table */
+            .item-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+            .item-table th { border-bottom: 2px solid #000; text-align: left; padding: 10px 5px; font-size: 9px; text-transform: uppercase; color: #888; }
+            .item-table td { border-bottom: 1px solid #eee; padding: 12px 5px; font-size: 11px; vertical-align: top; }
+            .text-right { text-align: right; }
+            .text-center { text-align: center; }
+            .bold { font-weight: bold; color: #000; }
+            
+            /* Totals */
+            .total-table { width: 200px; margin-left: auto; border-collapse: collapse; }
+            .total-table td { padding: 4px 0; font-size: 10px; }
+            .grand-total { border-top: 1px solid #000; padding-top: 8px; font-size: 12px; font-weight: 900; }
+            
+            /* Footer */
+            .footer-table { width: 100%; margin-top: 50px; border-top: 1px solid #eee; padding-top: 15px; }
+            .terms { font-size: 9px; color: #666; line-height: 1.4; }
+            .sign-box { text-align: center; }
+            .sign-line { border-bottom: 1px solid #000; width: 150px; margin: 0 auto 5px auto; }
+            .sign-label { font-size: 10px; font-weight: bold; }
+            
+          </style>
+        </head>
+        <body>
+          <div class="container">
+          
+            <!-- Header -->
+            <div class="header">
+               <img src="${logoUrl}" class="logo" />
+               <!-- Brand Name removed as it is likely in the logo, but keeping address -->
+               <div class="address-line">${address}</div>
+               <div class="address-line">Contact: ${contact} | Email: info@mahaveerhairsolution.com</div>
+            </div>
+            
+            <div class="divider"></div>
+
+            <!-- Meta Data -->
+            <table class="meta-table">
+               <tr>
+                  <td><span class="meta-label">Invoice #:</span> ${invoiceNo}</td>
+                  <td align="center"><span class="meta-label">Date:</span> ${dateStr}</td>
+                  <td align="right"><span class="meta-label">Branch:</span> ${data.branch}</td>
+               </tr>
             </table>
 
-            <table style="width: 100%; border: 1px solid #000; border-collapse: collapse;">
-                <tr style="background: #f0f0f0;">
-                    <th style="border: 1px solid #000; padding: 8px;">Description</th>
-                    <th style="border: 1px solid #000; padding: 8px;">Amount</th>
-                </tr>
-                <tr>
-                    <td style="border: 1px solid #000; padding: 8px;">${data.serviceType} (${data.patchMethod})</td>
-                    <td style="border: 1px solid #000; padding: 8px;">Rs. ${data.amount}</td>
-                </tr>
+            <!-- Boxes -->
+            <table class="box-container">
+               <tr>
+                  <td class="info-box">
+                      <div class="box-header">BILL TO</div>
+                      <div class="box-text">${data.clientName}</div>
+                      <div class="box-sub">${data.address || 'Address N/A'}</div>
+                      <div class="box-sub">Ph: ${data.contactNo}</div>
+                  </td>
+                  <td class="info-box">
+                      <div class="box-header">SERVICE DETAILS</div>
+                      <div class="box-text">${data.serviceType}</div>
+                      <div class="box-sub">Tech: ${data.technician}</div>
+                      <div class="box-sub">Method: ${data.patchMethod}</div>
+                  </td>
+               </tr>
             </table>
-            
-            <p style="text-align: right; margin-top: 10px;"><strong>Total Paid: Rs. ${data.amount}</strong></p>
-            ${data.pendingAmount > 0 ? `<p style="text-align: right; color: red;">Pending Due: Rs. ${data.pendingAmount}</p>` : ''}
-            
-            <br/><br/>
-            <p style="text-align: center; font-size: 10px;">Thank you for your business!</p>
-          </body>
-        </html>
-      `;
-      var blob = Utilities.newBlob(html, MimeType.HTML).getAs(MimeType.PDF);
-      var folder = DriveApp.getRootFolder();
-      var file = folder.createFile(blob).setName("Inv_" + data.clientName + "_" + data.date + ".pdf");
-      file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-      return file.getUrl();
+
+            <!-- Items -->
+            <table class="item-table">
+               <thead>
+                  <tr>
+                     <th width="50%">DESCRIPTION</th>
+                     <th class="text-center">QTY</th>
+                     <th class="text-right">PRICE</th>
+                     <th class="text-right">TOTAL</th>
+                  </tr>
+               </thead>
+               <tbody>
+                  <tr>
+                     <td>
+                        <div class="bold">${data.serviceType} APPLICATION</div>
+                        <div style="font-size:9px; color:#666; margin-top:2px;">
+                           ${data.patchSize ? 'Patch Size: ' + data.patchSize : ''} 
+                           ${data.remark ? '<br/>' + data.remark : ''}
+                        </div>
+                     </td>
+                     <td class="text-center">1</td>
+                     <td class="text-right">Rs. ${data.amount}</td>
+                     <td class="text-right bold">Rs. ${data.amount}</td>
+                  </tr>
+               </tbody>
+            </table>
+
+            <!-- Totals -->
+            <table class="total-table">
+               <tr>
+                  <td>Subtotal</td>
+                  <td class="text-right bold">Rs. ${data.amount}</td>
+               </tr>
+               <tr>
+                  <td>Pending Due</td>
+                  <td class="text-right bold" style="color:red;">Rs. ${data.pendingAmount || 0}</td>
+               </tr>
+               <tr>
+                  <td>Payment Mode</td>
+                  <td class="text-right bold" style="text-transform:uppercase;">${data.paymentMethod}</td>
+               </tr>
+               <tr>
+                  <td class="grand-total">Grand Total</td>
+                  <td class="text-right grand-total">Rs. ${data.amount}</td>
+               </tr>
+            </table>
+
+            <!-- Footer -->
+            <table class="footer-table">
+               <tr>
+                  <td width="60%" valign="bottom">
+                     <div class="terms">
+                        <strong>Terms & Conditions:</strong><br/>
+                        1. Goods once sold will not be returned.<br/>
+                        2. Subject to Raipur Jurisdiction.<br/>
+                        Thank you for your business!
+                     </div>
+                  </td>
+                  <td width="40%" valign="bottom" align="right">
+                     <div class="sign-box">
+                        <div class="sign-line"></div>
+                        <div class="sign-label">Authorized Signatory</div>
+                     </div>
+                  </td>
+               </tr>
+            </table>
+          
+          </div>
+        </body>
+      </html>
+    `;
+    
+    var blob = Utilities.newBlob(html, MimeType.HTML).getAs(MimeType.PDF);
+    var folder = DriveApp.getRootFolder();
+    var file = folder.createFile(blob).setName("Inv_" + data.clientName + "_" + data.date + ".pdf");
+    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    return file.getUrl();
   } catch (e) { return "Error: " + e.toString(); }
 }
 

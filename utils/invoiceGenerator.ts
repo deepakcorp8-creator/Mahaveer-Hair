@@ -8,8 +8,8 @@ export const generateInvoice = (entry: Entry) => {
     return;
   }
 
-  // Logo URL
-  const LOGO_URL = "https://i.ibb.co/hhB5D9r/MAHAVEER-Logo-1920x1080-1.png";
+  // DIRECT IMAGE LINK (Landscape)
+  const LOGO_URL = "https://i.ibb.co/wFDKjmJS/MAHAVEER-Logo-1920x1080.png";
 
   const invoiceNumber = `INV-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 10000)).padStart(4, '0')}`;
 
@@ -40,7 +40,6 @@ export const generateInvoice = (entry: Entry) => {
       branchAddress = "Varghese Wings, Near Vishal Mega Mart Dharampura, Jagdalpur, Jagdalpur-494001, Chhattisgarh";
       branchContact = "09725567348";
   }
-  // Default (RPR) uses the Raipur Address defined above
 
   const htmlContent = `
     <!DOCTYPE html>
@@ -50,7 +49,7 @@ export const generateInvoice = (entry: Entry) => {
       <title>Invoice - ${entry.clientName}</title>
       <link rel="preconnect" href="https://fonts.googleapis.com">
       <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&display=swap" rel="stylesheet">
+      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800;900&display=swap" rel="stylesheet">
       <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
       <style>
         @page {
@@ -73,57 +72,76 @@ export const generateInvoice = (entry: Entry) => {
           width: 210mm;
           min-height: 297mm;
           background: white;
-          padding: 15mm; /* Standard Print Margin */
+          padding: 15mm;
           box-sizing: border-box;
           box-shadow: 0 10px 30px rgba(0,0,0,0.3);
           position: relative;
-          color: #374151;
-          line-height: 1.4;
+          color: #333;
         }
 
         /* Header */
         .header {
           text-align: center;
-          border-bottom: 2px solid #111827;
-          padding-bottom: 15px;
-          margin-bottom: 20px;
+          margin-bottom: 30px;
         }
 
+        /* Wide Logo Styling */
         .logo {
-          height: 60px;
-          margin-bottom: 5px;
+          width: 320px; /* Wider width for landscape logo */
+          max-width: 80%;
+          height: auto;
           object-fit: contain;
+          margin-bottom: 10px;
+          display: block;
+          margin-left: auto;
+          margin-right: auto;
         }
 
         .brand {
           font-size: 20px;
-          font-weight: 800;
-          color: #111827;
+          font-weight: 900;
+          color: #000;
           text-transform: uppercase;
-          letter-spacing: 1px;
           margin-bottom: 4px;
+          letter-spacing: 0.5px;
         }
 
         .address {
           font-size: 10px;
-          color: #6b7280;
+          color: #555;
           max-width: 80%;
           margin: 0 auto;
+          line-height: 1.4;
         }
+        
+        .divider { border-bottom: 1px solid #e5e7eb; margin: 20px 0; }
+
+        /* Meta Box */
+        .meta-row {
+          display: flex;
+          justify-content: space-between;
+          font-size: 11px;
+          font-weight: 700;
+          margin-bottom: 30px;
+          color: #444;
+          text-transform: uppercase;
+        }
+        .meta-label { color: #888; margin-right: 5px; }
 
         /* Info Grid */
         .grid-container {
           display: flex;
           justify-content: space-between;
-          margin-bottom: 20px;
+          margin-bottom: 30px;
           gap: 20px;
         }
 
         .box {
           flex: 1;
-          padding: 10px;
-          border: 1px solid #e5e7eb;
-          border-radius: 6px;
+          padding: 15px;
+          border: 1px solid #f3f4f6;
+          border-radius: 4px;
+          background: #fdfdfd;
           font-size: 11px;
         }
 
@@ -131,73 +149,51 @@ export const generateInvoice = (entry: Entry) => {
           font-size: 9px;
           text-transform: uppercase;
           color: #9ca3af;
-          font-weight: 700;
-          margin-bottom: 4px;
+          font-weight: 800;
+          margin-bottom: 8px;
           letter-spacing: 0.5px;
         }
 
         .box-content {
           font-size: 12px;
-          font-weight: 600;
-          color: #111827;
+          font-weight: 800;
+          color: #111;
+          margin-bottom: 2px;
         }
         
         .box-sub {
           font-size: 11px;
-          font-weight: 400;
-          color: #4b5563;
-        }
-
-        /* Invoice Meta */
-        .meta-row {
-          display: flex;
-          justify-content: space-between;
-          background: #f9fafb;
-          border: 1px solid #e5e7eb;
-          border-radius: 6px;
-          padding: 8px 15px;
-          font-size: 11px;
-          font-weight: 600;
-          margin-bottom: 20px;
+          color: #555;
         }
 
         /* Table */
         table {
           width: 100%;
           border-collapse: collapse;
-          margin-bottom: 20px;
-          font-size: 11px;
+          margin-bottom: 30px;
         }
 
         th {
-          background: #111827;
-          color: white;
+          border-bottom: 2px solid #000;
+          color: #888;
           text-transform: uppercase;
-          padding: 8px 10px;
+          padding: 10px 5px;
           text-align: left;
-          font-size: 10px;
+          font-size: 9px;
           font-weight: 700;
         }
 
         td {
-          padding: 8px 10px;
-          border-bottom: 1px solid #e5e7eb;
+          padding: 12px 5px;
+          border-bottom: 1px solid #f3f4f6;
           vertical-align: top;
-        }
-
-        .item-desc {
-          font-size: 12px;
-          font-weight: 700;
-          color: #111827;
-        }
-        .item-sub {
-          font-size: 10px;
-          color: #6b7280;
-          margin-top: 2px;
+          font-size: 11px;
+          color: #333;
         }
 
         .text-right { text-align: right; }
         .text-center { text-align: center; }
+        .bold { font-weight: 700; color: #000; }
 
         /* Totals */
         .totals {
@@ -211,17 +207,19 @@ export const generateInvoice = (entry: Entry) => {
         }
 
         .totals-table td {
-          padding: 4px 0;
+          padding: 5px 0;
           border: none;
         }
 
         .grand-total {
-          border-top: 2px solid #111827 !important;
-          padding-top: 8px !important;
+          border-top: 1px solid #000 !important;
+          padding-top: 10px !important;
           font-size: 14px;
-          font-weight: 800;
-          color: #111827;
+          font-weight: 900;
+          color: #000;
         }
+
+        .red-text { color: #dc2626; }
 
         /* Footer */
         .footer {
@@ -229,10 +227,10 @@ export const generateInvoice = (entry: Entry) => {
           bottom: 15mm;
           left: 15mm;
           right: 15mm;
-          border-top: 1px solid #e5e7eb;
-          padding-top: 10px;
+          border-top: 1px solid #f3f4f6;
+          padding-top: 20px;
           font-size: 10px;
-          color: #9ca3af;
+          color: #666;
           display: flex;
           justify-content: space-between;
           align-items: flex-end;
@@ -245,10 +243,11 @@ export const generateInvoice = (entry: Entry) => {
           width: 150px;
         }
         .sign-line {
-          border-bottom: 1px solid #111827;
+          border-bottom: 1px solid #000;
           height: 30px;
-          margin-bottom: 4px;
+          margin-bottom: 6px;
         }
+        .sign-label { font-weight: 700; font-size: 10px; color: #000; }
 
         /* Action Buttons */
         .actions-bar {
@@ -301,7 +300,7 @@ export const generateInvoice = (entry: Entry) => {
             height: 100%; 
             margin: 0; 
             box-shadow: none; 
-            padding: 10mm; /* Slightly tighter for print */
+            padding: 15mm;
           }
           .no-print { display: none !important; }
         }
@@ -313,18 +312,19 @@ export const generateInvoice = (entry: Entry) => {
         <!-- Header -->
         <div class="header">
            <img src="${LOGO_URL}" class="logo" alt="Mahaveer Logo" onerror="this.style.display='none'" />
-           <div class="brand">Mahaveer Hair Solution</div>
            <div class="address">
               ${branchAddress}<br>
-              <strong>Contact:</strong> ${branchContact} | <strong>Email:</strong> info@mahaveerhairsolution.com
+              <span style="color:#000; font-weight:700;">Contact: ${branchContact} | Email: info@mahaveerhairsolution.com</span>
            </div>
         </div>
+        
+        <div class="divider"></div>
 
         <!-- Meta -->
         <div class="meta-row">
-            <span>Invoice #: ${invoiceNumber}</span>
-            <span>Date: ${formattedDate}</span>
-            <span>Branch: ${entry.branch}</span>
+            <span><span class="meta-label">Invoice #:</span> ${invoiceNumber}</span>
+            <span><span class="meta-label">Date:</span> ${formattedDate}</span>
+            <span><span class="meta-label">Branch:</span> ${entry.branch}</span>
         </div>
 
         <!-- Info Grid -->
@@ -337,7 +337,7 @@ export const generateInvoice = (entry: Entry) => {
             </div>
             <div class="box">
                 <div class="box-title">Service Details</div>
-                <div class="box-sub">Type: <strong style="color:#111">${entry.serviceType}</strong></div>
+                <div class="box-content">${entry.serviceType}</div>
                 <div class="box-sub">Tech: ${entry.technician}</div>
                 <div class="box-sub">Method: ${entry.patchMethod}</div>
             </div>
@@ -356,15 +356,15 @@ export const generateInvoice = (entry: Entry) => {
             <tbody>
                 <tr>
                     <td>
-                        <div class="item-desc">${entry.serviceType} APPLICATION</div>
-                        <div class="item-sub">
+                        <div class="bold">${entry.serviceType} APPLICATION</div>
+                        <div class="box-sub" style="margin-top:2px;">
                             ${entry.patchSize ? `Patch Size: ${entry.patchSize}` : ''}
                             ${entry.remark ? `<br/>Note: ${entry.remark}` : ''}
                         </div>
                     </td>
                     <td class="text-center">1</td>
                     <td class="text-right">₹${entry.amount}</td>
-                    <td class="text-right"><strong>₹${entry.amount}</strong></td>
+                    <td class="text-right bold">₹${entry.amount}</td>
                 </tr>
             </tbody>
         </table>
@@ -374,15 +374,15 @@ export const generateInvoice = (entry: Entry) => {
             <table class="totals-table">
                 <tr>
                     <td>Subtotal</td>
-                    <td class="text-right">₹${entry.amount}</td>
+                    <td class="text-right bold">₹${entry.amount}</td>
                 </tr>
                 <tr>
-                    <td>Pending Due</td>
-                    <td class="text-right" style="color: #dc2626;">₹${entry.pendingAmount || 0}</td>
+                    <td class="red-text">Pending Due</td>
+                    <td class="text-right red-text bold">₹${entry.pendingAmount || 0}</td>
                 </tr>
                 <tr>
                     <td>Payment Mode</td>
-                    <td class="text-right" style="text-transform: uppercase;">${entry.paymentMethod}</td>
+                    <td class="text-right bold" style="text-transform: uppercase;">${entry.paymentMethod}</td>
                 </tr>
                 <tr>
                     <td class="grand-total">Grand Total</td>
@@ -394,14 +394,14 @@ export const generateInvoice = (entry: Entry) => {
         <!-- Footer -->
         <div class="footer">
             <div class="terms">
-                <strong style="color: #6b7280; text-transform: uppercase;">Terms & Conditions:</strong>
+                <strong style="color: #444; text-transform: uppercase;">Terms & Conditions:</strong>
                 <p>1. Goods once sold will not be returned.</p>
                 <p>2. Subject to Raipur Jurisdiction.</p>
-                <p style="margin-top: 5px;">Thank you for your business!</p>
+                <div style="margin-top: 8px;">Thank you for your business!</div>
             </div>
             <div class="signature">
                 <div class="sign-line"></div>
-                <strong>Authorized Signatory</strong>
+                <div class="sign-label">Authorized Signatory</div>
             </div>
         </div>
       </div>
@@ -426,7 +426,7 @@ export const generateInvoice = (entry: Entry) => {
             
             // Clean up visual styles before capture
             btns.style.display = 'none';
-            element.style.boxShadow = 'none'; // Remove shadow for clean PDF
+            element.style.boxShadow = 'none'; 
             
             const opt = {
               margin: 0,
