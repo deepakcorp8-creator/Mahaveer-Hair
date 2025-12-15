@@ -9,6 +9,11 @@ export interface User {
   role: Role;
   department?: string;
   permissions?: string[]; // Array of paths allowed e.g. ['/new-entry', '/daily-report']
+  // New Profile Fields
+  dpUrl?: string;
+  gender?: string;
+  dob?: string;
+  address?: string;
 }
 
 export interface Client {

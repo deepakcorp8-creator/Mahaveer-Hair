@@ -479,6 +479,24 @@ export const api = {
       return true; 
   },
 
+  // NEW: Update User Profile
+  updateUserProfile: async (userData: Partial<User>) => {
+      if (isLive) {
+          try {
+             await fetch(GOOGLE_SCRIPT_URL, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                  body: JSON.stringify({ action: 'updateUser', ...userData })
+             });
+             return true;
+          } catch (e) {
+              console.error("Failed to update profile", e);
+              return false;
+          }
+      }
+      return true;
+  },
+
   getDashboardStats: async (): Promise<DashboardStats> => {
     // 1. Fetch entries for revenue/service stats
     const entries = await api.getEntries();

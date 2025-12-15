@@ -18,7 +18,11 @@ import {
   Code2,
   Wallet,
   Bell,
-  Home
+  Home,
+  User as UserIcon,
+  Camera,
+  Save,
+  Loader2
 } from 'lucide-react';
 import { User, Role } from '../types';
 import { api } from '../services/api';
@@ -32,6 +36,17 @@ interface LayoutProps {
 const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
   const [pendingCount, setPendingCount] = useState(0);
+  
+  // Profile Modal State
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [profileForm, setProfileForm] = useState({
+      dpUrl: '',
+      gender: 'Male',
+      dob: '',
+      address: ''
+  });
+  const [savingProfile, setSavingProfile] = useState(false);
+
   const location = useLocation();
   const mainContentRef = useRef<HTMLDivElement>(null);
 
@@ -41,6 +56,18 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
         mainContentRef.current.scrollTop = 0;
     }
   }, [location.pathname]);
+
+  // Sync profile form with user data when modal opens
+  useEffect(() => {
+      if (isProfileModalOpen && user) {
+          setProfileForm({
+              dpUrl: user.dpUrl || '',
+              gender: user.gender || 'Male',
+              dob: user.dob || '',
+              address: user.address || ''
+          });
+      }
+  }, [isProfileModalOpen, user]);
 
   useEffect(() => {
     // Check for pending packages if user is Admin
@@ -62,6 +89,35 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
         return () => clearInterval(interval);
     }
   }, [user]);
+
+  const handleProfileSave = async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!user) return;
+      
+      setSavingProfile(true);
+      try {
+          // Update Backend
+          await api.updateUserProfile({
+              username: user.username,
+              ...profileForm
+          });
+          
+          // Update Local User State (Hack: We mutate the user object stored in localstorage for instant update without re-login)
+          const updatedUser = { ...user, ...profileForm };
+          localStorage.setItem('mahaveer_user', JSON.stringify(updatedUser));
+          
+          // Reload page to reflect changes in app state (simplest way to propagate 'user' prop update from App.tsx)
+          // Or we could pass a setUser prop down, but reload is safe here.
+          window.location.reload();
+          
+      } catch (e) {
+          console.error("Failed to save profile", e);
+          alert("Failed to save profile.");
+      } finally {
+          setSavingProfile(false);
+          setIsProfileModalOpen(false);
+      }
+  };
 
   if (!user) return <>{children}</>;
 
@@ -182,14 +238,26 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
               })}
         </nav>
 
-        {/* USER PROFILE FOOTER */}
+        {/* USER PROFILE FOOTER - NOW CLICKABLE */}
         <div className="p-4 relative z-10 shrink-0 bg-gradient-to-t from-[#0B1120] to-transparent">
             {/* User Card */}
-            <div className="bg-[#131C2E] rounded-xl p-3 shadow-lg border border-slate-700/50 flex items-center justify-between group hover:border-indigo-500/30 transition-colors">
+            <div 
+                onClick={() => setIsProfileModalOpen(true)}
+                className="bg-[#131C2E] rounded-xl p-3 shadow-lg border border-slate-700/50 flex items-center justify-between group hover:border-indigo-500/50 hover:bg-[#1A263E] transition-all cursor-pointer"
+                title="Click to Edit Profile"
+            >
                 <div className="flex items-center space-x-3 overflow-hidden">
-                    <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 p-[1px] shadow-md">
-                        <div className="w-full h-full rounded-[7px] bg-[#131C2E] flex items-center justify-center text-white font-black text-sm uppercase">
-                            {user.username.charAt(0)}
+                    <div className="relative w-9 h-9 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 p-[1px] shadow-md">
+                        <div className="w-full h-full rounded-[7px] bg-[#131C2E] flex items-center justify-center overflow-hidden">
+                            {user.dpUrl ? (
+                                <img src={user.dpUrl} alt="Profile" className="w-full h-full object-cover" />
+                            ) : (
+                                <span className="text-white font-black text-sm uppercase">{user.username.charAt(0)}</span>
+                            )}
+                        </div>
+                        {/* Edit Icon Overlay */}
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg">
+                            <Camera className="w-3 h-3 text-white" />
                         </div>
                     </div>
                     <div className="flex flex-col min-w-0">
@@ -198,15 +266,15 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
                     </div>
                 </div>
                 <button
-                    onClick={onLogout}
-                    className="text-slate-500 hover:text-red-400 p-2 rounded-lg hover:bg-white/5 transition-colors"
+                    onClick={(e) => { e.stopPropagation(); onLogout(); }}
+                    className="text-slate-500 hover:text-red-400 p-2 rounded-lg hover:bg-white/5 transition-colors z-20"
                     title="Logout"
                 >
                     <LogOut className="w-4 h-4" />
                 </button>
             </div>
 
-            {/* Footer Text - Professional Style */}
+            {/* Footer Text */}
             <div className="mt-5 text-center pb-1 opacity-60 hover:opacity-100 transition-opacity cursor-default">
                  <p className="text-[10px] text-slate-400 font-black tracking-[0.1em] uppercase">
                     MAHAVEER HAIR SOLUTION © 2025
@@ -218,6 +286,102 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
             </div>
         </div>
       </aside>
+
+      {/* PROFILE SETTINGS MODAL */}
+      {isProfileModalOpen && (
+          <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+              <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden relative border border-slate-200">
+                  <button 
+                    onClick={() => setIsProfileModalOpen(false)}
+                    className="absolute top-4 right-4 p-2 bg-slate-100 hover:bg-slate-200 rounded-full transition-colors z-10"
+                  >
+                      <X className="w-5 h-5 text-slate-500" />
+                  </button>
+
+                  {/* Header with Background */}
+                  <div className="h-32 bg-gradient-to-r from-indigo-600 to-purple-600 relative">
+                      <div className="absolute -bottom-10 left-1/2 -translate-x-1/2">
+                          <div className="w-24 h-24 rounded-2xl bg-white p-1.5 shadow-xl border border-slate-100 transform rotate-3 hover:rotate-0 transition-transform duration-300">
+                              <div className="w-full h-full rounded-xl bg-slate-100 flex items-center justify-center overflow-hidden border border-slate-200 relative group">
+                                  {profileForm.dpUrl ? (
+                                      <img src={profileForm.dpUrl} alt="Preview" className="w-full h-full object-cover" />
+                                  ) : (
+                                      <UserIcon className="w-8 h-8 text-slate-300" />
+                                  )}
+                              </div>
+                          </div>
+                      </div>
+                  </div>
+
+                  <div className="pt-14 px-8 pb-8">
+                      <div className="text-center mb-6">
+                          <h3 className="text-2xl font-black text-slate-800">{user.username}</h3>
+                          <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">{user.role} Account</p>
+                      </div>
+
+                      <form onSubmit={handleProfileSave} className="space-y-4">
+                          <div>
+                              <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5 ml-1">Profile Image URL</label>
+                              <div className="relative">
+                                  <input 
+                                      type="text" 
+                                      className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none"
+                                      placeholder="https://imgur.com/..."
+                                      value={profileForm.dpUrl}
+                                      onChange={(e) => setProfileForm({...profileForm, dpUrl: e.target.value})}
+                                  />
+                                  <Camera className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+                              </div>
+                              <p className="text-[10px] text-slate-400 mt-1 ml-1">Paste a direct link to an image (e.g., from Imgur, Pinterest).</p>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                  <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5 ml-1">Gender</label>
+                                  <select 
+                                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none"
+                                      value={profileForm.gender}
+                                      onChange={(e) => setProfileForm({...profileForm, gender: e.target.value})}
+                                  >
+                                      <option value="Male">Male</option>
+                                      <option value="Female">Female</option>
+                                      <option value="Other">Other</option>
+                                  </select>
+                              </div>
+                              <div>
+                                  <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5 ml-1">Date of Birth</label>
+                                  <input 
+                                      type="date" 
+                                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none"
+                                      value={profileForm.dob}
+                                      onChange={(e) => setProfileForm({...profileForm, dob: e.target.value})}
+                                  />
+                              </div>
+                          </div>
+
+                          <div>
+                              <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5 ml-1">Full Address</label>
+                              <textarea 
+                                  rows={2}
+                                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none resize-none"
+                                  placeholder="Enter your address..."
+                                  value={profileForm.address}
+                                  onChange={(e) => setProfileForm({...profileForm, address: e.target.value})}
+                              />
+                          </div>
+
+                          <button 
+                              type="submit" 
+                              disabled={savingProfile}
+                              className="w-full py-3.5 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-all flex items-center justify-center shadow-lg active:scale-95 mt-2"
+                          >
+                              {savingProfile ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Save className="w-4 h-4 mr-2" /> Save Profile</>}
+                          </button>
+                      </form>
+                  </div>
+              </div>
+          </div>
+      )}
 
       {/* MAIN CONTENT WRAPPER */}
       <div className="flex-1 flex flex-col h-full overflow-hidden relative bg-[#F0F4F8]">
@@ -281,8 +445,12 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
              )}
 
              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 p-[2px] shadow-md">
-                <div className="w-full h-full rounded-full bg-white flex items-center justify-center text-indigo-700 font-black text-sm">
-                    {user.username.charAt(0).toUpperCase()}
+                <div className="w-full h-full rounded-full bg-white flex items-center justify-center text-indigo-700 font-black text-sm overflow-hidden">
+                    {user.dpUrl ? (
+                        <img src={user.dpUrl} alt="User" className="w-full h-full object-cover" />
+                    ) : (
+                        user.username.charAt(0).toUpperCase()
+                    )}
                 </div>
              </div>
           </div>

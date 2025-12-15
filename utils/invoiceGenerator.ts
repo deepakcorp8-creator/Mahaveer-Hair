@@ -77,6 +77,8 @@ export const generateInvoice = (entry: Entry) => {
           box-shadow: 0 10px 30px rgba(0,0,0,0.3);
           position: relative;
           color: #333;
+          display: flex;
+          flex-direction: column;
         }
 
         /* Header */
@@ -87,7 +89,7 @@ export const generateInvoice = (entry: Entry) => {
 
         /* Wide Logo Styling */
         .logo {
-          width: 320px; /* Wider width for landscape logo */
+          width: 320px;
           max-width: 80%;
           height: auto;
           object-fit: contain;
@@ -95,15 +97,6 @@ export const generateInvoice = (entry: Entry) => {
           display: block;
           margin-left: auto;
           margin-right: auto;
-        }
-
-        .brand {
-          font-size: 20px;
-          font-weight: 900;
-          color: #000;
-          text-transform: uppercase;
-          margin-bottom: 4px;
-          letter-spacing: 0.5px;
         }
 
         .address {
@@ -114,7 +107,7 @@ export const generateInvoice = (entry: Entry) => {
           line-height: 1.4;
         }
         
-        .divider { border-bottom: 1px solid #e5e7eb; margin: 20px 0; }
+        .divider { border-bottom: 2px solid #333; margin: 20px 0; }
 
         /* Meta Box */
         .meta-row {
@@ -122,11 +115,11 @@ export const generateInvoice = (entry: Entry) => {
           justify-content: space-between;
           font-size: 11px;
           font-weight: 700;
-          margin-bottom: 30px;
+          margin-bottom: 25px;
           color: #444;
-          text-transform: uppercase;
         }
-        .meta-label { color: #888; margin-right: 5px; }
+        .meta-group { display: flex; flex-direction: column; }
+        .meta-label { color: #888; font-size: 9px; text-transform: uppercase; margin-bottom: 2px; }
 
         /* Info Grid */
         .grid-container {
@@ -139,19 +132,21 @@ export const generateInvoice = (entry: Entry) => {
         .box {
           flex: 1;
           padding: 15px;
-          border: 1px solid #f3f4f6;
-          border-radius: 4px;
-          background: #fdfdfd;
+          border: 1px solid #ddd;
+          border-radius: 6px;
+          background: #fafafa;
           font-size: 11px;
         }
 
         .box-title {
           font-size: 9px;
           text-transform: uppercase;
-          color: #9ca3af;
+          color: #888;
           font-weight: 800;
           margin-bottom: 8px;
           letter-spacing: 0.5px;
+          border-bottom: 1px solid #eee;
+          padding-bottom: 5px;
         }
 
         .box-content {
@@ -174,18 +169,19 @@ export const generateInvoice = (entry: Entry) => {
         }
 
         th {
-          border-bottom: 2px solid #000;
-          color: #888;
+          background-color: #333;
+          color: #fff;
           text-transform: uppercase;
-          padding: 10px 5px;
+          padding: 10px;
           text-align: left;
-          font-size: 9px;
+          font-size: 10px;
           font-weight: 700;
+          letter-spacing: 0.5px;
         }
 
         td {
-          padding: 12px 5px;
-          border-bottom: 1px solid #f3f4f6;
+          padding: 15px 10px;
+          border-bottom: 1px solid #eee;
           vertical-align: top;
           font-size: 11px;
           color: #333;
@@ -199,6 +195,7 @@ export const generateInvoice = (entry: Entry) => {
         .totals {
           display: flex;
           justify-content: flex-end;
+          margin-bottom: auto; /* Push footer down */
         }
 
         .totals-table {
@@ -207,13 +204,14 @@ export const generateInvoice = (entry: Entry) => {
         }
 
         .totals-table td {
-          padding: 5px 0;
+          padding: 6px 0;
           border: none;
         }
 
         .grand-total {
-          border-top: 1px solid #000 !important;
-          padding-top: 10px !important;
+          border-top: 2px solid #000 !important;
+          border-bottom: 2px solid #000 !important;
+          padding: 10px 0 !important;
           font-size: 14px;
           font-weight: 900;
           color: #000;
@@ -221,33 +219,62 @@ export const generateInvoice = (entry: Entry) => {
 
         .red-text { color: #dc2626; }
 
-        /* Footer */
-        .footer {
-          position: absolute;
-          bottom: 15mm;
-          left: 15mm;
-          right: 15mm;
-          border-top: 1px solid #f3f4f6;
-          padding-top: 20px;
-          font-size: 10px;
-          color: #666;
+        /* Professional Footer */
+        .footer-wrapper {
+            margin-top: 50px;
+            padding-top: 20px;
+            border-top: 1px solid #ccc;
+        }
+        
+        .footer-cols {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            margin-bottom: 20px;
+        }
+        
+        .terms {
+            font-size: 9px;
+            color: #666;
+            max-width: 55%;
+        }
+        .terms-title { font-weight: 700; text-transform: uppercase; margin-bottom: 5px; color: #333; border-bottom: 1px solid #eee; padding-bottom: 3px; display: inline-block; }
+        .terms ul { padding-left: 15px; margin: 0; line-height: 1.5; }
+        .terms li { margin-bottom: 3px; }
+
+        .signature {
+          text-align: right;
+          width: 220px;
           display: flex;
-          justify-content: space-between;
+          flex-direction: column;
           align-items: flex-end;
         }
-
-        .terms p { margin: 2px 0; }
+        .for-company {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: #000;
+            margin-bottom: 40px;
+        }
         
-        .signature {
-          text-align: center;
-          width: 150px;
+        /* System Generated Badge */
+        .sys-gen-badge {
+            font-size: 10px;
+            font-weight: 700;
+            background: #f3f4f6;
+            color: #444;
+            padding: 6px 12px;
+            border-radius: 6px;
+            display: inline-block;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
-        .sign-line {
-          border-bottom: 1px solid #000;
-          height: 30px;
-          margin-bottom: 6px;
+        .no-sign {
+            font-size: 8px;
+            color: #888;
+            margin-top: 4px;
+            font-weight: 500;
         }
-        .sign-label { font-weight: 700; font-size: 10px; color: #000; }
 
         /* Action Buttons */
         .actions-bar {
@@ -314,7 +341,7 @@ export const generateInvoice = (entry: Entry) => {
            <img src="${LOGO_URL}" class="logo" alt="Mahaveer Logo" crossorigin="anonymous" />
            <div class="address">
               ${branchAddress}<br>
-              <span style="color:#000; font-weight:700;">Contact: ${branchContact} | Email: info@mahaveerhairsolution.com</span>
+              <strong>Contact:</strong> ${branchContact} &nbsp;|&nbsp; <strong>Email:</strong> info@mahaveerhairsolution.com
            </div>
         </div>
         
@@ -322,9 +349,18 @@ export const generateInvoice = (entry: Entry) => {
 
         <!-- Meta -->
         <div class="meta-row">
-            <span><span class="meta-label">Invoice #:</span> ${invoiceNumber}</span>
-            <span><span class="meta-label">Date:</span> ${formattedDate}</span>
-            <span><span class="meta-label">Branch:</span> ${entry.branch}</span>
+            <div class="meta-group">
+                <span class="meta-label">Invoice Number</span>
+                <span>${invoiceNumber}</span>
+            </div>
+            <div class="meta-group" style="text-align:center">
+                <span class="meta-label">Date Issued</span>
+                <span>${formattedDate}</span>
+            </div>
+            <div class="meta-group" style="text-align:right">
+                <span class="meta-label">Branch Code</span>
+                <span>${entry.branch}</span>
+            </div>
         </div>
 
         <!-- Info Grid -->
@@ -332,13 +368,13 @@ export const generateInvoice = (entry: Entry) => {
             <div class="box">
                 <div class="box-title">Bill To</div>
                 <div class="box-content">${entry.clientName}</div>
-                <div class="box-sub">${entry.address || 'Address N/A'}</div>
+                <div class="box-sub">${entry.address || 'Address not provided'}</div>
                 <div class="box-sub">Ph: ${entry.contactNo}</div>
             </div>
             <div class="box">
-                <div class="box-title">Service Details</div>
-                <div class="box-content">${entry.serviceType}</div>
-                <div class="box-sub">Tech: ${entry.technician}</div>
+                <div class="box-title">Service Info</div>
+                <div class="box-content">${entry.serviceType} Application</div>
+                <div class="box-sub">Technician: ${entry.technician}</div>
                 <div class="box-sub">Method: ${entry.patchMethod}</div>
             </div>
         </div>
@@ -347,7 +383,7 @@ export const generateInvoice = (entry: Entry) => {
         <table>
             <thead>
                 <tr>
-                    <th style="width: 50%">Description</th>
+                    <th style="width: 55%">Description</th>
                     <th class="text-center">Qty</th>
                     <th class="text-right">Price</th>
                     <th class="text-right">Total</th>
@@ -356,9 +392,9 @@ export const generateInvoice = (entry: Entry) => {
             <tbody>
                 <tr>
                     <td>
-                        <div class="bold">${entry.serviceType} APPLICATION</div>
-                        <div class="box-sub" style="margin-top:2px;">
-                            ${entry.patchSize ? `Patch Size: ${entry.patchSize}` : ''}
+                        <div class="bold">${entry.serviceType} Service</div>
+                        <div class="box-sub" style="margin-top:4px;">
+                            ${entry.patchSize ? `Size: ${entry.patchSize}` : ''}
                             ${entry.remark ? `<br/>Note: ${entry.remark}` : ''}
                         </div>
                     </td>
@@ -377,31 +413,39 @@ export const generateInvoice = (entry: Entry) => {
                     <td class="text-right bold">₹${entry.amount}</td>
                 </tr>
                 <tr>
-                    <td class="red-text">Pending Due</td>
-                    <td class="text-right red-text bold">₹${entry.pendingAmount || 0}</td>
+                    <td>Pending Amount</td>
+                    <td class="text-right bold" style="${(entry.pendingAmount || 0) > 0 ? 'color:red' : 'color:#333'}">₹${entry.pendingAmount || 0}</td>
                 </tr>
                 <tr>
                     <td>Payment Mode</td>
                     <td class="text-right bold" style="text-transform: uppercase;">${entry.paymentMethod}</td>
                 </tr>
                 <tr>
-                    <td class="grand-total">Grand Total</td>
-                    <td class="text-right grand-total">₹${entry.amount}</td>
+                    <td class="grand-total">Total Paid</td>
+                    <td class="text-right grand-total">₹${Math.max(0, Number(entry.amount) - (Number(entry.pendingAmount) || 0))}</td>
                 </tr>
             </table>
         </div>
 
-        <!-- Footer -->
-        <div class="footer">
-            <div class="terms">
-                <strong style="color: #444; text-transform: uppercase;">Terms & Conditions:</strong>
-                <p>1. Goods once sold will not be returned.</p>
-                <p>2. Subject to Raipur Jurisdiction.</p>
-                <div style="margin-top: 8px;">Thank you for your business!</div>
-            </div>
-            <div class="signature">
-                <div class="sign-line"></div>
-                <div class="sign-label">Authorized Signatory</div>
+        <!-- Professional Footer -->
+        <div class="footer-wrapper">
+            <div class="footer-cols">
+                <div class="terms">
+                    <div class="terms-title">Terms & Conditions</div>
+                    <ul>
+                        <li>Goods once sold will not be returned.</li>
+                        <li>Subject to Raipur Jurisdiction only.</li>
+                        <li>Interest @ 24% p.a. will be charged if bill is not paid on due date.</li>
+                        <li>E. & O.E.</li>
+                    </ul>
+                </div>
+                <div class="signature">
+                    <div class="for-company">For, MAHAVEER HAIR SOLUTION</div>
+                    
+                    <!-- System Generated Badge (No Sign Line) -->
+                    <div class="sys-gen-badge">System Generated Invoice</div>
+                    <div class="no-sign">No physical signature required</div>
+                </div>
             </div>
         </div>
       </div>
