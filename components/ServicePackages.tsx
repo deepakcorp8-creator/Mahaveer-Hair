@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { ServicePackage, Client, Entry, Role, User } from '../types';
-import { PackageCheck, Plus, Search, User as UserIcon, Clock, Pencil, X, ShieldAlert, Sparkles, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { PackageCheck, Plus, Search, User as UserIcon, Clock, Pencil, X, ShieldAlert, Sparkles, CheckCircle2, AlertTriangle, CalendarRange, IndianRupee } from 'lucide-react';
 import { SearchableSelect } from './SearchableSelect';
 
 const ServicePackages: React.FC = () => {
@@ -158,35 +158,46 @@ const ServicePackages: React.FC = () => {
   const renderCard = (pkg: ServicePackage) => {
     const stats = getPackageUsage(pkg);
     const isPending = pkg.status === 'PENDING' || !pkg.status;
-    const isApproved = pkg.status === 'APPROVED' || pkg.status === 'ACTIVE';
     
     return (
         <div key={pkg.id} className={`
-            relative overflow-hidden rounded-2xl border transition-all duration-300 hover:-translate-y-1 hover:shadow-xl group
+            relative overflow-hidden rounded-[1.5rem] border transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.1)] group bg-white
             ${isPending 
-                ? 'bg-amber-50/40 border-amber-200 hover:border-amber-300' 
-                : 'bg-white border-slate-200 hover:border-indigo-200 shadow-[0_10px_20px_-5px_rgba(0,0,0,0.05)]'}
+                ? 'border-amber-200' 
+                : 'border-slate-100 hover:border-indigo-200'}
         `}>
             
-            {/* Status Stripe */}
-            {isPending && <div className="absolute top-0 left-0 w-1 h-full bg-amber-400"></div>}
-            
-            <div className="p-5 h-full flex flex-col justify-between relative z-10">
+            {/* Ambient Background Gradient */}
+            <div className={`absolute top-0 right-0 w-32 h-32 rounded-full blur-[50px] opacity-20 pointer-events-none transition-colors
+                ${isPending ? 'bg-amber-400' : 'bg-indigo-400'}
+            `}></div>
+
+            <div className="p-6 h-full flex flex-col justify-between relative z-10">
                 
-                {/* Header */}
-                <div className="flex justify-between items-start mb-4">
-                    <div className="flex items-start gap-3">
+                {/* Header: Client Name Top, Package Badge Below */}
+                <div className="flex justify-between items-start mb-5">
+                    <div className="flex items-start gap-4 w-full">
+                        {/* Icon Box */}
                         <div className={`
-                            w-10 h-10 rounded-xl flex items-center justify-center shadow-sm border
-                            ${isPending ? 'bg-amber-100 border-amber-200 text-amber-600' : 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white border-indigo-400'}
+                            w-12 h-12 rounded-2xl flex-shrink-0 flex items-center justify-center shadow-lg transform group-hover:scale-105 transition-transform
+                            ${isPending 
+                                ? 'bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-amber-200' 
+                                : 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-indigo-200'}
                         `}>
-                            {isPending ? <Clock className="w-5 h-5" /> : <PackageCheck className="w-5 h-5" />}
+                            {isPending ? <Clock className="w-6 h-6" /> : <PackageCheck className="w-6 h-6" />}
                         </div>
-                        <div>
-                            <h3 className="font-black text-slate-800 text-base leading-tight">{pkg.packageName}</h3>
-                            <div className="flex items-center text-[11px] font-bold text-slate-500 mt-0.5 uppercase tracking-wide">
-                                <UserIcon className="w-3 h-3 mr-1 opacity-60" />
+                        
+                        {/* Text Content */}
+                        <div className="min-w-0 flex-1">
+                            <h3 className="font-black text-slate-800 text-lg leading-tight tracking-tight mb-1 truncate">
                                 {pkg.clientName}
+                            </h3>
+                            <div className={`inline-flex items-center px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider border shadow-sm
+                                ${isPending 
+                                    ? 'bg-amber-50 text-amber-700 border-amber-100' 
+                                    : 'bg-indigo-50 text-indigo-700 border-indigo-100'}
+                            `}>
+                                {pkg.packageName}
                             </div>
                         </div>
                     </div>
@@ -203,13 +214,13 @@ const ServicePackages: React.FC = () => {
                                 <div className="flex gap-2">
                                     <button 
                                         onClick={(e) => handlePackageApproval(e, pkg.id, 'APPROVE')}
-                                        className="flex-1 py-1.5 rounded-lg bg-emerald-500 text-white text-xs font-bold hover:bg-emerald-600 transition-colors shadow-sm"
+                                        className="flex-1 py-2 rounded-lg bg-emerald-500 text-white text-xs font-bold hover:bg-emerald-600 transition-colors shadow-sm"
                                     >
                                         Approve
                                     </button>
                                     <button 
                                         onClick={(e) => handlePackageApproval(e, pkg.id, 'REJECT')}
-                                        className="flex-1 py-1.5 rounded-lg bg-white border border-red-200 text-red-500 text-xs font-bold hover:bg-red-50 transition-colors"
+                                        className="flex-1 py-2 rounded-lg bg-white border border-red-200 text-red-500 text-xs font-bold hover:bg-red-50 transition-colors"
                                     >
                                         Reject
                                     </button>
@@ -220,16 +231,16 @@ const ServicePackages: React.FC = () => {
                         </div>
                     ) : (
                         <div className="mb-4">
-                            <div className="flex justify-between items-end mb-1.5">
-                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Usage</span>
-                                <span className={`text-xs font-black ${stats.isExpired ? 'text-red-500' : 'text-slate-700'}`}>
-                                    {stats.used} / {pkg.totalServices}
+                            <div className="flex justify-between items-end mb-2">
+                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Service Usage</span>
+                                <span className={`text-sm font-black ${stats.isExpired ? 'text-red-500' : 'text-slate-700'}`}>
+                                    {stats.used} <span className="text-slate-400 text-xs font-bold">/ {pkg.totalServices}</span>
                                 </span>
                             </div>
-                            <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden border border-slate-200/50">
+                            <div className="h-2.5 w-full bg-slate-100 rounded-full overflow-hidden border border-slate-200/50">
                                 <div 
-                                    className={`h-full rounded-full transition-all duration-1000 ease-out relative
-                                    ${stats.isExpired ? 'bg-red-500' : 'bg-indigo-500'}`} 
+                                    className={`h-full rounded-full transition-all duration-1000 ease-out relative shadow-sm
+                                    ${stats.isExpired ? 'bg-red-500' : 'bg-gradient-to-r from-indigo-500 to-purple-500'}`} 
                                     style={{width: `${Math.min((stats.used / pkg.totalServices) * 100, 100)}%`}}
                                 ></div>
                             </div>
@@ -238,14 +249,20 @@ const ServicePackages: React.FC = () => {
                 </div>
 
                 {/* Footer */}
-                <div className="pt-3 border-t border-slate-100 flex justify-between items-center">
-                    <div>
-                        <span className="text-[9px] uppercase font-black text-slate-400 block tracking-wider">Total Cost</span>
-                        <span className="text-sm font-black text-slate-800">₹{pkg.totalCost}</span>
+                <div className="pt-4 border-t border-slate-100 flex justify-between items-center mt-1">
+                    <div className="flex items-center gap-1.5 text-slate-600">
+                        <div className="bg-slate-100 p-1 rounded-md text-slate-500"><IndianRupee className="w-3 h-3" /></div>
+                        <div>
+                            <span className="text-[9px] uppercase font-black text-slate-400 block tracking-wider leading-none mb-0.5">Cost</span>
+                            <span className="text-xs font-black text-slate-800 leading-none">₹{pkg.totalCost}</span>
+                        </div>
                     </div>
-                    <div className="text-right">
-                        <span className="text-[9px] uppercase font-black text-slate-400 block tracking-wider">Started</span>
-                        <span className="text-xs font-bold text-slate-600">{pkg.startDate}</span>
+                    <div className="flex items-center gap-1.5 text-slate-600">
+                        <div className="text-right">
+                            <span className="text-[9px] uppercase font-black text-slate-400 block tracking-wider leading-none mb-0.5">Started</span>
+                            <span className="text-xs font-bold text-slate-600 leading-none">{pkg.startDate}</span>
+                        </div>
+                        <div className="bg-slate-100 p-1 rounded-md text-slate-500"><CalendarRange className="w-3 h-3" /></div>
                     </div>
                 </div>
 
@@ -257,7 +274,7 @@ const ServicePackages: React.FC = () => {
                         setEditingPackage(pkg);
                         setIsEditModalOpen(true);
                     }}
-                    className="absolute top-4 right-4 text-slate-300 hover:text-indigo-600 transition-colors p-1"
+                    className="absolute top-4 right-4 text-slate-300 hover:text-indigo-600 transition-colors p-1.5 hover:bg-slate-50 rounded-full"
                 >
                     <Pencil className="w-3.5 h-3.5" />
                 </button>
