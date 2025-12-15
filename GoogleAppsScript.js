@@ -38,7 +38,10 @@ function doPost(e) {
     if (!dbSheet) return response({error: "Sheet 'DATA BASE' not found"});
 
     var invoiceUrl = "";
-    try { invoiceUrl = createInvoice(data); } catch (e) { invoiceUrl = ""; }
+    // Only generate invoice if amount is greater than 0
+    if (Number(data.amount) > 0) {
+      try { invoiceUrl = createInvoice(data); } catch (e) { invoiceUrl = ""; }
+    }
 
     // APPEND ROW - Strict Order
     dbSheet.appendRow([
