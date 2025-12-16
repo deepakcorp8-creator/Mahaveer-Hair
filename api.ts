@@ -1,4 +1,3 @@
-
 import { Entry, Client, Appointment, DashboardStats, ServicePackage, User } from '../types';
 import { MOCK_CLIENTS, MOCK_ENTRIES, MOCK_APPOINTMENTS, MOCK_ITEMS, MOCK_TECHNICIANS, MOCK_PACKAGES, GOOGLE_SCRIPT_URL } from '../constants';
 
@@ -172,6 +171,48 @@ export const api = {
         }).catch(e => console.error("BG Update Fail", e));
     }
     return true;
+  },
+  
+  // NEW: Update Payment Follow Up (With Image)
+  updatePaymentFollowUp: async (payload: {
+      id: string,
+      clientName: string,
+      paymentMethod?: string,
+      pendingAmount?: number,
+      nextCallDate?: string,
+      remark?: string,
+      screenshotBase64?: string,
+      existingScreenshotUrl?: string
+  }) => {
+      if (isLive) {
+          try {
+              // We return the response to get the generated screenshot URL
+              const res = await fetch(GOOGLE_SCRIPT_URL, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                  body: JSON.stringify({ action: 'updatePaymentFollowUp', ...payload })
+              });
+              const data = await res.json();
+              
+              // Also update cache if possible
+              if(DATA_CACHE.entries) {
+                const entry = DATA_CACHE.entries.find(e => e.id === payload.id);
+                if(entry) {
+                    if(payload.paymentMethod) entry.paymentMethod = payload.paymentMethod as any;
+                    if(payload.pendingAmount !== undefined) entry.pendingAmount = payload.pendingAmount;
+                    if(payload.nextCallDate) entry.nextCallDate = payload.nextCallDate;
+                    if(payload.remark) entry.remark = payload.remark;
+                    if(data.screenshotUrl) entry.paymentScreenshotUrl = data.screenshotUrl;
+                }
+              }
+
+              return data;
+          } catch(e) {
+              console.error("Failed to update follow up", e);
+              throw e;
+          }
+      }
+      return { status: "success" };
   },
 
   // --- APPOINTMENTS ---
@@ -362,7 +403,7 @@ export const api = {
       const packages = await api.getPackages();
       
       // 2. Find active package
-      const pkg = packages.find((p: any) => p.clientName.trim().toLowerCase() === normalizedName && p.status === 'ACTIVE');
+      const pkg = packages.find((p: any) => p.clientName.trim().toLowerCase() === normalizedName && (p.status === 'ACTIVE' || p.status === 'APPROVED'));
       
       if (!pkg) return null;
 
@@ -464,11 +505,18 @@ export const api = {
     const newClientsToday = entries.filter((e: any) => e.date === today && e.serviceType === 'NEW').length;
     const serviceCount = entries.length;
 
+    // Calculate Total Outstanding
+    const totalOutstanding = entries.reduce((sum: number, e: any) => {
+        const due = e.paymentMethod === 'PENDING' ? Number(e.amount || 0) : Number(e.pendingAmount || 0);
+        return sum + due;
+    }, 0);
+
     return {
       totalClients,
       totalAmount,
       newClientsToday,
-      serviceCount
+      serviceCount,
+      totalOutstanding
     };
   }
 };

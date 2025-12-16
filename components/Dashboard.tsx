@@ -4,7 +4,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line, AreaChart, Area
 } from 'recharts';
-import { Users, IndianRupee, Activity, ShoppingBag, ArrowUpRight, Sparkles, TrendingUp } from 'lucide-react';
+import { Users, IndianRupee, Activity, ShoppingBag, ArrowUpRight, Sparkles, TrendingUp, AlertCircle } from 'lucide-react';
 import { api } from '../services/api';
 import { DashboardStats, Entry } from '../types';
 
@@ -159,23 +159,23 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* New Clients */}
-        <div className="relative bg-white rounded-3xl p-6 border-b-4 border-b-purple-500 shadow-[0_15px_30px_-5px_rgba(168,85,247,0.15)] transition-transform hover:-translate-y-2 group overflow-hidden border-x border-t border-slate-100">
-           <div className="absolute right-[-20px] top-[-20px] w-32 h-32 bg-purple-50 rounded-full blur-2xl group-hover:bg-purple-100 transition-colors"></div>
+        {/* Total Outstanding (Replaces New Clients) */}
+        <div className="relative bg-white rounded-3xl p-6 border-b-4 border-b-red-500 shadow-[0_15px_30px_-5px_rgba(239,68,68,0.15)] transition-transform hover:-translate-y-2 group overflow-hidden border-x border-t border-slate-100">
+           <div className="absolute right-[-20px] top-[-20px] w-32 h-32 bg-red-50 rounded-full blur-2xl group-hover:bg-red-100 transition-colors"></div>
           <div className="relative z-10 flex justify-between items-start">
               <div>
-                  <p className="text-slate-500 text-xs font-black uppercase tracking-widest mb-2">New Clients Today</p>
-                  <h3 className="text-4xl font-black text-slate-800">{stats?.newClientsToday}</h3>
+                  <p className="text-slate-500 text-xs font-black uppercase tracking-widest mb-2">Total Outstanding</p>
+                  <h3 className="text-4xl font-black text-slate-800">₹{stats?.totalOutstanding?.toLocaleString() || 0}</h3>
               </div>
-              <div className="p-3 bg-purple-100 text-purple-600 rounded-xl shadow-inner border border-purple-200">
-                  <Activity className="w-7 h-7" />
+              <div className="p-3 bg-red-100 text-red-600 rounded-xl shadow-inner border border-red-200">
+                  <AlertCircle className="w-7 h-7" />
               </div>
           </div>
           <div className="mt-4 flex items-center text-xs font-bold text-slate-400">
-              <span className="text-purple-600 bg-purple-50 px-2 py-1 rounded-md mr-2 flex items-center">
-                  <ArrowUpRight className="w-3 h-3 mr-1" /> Growing
+              <span className="text-red-600 bg-red-50 px-2 py-1 rounded-md mr-2 flex items-center border border-red-100">
+                  <ArrowUpRight className="w-3 h-3 mr-1" /> Pending
               </span>
-              <span>Today's Acquisition</span>
+              <span>Dues to Collect</span>
           </div>
         </div>
 

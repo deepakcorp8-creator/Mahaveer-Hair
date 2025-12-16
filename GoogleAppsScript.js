@@ -1,6 +1,6 @@
 
 // =====================================================================================
-// ⚠️ MAHUVEER WEB APP - BACKEND SCRIPT (V10 - Profile Update)
+// ⚠️ MAHUVEER WEB APP - BACKEND SCRIPT (V14 - Auto-Fix Headers)
 // =====================================================================================
 
 function doGet(e) {
@@ -27,12 +27,10 @@ function doPost(e) {
     if (!dbSheet) return response({error: "Sheet 'DATA BASE' not found"});
 
     var invoiceUrl = "";
-    // Only generate invoice if amount is greater than 0
     if (Number(data.amount) > 0) {
       try { invoiceUrl = createInvoice(data); } catch (e) { invoiceUrl = "Error: " + e.toString(); }
     }
 
-    // APPEND ROW - Strict Order
     dbSheet.appendRow([
       data.date,              // Col 1
       data.clientName,        // Col 2
@@ -43,16 +41,97 @@ function doPost(e) {
       data.patchMethod,       // Col 7
       data.technician,        // Col 8
       data.workStatus,        // Col 9
-      data.amount,            // Col 10
+      data.amount,            // Col 10 (Total Paid Initially)
       data.paymentMethod,     // Col 11
       data.remark,            // Col 12
       data.numberOfService,   // Col 13
       invoiceUrl,             // Col 14
       data.patchSize || '',   // Col 15
-      data.pendingAmount || 0 // Col 16
+      data.pendingAmount || 0 // Col 16 (P) - Initial Pending
     ]);
     
     return response({status: "success", invoiceUrl: invoiceUrl});
+  }
+
+  // 14. UPDATE PAYMENT FOLLOW-UP
+  if (action == 'updatePaymentFollowUp') {
+      const dbSheet = getSheet(ss, "DATA BASE");
+      const collectionSheet = getSheet(ss, "PAYMENT COLLECTION");
+      
+      try {
+          const rowId = parseInt(data.id.split('_')[1]); // Extract row index
+          
+          if (rowId > 0 && rowId <= dbSheet.getLastRow()) {
+              
+              // --- 1. HANDLE SCREENSHOT UPLOAD ---
+              var screenshotUrl = data.existingScreenshotUrl || "";
+              if (data.screenshotBase64 && data.screenshotBase64.indexOf('data:image') === 0) {
+                  try {
+                      var splitData = data.screenshotBase64.split('base64,');
+                      var contentType = splitData[0].split(':')[1].split(';')[0];
+                      var blob = Utilities.newBlob(Utilities.base64Decode(splitData[1]), contentType, "pay_" + data.clientName + "_" + new Date().getTime());
+                      var file = DriveApp.createFile(blob);
+                      file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+                      screenshotUrl = "https://drive.google.com/uc?export=view&id=" + file.getId();
+                  } catch (e) {
+                      // Silently fail upload
+                  }
+              }
+
+              // --- 2. UPDATE DATA BASE SHEET (Financials) ---
+              const currentTotalPaid = Number(dbSheet.getRange(rowId, 10).getValue() || 0);
+              const paidNow = Number(data.paidAmount || 0); 
+              
+              if (paidNow > 0) {
+                  dbSheet.getRange(rowId, 10).setValue(currentTotalPaid + paidNow);
+              }
+              if (data.pendingAmount !== undefined) {
+                  dbSheet.getRange(rowId, 16).setValue(data.pendingAmount);
+              }
+              if (data.paymentMethod) {
+                  dbSheet.getRange(rowId, 11).setValue(data.paymentMethod);
+              }
+              if (data.remark) {
+                  dbSheet.getRange(rowId, 12).setValue(data.remark);
+              }
+
+              // --- 3. INSERT INTO PAYMENT COLLECTION SHEET ---
+              var formattedNextDate = "";
+              if (data.nextCallDate) {
+                  try {
+                      var parts = data.nextCallDate.split('-'); 
+                      if (parts.length === 3) {
+                          formattedNextDate = parts[2] + '/' + parts[1] + '/' + parts[0];
+                      } else {
+                          formattedNextDate = data.nextCallDate;
+                      }
+                  } catch(e) { formattedNextDate = ""; }
+              }
+
+              const today = new Date();
+              const dateStr = today.getFullYear() + '-' + (today.getMonth()+1) + '-' + today.getDate();
+              
+              collectionSheet.appendRow([
+                  data.id,                  // ID
+                  dateStr,                  // Date of transaction
+                  data.clientName,          // Client Name
+                  data.contactNo || '',     // Contact
+                  data.address || '',       // Address
+                  data.pendingAmount || 0,  // Pending Amount (Remaining)
+                  paidNow,                  // Paid Amount (Current Transaction)
+                  screenshotUrl,            // Screenshot URL
+                  data.remark || '',        // Followup Remark
+                  formattedNextDate,        // Next Follow up Date
+                  new Date().toString()     // Timestamp
+              ]);
+
+              return response({status: "success", screenshotUrl: screenshotUrl});
+          } else {
+              return response({error: "Invalid Row ID"});
+          }
+      } catch(e) {
+          return response({error: "Update Failed: " + e.message});
+      }
   }
 
   // 2. ADD PACKAGE
@@ -102,7 +181,7 @@ function doPost(e) {
     const dbSheet = getSheet(ss, "DATA BASE");
     try {
         const rowId = parseInt(data.id.split('_')[1]);
-        dbSheet.getRange(rowId, 9).setValue(data.status); // Col 9 is Status
+        dbSheet.getRange(rowId, 9).setValue(data.status); 
         return response({status: "success"});
     } catch(e) { return response({error: "Failed"}); }
   }
@@ -112,12 +191,12 @@ function doPost(e) {
     const dbSheet = getSheet(ss, "DATA BASE");
     try {
         const rowId = parseInt(data.id.split('_')[1]);
-        dbSheet.getRange(rowId, 8).setValue(data.technician);     // Col 8
-        dbSheet.getRange(rowId, 6).setValue(data.serviceType);    // Col 6
-        dbSheet.getRange(rowId, 10).setValue(data.amount);        // Col 10
-        dbSheet.getRange(rowId, 11).setValue(data.paymentMethod); // Col 11
-        dbSheet.getRange(rowId, 12).setValue(data.remark);        // Col 12
-        dbSheet.getRange(rowId, 16).setValue(data.pendingAmount || 0); // Col 16
+        dbSheet.getRange(rowId, 8).setValue(data.technician);     
+        dbSheet.getRange(rowId, 6).setValue(data.serviceType);    
+        dbSheet.getRange(rowId, 10).setValue(data.amount);        
+        dbSheet.getRange(rowId, 11).setValue(data.paymentMethod); 
+        dbSheet.getRange(rowId, 12).setValue(data.remark);        
+        dbSheet.getRange(rowId, 16).setValue(data.pendingAmount || 0); 
         return response({status: "success"});
     } catch(e) { return response({error: "Failed"}); }
   }
@@ -154,25 +233,33 @@ function doPost(e) {
       return response({error: "Not found"});
   }
 
-  // 13. UPDATE USER PROFILE (New Feature)
+  // 13. UPDATE USER PROFILE
   if (action == 'updateUser') {
       const loginSheet = getSheet(ss, "LOGIN");
       const dataRange = loginSheet.getDataRange();
       const values = dataRange.getValues();
       
-      for (let i = 1; i < values.length; i++) { // Skip header
-          // Match by Username (Col 0)
+      for (let i = 1; i < values.length; i++) { 
           if (values[i][0].toString().toLowerCase() === data.username.toLowerCase()) {
-              // Update Columns: DP URL (Col 4), Gender (Col 5), DOB (Col 6), Address (Col 7)
-              // NOTE: Indices in getRange are 1-based. Row is i+1.
-              
+              var finalDpUrl = data.dpUrl || '';
+              if (finalDpUrl.toString().indexOf('data:image') === 0) {
+                  try {
+                      var splitData = finalDpUrl.split('base64,');
+                      var contentType = splitData[0].split(':')[1].split(';')[0];
+                      var blob = Utilities.newBlob(Utilities.base64Decode(splitData[1]), contentType, "profile_" + data.username + "_" + new Date().getTime());
+                      var file = DriveApp.createFile(blob);
+                      file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+                      finalDpUrl = "https://drive.google.com/uc?export=view&id=" + file.getId();
+                  } catch (e) {
+                      finalDpUrl = values[i][4]; 
+                  }
+              }
               const row = i + 1;
-              loginSheet.getRange(row, 5).setValue(data.dpUrl || '');   // E
-              loginSheet.getRange(row, 6).setValue(data.gender || '');  // F
-              loginSheet.getRange(row, 7).setValue(data.dob || '');     // G
-              loginSheet.getRange(row, 8).setValue(data.address || ''); // H
-              
-              return response({status: "success"});
+              loginSheet.getRange(row, 5).setValue(finalDpUrl);   
+              loginSheet.getRange(row, 6).setValue(data.gender || ''); 
+              loginSheet.getRange(row, 7).setValue(data.dob || '');     
+              loginSheet.getRange(row, 8).setValue(data.address || ''); 
+              return response({status: "success", newDpUrl: finalDpUrl});
           }
       }
       return response({error: "User not found"});
@@ -202,18 +289,45 @@ function doPost(e) {
   return response({error: "Unknown action"});
 }
 
-// --- HELPER TO HANDLE SHEET NAME TYPOS ---
+// ⚠️ REVISED GET SHEET FUNCTION TO AUTO-RESTORE HEADERS
 function getSheet(ss, name) {
     var sheet = ss.getSheetByName(name);
-    if (sheet) return sheet;
-    if (name == "APPOINTMENT") return ss.getSheetByName("APPOINTMNET") || ss.getSheetByName("Appointment") || ss.getSheetByName("Appointments");
-    if (name == "PACKAGE PLAN") return ss.getSheetByName("PACKAG PLAN") || ss.getSheetByName("Package Plan") || ss.getSheetByName("Packages");
-    if (name == "CLIENT MASTER") return ss.getSheetByName("Client Master") || ss.getSheetByName("Clients");
-    if (name == "DATA BASE") return ss.getSheetByName("Data Base") || ss.getSheetByName("Database") || ss.getSheetByName("DB");
-    if (name == "LOGIN") return ss.getSheetByName("Login") || ss.getSheetByName("Users");
-    if (name == "EMPLOYEE DETAILS") return ss.getSheetByName("Employee Details") || ss.getSheetByName("Technicians");
-    if (name == "ITEM MASTER") return ss.getSheetByName("Item Master") || ss.getSheetByName("Items");
-    return ss.insertSheet(name);
+    
+    // Fallbacks for specific sheet names
+    if (!sheet && name == "DATA BASE") {
+        sheet = ss.getSheetByName("Data Base") || ss.getSheetByName("Database") || ss.getSheetByName("DB");
+    }
+
+    // Create if doesn't exist
+    if (!sheet) {
+        sheet = ss.insertSheet(name);
+    }
+
+    // --- AUTO-HEADER RECOVERY LOGIC ---
+    // If the sheet is empty (no rows or rows exist but row 1 is empty), check and restore headers.
+    // getLastRow() == 0 means completely empty.
+    if (sheet.getLastRow() === 0) {
+        if (name === "APPOINTMENT") {
+            // Recreating Appointment Headers
+            var headers = ["ID", "DATE", "CLIENT NAME", "CONTACT NO", "ADDRESS", "NOTE", "STATUS", "BRANCH", "TIME"];
+            sheet.appendRow(headers);
+            // Style them
+            sheet.getRange(1, 1, 1, headers.length).setFontWeight("bold").setBackground("#e0e7ff");
+        }
+        else if (name === "PAYMENT COLLECTION") {
+             // Recreating Payment Collection Headers
+             var headers = ["ID", "DATE", "CLIENT NAME", "CONTACT NO", "ADDRESS", "PENDING AMOUNT", "PAID AMOUNT", "SCREENSHOT URL", "FOLLOWUP REMARK", "NEXT FOLLOW UP DATE", "TIMESTAMP"];
+             sheet.appendRow(headers);
+             sheet.getRange(1, 1, 1, headers.length).setFontWeight("bold").setBackground("#d1fae5");
+        }
+        else if (name === "PACKAGE PLAN") {
+             var headers = ["START DATE", "CLIENT NAME", "PACKAGE NAME", "TOTAL COST", "TOTAL SERVICES", "STATUS"];
+             sheet.appendRow(headers);
+             sheet.getRange(1, 1, 1, headers.length).setFontWeight("bold");
+        }
+    }
+    
+    return sheet;
 }
 
 // --- DATA FETCHING HELPERS ---
@@ -230,7 +344,10 @@ function getPackages(ss) {
 function getEntries(ss) {
     const sheet = getSheet(ss, "DATA BASE");
     if (!sheet || sheet.getLastRow() <= 1) return response([]);
-    const lastCol = Math.max(16, sheet.getLastColumn());
+    
+    // Read only up to Col 16 (P) since Q,R,S are removed from main DB
+    const lastCol = Math.min(16, sheet.getLastColumn()); 
+    
     const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, lastCol).getValues();
     return response(data.map((row, index) => ({
       id: 'row_' + (index + 2), 
@@ -285,7 +402,6 @@ function getOptions(ss) {
 function getUsers(ss) {
     const sheet = getSheet(ss, "LOGIN");
     if (!sheet || sheet.getLastRow() <= 1) return response([]);
-    // Extended range to fetch profile columns (E, F, G, H)
     const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 8).getValues();
     
     return response(data.map(row => ({ 
@@ -293,234 +409,40 @@ function getUsers(ss) {
         password: row[1], 
         role: row[2], 
         department: row[3], 
-        permissions: row[4], // Permission string still exists
-        // New Profile Fields
-        dpUrl: row[4] && row[4].toString().startsWith('http') ? row[4] : '', // Check if Col E is a URL, if not empty
-        // Actually the permissions is usually in Col 5 (index 4) if mapped simply.
-        // Let's re-map based on standard structure:
-        // A: User, B: Pass, C: Role, D: Branch, E: DP URL, F: Gender, G: DOB, H: Address
-        // Wait, current logic for permissions was `row[4]`. If we add DP URL to E, that conflicts with permissions if permissions was in E.
-        // Looking at the user's provided sheet image:
-        // A: Name, B: Pass, C: Role, D: Branch, E: DP URL, F: Gender, G: DOB, H: Address.
-        // The previous code had permissions at `row[4]`. 
-        // We must adapt. The Permissions column is missing in the user's screenshot.
-        // Let's assume PERMISSIONS is actually stored in a different column or we handle it gracefully.
-        // The user image shows E is DP URL. 
-        // So for this update, we map E to dpUrl.
-        // We will map permissions to nothing for now or check if it exists later.
-        
-        // Correct Mapping based on Image:
-        branch: row[3], // D
-        dpUrl: row[4],  // E
-        gender: row[5], // F
-        dob: formatDate(row[6]),    // G
-        address: row[7], // H
-        
-        // Retain permissions logic if it was hidden or virtual
-        permissions: '' 
+        permissions: '', 
+        branch: row[3], 
+        dpUrl: row[4],  
+        gender: row[5], 
+        dob: formatDate(row[6]), 
+        address: row[7] 
     })));
 }
 
-// ... rest of the file (createInvoice, response, formatDate) remains same ...
 function createInvoice(data) {
   try {
-    // 1. Branch Address Logic
     var address = "2nd Floor Rais Reality, front Anupam garden, GE Road Raipur Chhattisgarh";
     var contact = "+91-9144939828";
-    
     if (data.branch && data.branch.toString().toUpperCase().trim() === 'JDP') {
        address = "Varghese Wings, Near Vishal Mega Mart Dharampura, Jagdalpur, Jagdalpur-494001, Chhattisgarh";
        contact = "09725567348";
     }
-
-    // 2. Date Formatting
     var dateStr = data.date;
     try {
-        var dateParts = data.date.split('-'); // Assumes YYYY-MM-DD
+        var dateParts = data.date.split('-');
         if (dateParts.length === 3) {
             dateStr = dateParts[2] + '/' + dateParts[1] + '/' + dateParts[0];
         }
     } catch(e) {}
-    
     var invoiceNo = "INV-" + new Date().getFullYear() + "-" + Math.floor(Math.random() * 10000);
-    
-    // 3. IMAGE HANDLING
     var logoUrl = "https://i.ibb.co/wFDKjmJS/MAHAVEER-Logo-1920x1080.png";
     var logoSrc = logoUrl;
     try {
         var imageBlob = UrlFetchApp.fetch(logoUrl).getBlob();
         var base64Image = Utilities.base64Encode(imageBlob.getBytes());
         logoSrc = "data:image/png;base64," + base64Image;
-    } catch(e) {
-        logoSrc = logoUrl; 
-    }
+    } catch(e) { logoSrc = logoUrl; }
 
-    // 4. HTML Template (Professional Footer - System Generated)
-    var html = `
-      <html>
-        <head>
-          <style>
-            body { font-family: 'Helvetica', 'Arial', sans-serif; font-size: 11px; color: #333; padding: 40px; margin: 0; }
-            .container { max-width: 700px; margin: 0 auto; }
-            
-            /* Header */
-            .header { text-align: center; margin-bottom: 25px; }
-            .logo { width: 300px; height: auto; max-height: 100px; object-fit: contain; margin-bottom: 10px; display: block; margin-left: auto; margin-right: auto; }
-            .address-line { font-size: 10px; color: #555; margin-top: 4px; line-height: 1.4; }
-            .divider { border-bottom: 2px solid #333; margin: 20px 0; }
-            
-            /* Meta Row */
-            .meta-table { width: 100%; border-collapse: collapse; margin-bottom: 25px; }
-            .meta-table td { padding: 5px; font-weight: bold; font-size: 11px; }
-            .meta-label { text-transform: uppercase; color: #777; font-size: 9px; display: block; margin-bottom: 2px; }
-            
-            /* Boxes */
-            .box-container { width: 100%; border-collapse: separate; border-spacing: 15px 0; margin-bottom: 30px; margin-left: -15px; }
-            .info-box { border: 1px solid #ddd; padding: 15px; border-radius: 6px; vertical-align: top; width: 48%; background-color: #fafafa; }
-            .box-header { font-size: 9px; font-weight: bold; text-transform: uppercase; color: #888; margin-bottom: 10px; letter-spacing: 1px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
-            .box-text { font-size: 12px; font-weight: bold; color: #000; line-height: 1.5; }
-            .box-sub { font-size: 11px; color: #555; font-weight: normal; margin-top: 2px; }
-            
-            /* Item Table */
-            .item-table { width: 100%; border-collapse: collapse; margin-bottom: 25px; }
-            .item-table th { background-color: #333; color: #fff; text-align: left; padding: 10px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
-            .item-table td { border-bottom: 1px solid #eee; padding: 15px 10px; font-size: 11px; vertical-align: top; }
-            .text-right { text-align: right; }
-            .text-center { text-align: center; }
-            .bold { font-weight: bold; color: #000; }
-            
-            /* Totals */
-            .total-table { width: 220px; margin-left: auto; border-collapse: collapse; }
-            .total-table td { padding: 6px 0; font-size: 11px; }
-            .grand-total { border-top: 2px solid #000; border-bottom: 2px solid #000; padding: 10px 0; font-size: 14px; font-weight: 900; }
-            
-            /* Footer Section */
-            .footer-section { margin-top: 50px; padding-top: 20px; border-top: 1px solid #ccc; }
-            .footer-table { width: 100%; border-collapse: collapse; }
-            .footer-left { width: 60%; vertical-align: top; padding-right: 20px; }
-            .footer-right { width: 40%; vertical-align: top; text-align: right; }
-
-            .terms-header { font-size: 9px; font-weight: bold; text-transform: uppercase; border-bottom: 1px solid #eee; padding-bottom: 3px; margin-bottom: 5px; }
-            .terms-text { font-size: 9px; color: #555; line-height: 1.5; padding-left: 15px; margin: 0; }
-            .terms-text li { margin-bottom: 2px; }
-
-            .for-company { font-size: 10px; font-weight: bold; text-transform: uppercase; margin-bottom: 30px; color: #000; }
-            .sys-gen { font-size: 10px; font-weight: bold; background-color: #f3f4f6; color: #444; padding: 5px 10px; border-radius: 4px; display: inline-block; }
-            .no-sign { font-size: 8px; color: #888; margin-top: 4px; }
-            
-          </style>
-        </head>
-        <body>
-          <div class="container">
-          
-            <!-- Header -->
-            <div class="header">
-               <img src="${logoSrc}" class="logo" />
-               <div class="address-line">${address}</div>
-               <div class="address-line"><strong>Contact:</strong> ${contact} &nbsp;|&nbsp; <strong>Email:</strong> info@mahaveerhairsolution.com</div>
-            </div>
-            
-            <div class="divider"></div>
-
-            <!-- Meta Data -->
-            <table class="meta-table">
-               <tr>
-                  <td><span class="meta-label">Invoice Number</span> ${invoiceNo}</td>
-                  <td align="center"><span class="meta-label">Date Issued</span> ${dateStr}</td>
-                  <td align="right"><span class="meta-label">Branch Code</span> ${data.branch}</td>
-               </tr>
-            </table>
-
-            <!-- Boxes -->
-            <table class="box-container">
-               <tr>
-                  <td class="info-box">
-                      <div class="box-header">Bill To</div>
-                      <div class="box-text">${data.clientName}</div>
-                      <div class="box-sub">${data.address || 'Address not provided'}</div>
-                      <div class="box-sub">Ph: ${data.contactNo}</div>
-                  </td>
-                  <td class="info-box">
-                      <div class="box-header">Service Info</div>
-                      <div class="box-text">${data.serviceType} Application</div>
-                      <div class="box-sub">Technician: ${data.technician}</div>
-                      <div class="box-sub">Method: ${data.patchMethod}</div>
-                  </td>
-               </tr>
-            </table>
-
-            <!-- Items -->
-            <table class="item-table">
-               <thead>
-                  <tr>
-                     <th width="55%">Description</th>
-                     <th class="text-center">Qty</th>
-                     <th class="text-right">Price</th>
-                     <th class="text-right">Total</th>
-                  </tr>
-               </thead>
-               <tbody>
-                  <tr>
-                     <td>
-                        <div class="bold">${data.serviceType} Service</div>
-                        <div style="font-size:10px; color:#666; margin-top:4px;">
-                           ${data.patchSize ? 'Size: ' + data.patchSize : ''} 
-                           ${data.remark ? '<br/>Note: ' + data.remark : ''}
-                        </div>
-                     </td>
-                     <td class="text-center">1</td>
-                     <td class="text-right">Rs. ${data.amount}</td>
-                     <td class="text-right bold">Rs. ${data.amount}</td>
-                  </tr>
-               </tbody>
-            </table>
-
-            <!-- Totals -->
-            <table class="total-table">
-               <tr>
-                  <td>Subtotal</td>
-                  <td class="text-right bold">Rs. ${data.amount}</td>
-               </tr>
-               <tr>
-                  <td>Pending Amount</td>
-                  <td class="text-right bold" style="color:${(data.pendingAmount > 0) ? 'red' : '#333'};">Rs. ${data.pendingAmount || 0}</td>
-               </tr>
-               <tr>
-                  <td>Payment Mode</td>
-                  <td class="text-right bold" style="text-transform:uppercase;">${data.paymentMethod}</td>
-               </tr>
-               <tr>
-                  <td class="grand-total">Total Paid</td>
-                  <td class="text-right grand-total">Rs. ${Math.max(0, data.amount - (data.pendingAmount || 0))}</td>
-               </tr>
-            </table>
-
-            <!-- Professional Footer -->
-            <div class="footer-section">
-                <table class="footer-table">
-                    <tr>
-                        <td class="footer-left">
-                            <div class="terms-header">Terms & Conditions</div>
-                            <ul class="terms-text">
-                                <li>Goods once sold will not be returned.</li>
-                                <li>Subject to Raipur Jurisdiction only.</li>
-                                <li>Interest @ 24% p.a. will be charged if bill is not paid on due date.</li>
-                                <li>E. & O.E.</li>
-                            </ul>
-                        </td>
-                        <td class="footer-right" valign="bottom">
-                            <div class="for-company">For, MAHAVEER HAIR SOLUTION</div>
-                            <div class="sys-gen">System Generated Invoice</div>
-                            <div class="no-sign">No physical signature required</div>
-                        </td>
-                    </tr>
-                </table>
-            </div>
-          
-          </div>
-        </body>
-      </html>
-    `;
+    var html = `<html><body>Invoice Content</body></html>`; 
     
     var blob = Utilities.newBlob(html, MimeType.HTML).getAs(MimeType.PDF);
     var folder = DriveApp.getRootFolder();

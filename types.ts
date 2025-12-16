@@ -41,8 +41,12 @@ export interface Entry {
   remark: string;
   numberOfService: number;
   patchSize?: string; // Optional, only if NEW
-  invoiceUrl?: string; // NEW FIELD for PDF Link
-  pendingAmount?: number; // New Field for partial payments
+  invoiceUrl?: string; // PDF Link
+  pendingAmount?: number; // Partial payments
+  
+  // NEW FIELDS FOR FOLLOW UP
+  paymentScreenshotUrl?: string; // Col Q
+  nextCallDate?: string; // Col R
 }
 
 export interface Appointment {
@@ -73,6 +77,7 @@ export interface DashboardStats {
   totalAmount: number;
   newClientsToday: number;
   serviceCount: number;
+  totalOutstanding: number;
 }
 
 export interface ServicePackage {

@@ -693,7 +693,7 @@ const NewEntryForm: React.FC = () => {
                         )}
                         
                          <div>
-                            <label className={labelClass}>Payment Method</label>
+                            <label className="labelClass">Payment Method</label>
                              <div className="grid grid-cols-2 gap-4 mt-3">
                                 {['CASH', 'UPI', 'CARD', 'PENDING'].map(method => {
                                     const activeColors: Record<string, string> = {
@@ -780,11 +780,13 @@ const NewEntryForm: React.FC = () => {
              ) : (
                  filteredTodayEntries.map((entry) => {
                      // Check if purely pending method OR has partial pending due OR amount is 0/missing for non-demos
-                     const isPending = entry.paymentMethod === 'PENDING';
-                     const hasPartialDue = entry.pendingAmount && entry.pendingAmount > 0;
+                     // UPDATE: User requested to ONLY show the Amount Action if amount is NOT entered (i.e. 0). 
+                     // Even if Pending or Partial, if total amount > 0, it is considered "entered" and shouldn't prompt for immediate update here.
+                     
                      const isZeroAmount = (entry.amount === 0 || !entry.amount) && entry.serviceType !== 'DEMO' && entry.serviceType !== 'MUNDAN';
                      
-                     const showAction = isPending || hasPartialDue || isZeroAmount;
+                     // Only show action/highlight if amount is missing
+                     const showAction = isZeroAmount;
                      
                      return (
                          <div key={entry.id} className={`p-6 transition-colors hover:bg-slate-50 flex flex-col md:flex-row items-center justify-between gap-6
@@ -804,7 +806,7 @@ const NewEntryForm: React.FC = () => {
                                          {showAction && (
                                             <span className="flex items-center text-amber-600 bg-amber-100 px-1.5 py-0.5 rounded border border-amber-200">
                                                 <AlertTriangle className="w-3 h-3 mr-1" /> 
-                                                Payment Pending
+                                                Update Amount
                                             </span>
                                          )}
                                      </div>

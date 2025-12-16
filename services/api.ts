@@ -1,4 +1,3 @@
-
 import { Entry, Client, Appointment, DashboardStats, ServicePackage, User } from '../types';
 import { MOCK_CLIENTS, MOCK_ENTRIES, MOCK_APPOINTMENTS, MOCK_ITEMS, MOCK_TECHNICIANS, MOCK_PACKAGES, GOOGLE_SCRIPT_URL } from '../constants';
 
@@ -142,35 +141,34 @@ export const api = {
         }
     }
 
-    // Merge with local new entries
-    const serverIds = new Set(allEntries.map(e => e.id));
-    const uniqueLocal = LOCAL_NEW_ENTRIES.filter(e => !serverIds.has(e.id));
+    // --- DEDUPLICATION LOGIC ---
+    // Remove local entries that have been confirmed synced to the server.
+    // We match based on unique content composite key since IDs differ (temp_ vs row_).
     
-    return [...uniqueLocal, ...allEntries];
-  },
+    const indicesToRemove: number[] = [];
+    
+    LOCAL_NEW_ENTRIES.forEach((local, index) => {
+        const isSynced = allEntries.some(server => 
+            server.clientName === local.clientName &&
+            server.date === local.date &&
+            server.serviceType === local.serviceType &&
+            // Loose comparison for numbers/strings
+            String(server.contactNo).replace(/\D/g,'') === String(local.contactNo).replace(/\D/g,'') &&
+            Number(server.amount) === Number(local.amount)
+        );
+        
+        if (isSynced) {
+            indicesToRemove.push(index);
+        }
+    });
 
-  updateEntry: async (entry: Entry) => {
-      // Update Local Cache
-      const localEntry = LOCAL_NEW_ENTRIES.find(e => e.id === entry.id);
-      if(localEntry) Object.assign(localEntry, entry);
-
-      if(DATA_CACHE.entries) {
-          const cacheEntry = DATA_CACHE.entries.find(e => e.id === entry.id);
-          if(cacheEntry) Object.assign(cacheEntry, entry);
-      }
-
-      // Update Mock
-      const mockEntry = MOCK_ENTRIES.find(e => e.id === entry.id);
-      if(mockEntry) Object.assign(mockEntry, entry);
-
-      if (isLive) {
-          await fetch(GOOGLE_SCRIPT_URL, {
-              method: 'POST',
-              headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-              body: JSON.stringify({ action: 'editEntry', ...entry })
-          });
-      }
-      return true;
+    // Remove synced items from local cache (Iterate backwards to keep indices valid)
+    for (let i = indicesToRemove.length - 1; i >= 0; i--) {
+        LOCAL_NEW_ENTRIES.splice(indicesToRemove[i], 1);
+    }
+    
+    // Return remaining local entries + server entries
+    return [...LOCAL_NEW_ENTRIES, ...allEntries];
   },
 
   updateEntryStatus: async (id: string, status: string) => {
@@ -196,6 +194,82 @@ export const api = {
         }).catch(e => console.error("BG Update Fail", e));
     }
     return true;
+  },
+  
+  updateEntry: async (entry: Entry) => {
+    // 1. Update Local Cache
+    const localEntry = LOCAL_NEW_ENTRIES.find(e => e.id === entry.id);
+    if(localEntry) Object.assign(localEntry, entry);
+
+    if(DATA_CACHE.entries) {
+        const cacheEntry = DATA_CACHE.entries.find(e => e.id === entry.id);
+        if(cacheEntry) Object.assign(cacheEntry, entry);
+    }
+
+    // 2. Mock Data Update
+    const mockEntry = MOCK_ENTRIES.find(e => e.id === entry.id);
+    if(mockEntry) Object.assign(mockEntry, entry);
+
+    // 3. Live Update
+    if (isLive) {
+        try {
+            await fetch(GOOGLE_SCRIPT_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify({ action: 'editEntry', ...entry })
+            });
+        } catch(e) {
+            console.error("Failed to update entry", e);
+            throw e;
+        }
+    }
+    return true;
+  },
+
+  // NEW: Update Payment Follow Up (With Image)
+  updatePaymentFollowUp: async (payload: {
+      id: string,
+      clientName: string,
+      contactNo?: string,
+      address?: string,
+      paymentMethod?: string,
+      pendingAmount?: number,
+      paidAmount?: number,
+      nextCallDate?: string,
+      remark?: string,
+      screenshotBase64?: string,
+      existingScreenshotUrl?: string
+  }) => {
+      if (isLive) {
+          try {
+              // We return the response to get the generated screenshot URL
+              const res = await fetch(GOOGLE_SCRIPT_URL, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                  body: JSON.stringify({ action: 'updatePaymentFollowUp', ...payload })
+              });
+              const data = await res.json();
+              
+              // Also update cache if possible
+              if(DATA_CACHE.entries) {
+                const entry = DATA_CACHE.entries.find(e => e.id === payload.id);
+                if(entry) {
+                    if(payload.paymentMethod) entry.paymentMethod = payload.paymentMethod as any;
+                    if(payload.pendingAmount !== undefined) entry.pendingAmount = payload.pendingAmount;
+                    if(payload.paidAmount) entry.amount = (Number(entry.amount) || 0) + payload.paidAmount;
+                    if(payload.nextCallDate) entry.nextCallDate = payload.nextCallDate;
+                    if(payload.remark) entry.remark = payload.remark;
+                    if(data.screenshotUrl) entry.paymentScreenshotUrl = data.screenshotUrl;
+                }
+              }
+
+              return data;
+          } catch(e) {
+              console.error("Failed to update follow up", e);
+              throw e;
+          }
+      }
+      return { status: "success" };
   },
 
   // --- APPOINTMENTS ---
@@ -385,11 +459,8 @@ export const api = {
       // 1. Fetch latest packages (Use Cache!)
       const packages = await api.getPackages();
       
-      // 2. Find active package (Include 'APPROVED' status)
-      const pkg = packages.find((p: any) => 
-          p.clientName.trim().toLowerCase() === normalizedName && 
-          (p.status === 'ACTIVE' || p.status === 'APPROVED')
-      );
+      // 2. Find active package
+      const pkg = packages.find((p: any) => p.clientName.trim().toLowerCase() === normalizedName && (p.status === 'ACTIVE' || p.status === 'APPROVED'));
       
       if (!pkg) return null;
 
@@ -482,7 +553,6 @@ export const api = {
       return true; 
   },
 
-  // NEW: Update User Profile
   updateUserProfile: async (userData: Partial<User>) => {
       if (isLive) {
           try {
@@ -492,34 +562,32 @@ export const api = {
                   body: JSON.stringify({ action: 'updateUser', ...userData })
              });
              return true;
-          } catch (e) {
-              console.error("Failed to update profile", e);
-              return false;
-          }
+          } catch (e) { return false; }
       }
       return true;
   },
 
   getDashboardStats: async (): Promise<DashboardStats> => {
-    // 1. Fetch entries for revenue/service stats
     const entries = await api.getEntries();
     
-    // 2. Fetch OPTIONS to get the ACTUAL CLIENT MASTER COUNT
-    const options = await api.getOptions();
-    
-    // Use the length of the clients array from the Master Data
-    const totalClients = options.clients ? options.clients.length : 0;
-    
+    const totalClients = new Set(entries.map((e: any) => e.clientName)).size;
     const totalAmount = entries.reduce((sum: number, e: any) => sum + Number(e.amount || 0), 0);
     const today = new Date().toISOString().split('T')[0];
     const newClientsToday = entries.filter((e: any) => e.date === today && e.serviceType === 'NEW').length;
     const serviceCount = entries.length;
 
+    // Calculate Total Outstanding
+    const totalOutstanding = entries.reduce((sum: number, e: any) => {
+        const due = e.paymentMethod === 'PENDING' ? Number(e.amount || 0) : Number(e.pendingAmount || 0);
+        return sum + due;
+    }, 0);
+
     return {
-      totalClients, // Correct count from Client Master
+      totalClients,
       totalAmount,
       newClientsToday,
-      serviceCount
+      serviceCount,
+      totalOutstanding
     };
   }
 };

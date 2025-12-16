@@ -22,7 +22,8 @@ import {
   User as UserIcon,
   Camera,
   Save,
-  Loader2
+  Loader2,
+  UploadCloud
 } from 'lucide-react';
 import { User, Role } from '../types';
 import { api } from '../services/api';
@@ -46,6 +47,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
       address: ''
   });
   const [savingProfile, setSavingProfile] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const location = useLocation();
   const mainContentRef = useRef<HTMLDivElement>(null);
@@ -90,6 +92,53 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
     }
   }, [user]);
 
+  // Handle File Upload and Compression
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+
+      // Basic validation
+      if (!file.type.startsWith('image/')) {
+          alert("Please upload an image file.");
+          return;
+      }
+
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (e) => {
+          const img = new Image();
+          img.src = e.target?.result as string;
+          img.onload = () => {
+              const canvas = document.createElement('canvas');
+              const MAX_WIDTH = 500; // Resize to reasonable max width
+              const MAX_HEIGHT = 500;
+              let width = img.width;
+              let height = img.height;
+
+              if (width > height) {
+                  if (width > MAX_WIDTH) {
+                      height *= MAX_WIDTH / width;
+                      width = MAX_WIDTH;
+                  }
+              } else {
+                  if (height > MAX_HEIGHT) {
+                      width *= MAX_HEIGHT / height;
+                      height = MAX_HEIGHT;
+                  }
+              }
+
+              canvas.width = width;
+              canvas.height = height;
+              const ctx = canvas.getContext('2d');
+              ctx?.drawImage(img, 0, 0, width, height);
+              
+              // Compress to JPEG 0.7 quality
+              const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+              setProfileForm(prev => ({ ...prev, dpUrl: dataUrl }));
+          };
+      };
+  };
+
   const handleProfileSave = async (e: React.FormEvent) => {
       e.preventDefault();
       if (!user) return;
@@ -97,18 +146,18 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
       setSavingProfile(true);
       try {
           // Update Backend
-          await api.updateUserProfile({
+          const result = await api.updateUserProfile({
               username: user.username,
               ...profileForm
           });
           
-          // Update Local User State (Hack: We mutate the user object stored in localstorage for instant update without re-login)
-          const updatedUser = { ...user, ...profileForm };
-          localStorage.setItem('mahaveer_user', JSON.stringify(updatedUser));
-          
-          // Reload page to reflect changes in app state (simplest way to propagate 'user' prop update from App.tsx)
-          // Or we could pass a setUser prop down, but reload is safe here.
-          window.location.reload();
+          if (result) {
+              const updatedUser = { ...user, ...profileForm };
+              localStorage.setItem('mahaveer_user', JSON.stringify(updatedUser));
+              window.location.reload();
+          } else {
+              alert("Failed to update profile on server.");
+          }
           
       } catch (e) {
           console.error("Failed to save profile", e);
@@ -124,7 +173,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
   const allMenuItems = [
     { path: '/', label: 'Dashboard', icon: LayoutDashboard, adminOnly: true },
     { path: '/new-entry', label: 'New Entry', icon: PlusCircle, adminOnly: false },
-    { path: '/pending-dues', label: 'Pending Dues', icon: Wallet, adminOnly: false },
+    { path: '/pending-dues', label: 'Payment Follow-up', icon: Wallet, adminOnly: false },
     { path: '/daily-report', label: 'Today Report', icon: FileText, adminOnly: false },
     { path: '/history', label: 'Client History', icon: History, adminOnly: false },
     { path: '/appointments', label: 'Bookings', icon: Calendar, adminOnly: false },
@@ -145,13 +194,12 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
 
   const isActive = (path: string) => location.pathname === path;
 
-  // Formatting date for header
   const todayDate = new Date().toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short' });
 
   return (
     <div className="flex h-screen bg-[#F0F4F8] overflow-hidden font-sans">
       
-      {/* Mobile Sidebar Overlay - High Z-Index */}
+      {/* Mobile Sidebar Overlay */}
       {isMobileMenuOpen && (
         <div 
           className="fixed inset-0 bg-slate-900/60 z-[90] lg:hidden backdrop-blur-sm transition-opacity duration-300"
@@ -168,13 +216,11 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
         ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
       `}>
         
-        {/* Ambient Glows */}
         <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
              <div className="absolute top-[-10%] left-[-20%] w-[150%] h-[40%] bg-indigo-900/20 blur-[80px] rounded-full"></div>
              <div className="absolute bottom-0 right-0 w-[100%] h-[30%] bg-blue-900/10 blur-[60px] rounded-full"></div>
         </div>
 
-        {/* Mobile Close Button */}
         <button 
             onClick={() => setIsMobileMenuOpen(false)}
             className="lg:hidden absolute top-4 right-4 text-slate-400 hover:text-white p-2 rounded-full hover:bg-white/10 transition-colors z-50"
@@ -182,10 +228,8 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
             <X className="w-6 h-6" />
         </button>
 
-        {/* LOGO AREA - Maximized Visibility */}
         <div className="pt-6 pb-6 px-4 relative z-10 shrink-0">
              <div className="w-full bg-white rounded-xl p-1 shadow-[0_0_25px_rgba(255,255,255,0.1)] border border-slate-700/50 group hover:shadow-[0_0_30px_rgba(99,102,241,0.3)] transition-all duration-500 overflow-hidden relative">
-                 {/* Subtle shine effect */}
                  <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"></div>
                  
                  <div className="bg-white rounded-lg flex items-center justify-center h-20 w-full overflow-hidden">
@@ -199,7 +243,6 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
              </div>
         </div>
 
-        {/* NAVIGATION */}
         <nav className="flex-1 overflow-y-auto px-3 py-2 space-y-1.5 scrollbar-hide relative z-10">
               <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 mb-3 px-3 pt-2 flex items-center gap-2">
                  Menu
@@ -227,7 +270,6 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
                     
                     {active && <div className="absolute right-3 w-1.5 h-1.5 bg-white rounded-full shadow-[0_0_8px_rgba(255,255,255,0.8)] animate-pulse"></div>}
 
-                    {/* Pending Count Badge for Packages */}
                     {showBadge && (
                         <span className="absolute right-3 bg-red-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full shadow-sm animate-pulse border border-red-400">
                             {pendingCount}
@@ -238,9 +280,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
               })}
         </nav>
 
-        {/* USER PROFILE FOOTER - NOW CLICKABLE */}
         <div className="p-4 relative z-10 shrink-0 bg-gradient-to-t from-[#0B1120] to-transparent">
-            {/* User Card */}
             <div 
                 onClick={() => setIsProfileModalOpen(true)}
                 className="bg-[#131C2E] rounded-xl p-3 shadow-lg border border-slate-700/50 flex items-center justify-between group hover:border-indigo-500/50 hover:bg-[#1A263E] transition-all cursor-pointer"
@@ -255,7 +295,6 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
                                 <span className="text-white font-black text-sm uppercase">{user.username.charAt(0)}</span>
                             )}
                         </div>
-                        {/* Edit Icon Overlay */}
                         <div className="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg">
                             <Camera className="w-3 h-3 text-white" />
                         </div>
@@ -274,7 +313,6 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
                 </button>
             </div>
 
-            {/* Footer Text */}
             <div className="mt-5 text-center pb-1 opacity-60 hover:opacity-100 transition-opacity cursor-default">
                  <p className="text-[10px] text-slate-400 font-black tracking-[0.1em] uppercase">
                     MAHAVEER HAIR SOLUTION © 2025
@@ -298,7 +336,6 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
                       <X className="w-5 h-5 text-slate-500" />
                   </button>
 
-                  {/* Header with Background */}
                   <div className="h-32 bg-gradient-to-r from-indigo-600 to-purple-600 relative">
                       <div className="absolute -bottom-10 left-1/2 -translate-x-1/2">
                           <div className="w-24 h-24 rounded-2xl bg-white p-1.5 shadow-xl border border-slate-100 transform rotate-3 hover:rotate-0 transition-transform duration-300">
@@ -308,6 +345,12 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
                                   ) : (
                                       <UserIcon className="w-8 h-8 text-slate-300" />
                                   )}
+                                  <div 
+                                    onClick={() => fileInputRef.current?.click()}
+                                    className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity cursor-pointer"
+                                  >
+                                      <Camera className="w-6 h-6 text-white" />
+                                  </div>
                               </div>
                           </div>
                       </div>
@@ -321,18 +364,23 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
 
                       <form onSubmit={handleProfileSave} className="space-y-4">
                           <div>
-                              <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5 ml-1">Profile Image URL</label>
-                              <div className="relative">
-                                  <input 
-                                      type="text" 
-                                      className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none"
-                                      placeholder="https://imgur.com/..."
-                                      value={profileForm.dpUrl}
-                                      onChange={(e) => setProfileForm({...profileForm, dpUrl: e.target.value})}
-                                  />
-                                  <Camera className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
-                              </div>
-                              <p className="text-[10px] text-slate-400 mt-1 ml-1">Paste a direct link to an image (e.g., from Imgur, Pinterest).</p>
+                              <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5 ml-1">Profile Photo</label>
+                              <input 
+                                  type="file" 
+                                  ref={fileInputRef}
+                                  className="hidden" 
+                                  accept="image/*"
+                                  onChange={handleFileChange}
+                              />
+                              <button
+                                  type="button"
+                                  onClick={() => fileInputRef.current?.click()}
+                                  className="w-full py-3 border-2 border-dashed border-indigo-200 bg-indigo-50 text-indigo-600 font-bold rounded-xl hover:bg-indigo-100 transition-colors flex items-center justify-center gap-2"
+                              >
+                                  <UploadCloud className="w-5 h-5" />
+                                  Upload New Photo
+                              </button>
+                              <p className="text-[10px] text-slate-400 mt-1 ml-1 text-center">Tap to select from gallery (Max 500px auto-resize)</p>
                           </div>
 
                           <div className="grid grid-cols-2 gap-4">
@@ -375,7 +423,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
                               disabled={savingProfile}
                               className="w-full py-3.5 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-all flex items-center justify-center shadow-lg active:scale-95 mt-2"
                           >
-                              {savingProfile ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Save className="w-4 h-4 mr-2" /> Save Profile</>}
+                              {savingProfile ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Save className="w-4 h-4 mr-2" /> Save & Upload</>}
                           </button>
                       </form>
                   </div>
@@ -385,12 +433,9 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
 
       {/* MAIN CONTENT WRAPPER */}
       <div className="flex-1 flex flex-col h-full overflow-hidden relative bg-[#F0F4F8]">
-        {/* Top Gradient Line */}
         <div className="h-1 w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 absolute top-0 left-0 z-50 shadow-[0_2px_10px_rgba(99,102,241,0.5)]"></div>
 
-        {/* DESKTOP TOP BAR (Sticky Header) - Prevents Overlap */}
         <header className="hidden lg:flex items-center justify-between px-8 py-3 bg-white/80 backdrop-blur-md border-b border-slate-200/50 sticky top-0 z-40 shrink-0 h-16 shadow-sm">
-             {/* Left: Breadcrumb / Date */}
              <div className="flex items-center gap-2">
                  <div className="flex items-center text-slate-400 text-xs font-bold uppercase tracking-wider bg-slate-50 px-2 py-1 rounded border border-slate-200">
                     <Calendar className="w-3 h-3 mr-1.5" />
@@ -398,9 +443,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
                  </div>
              </div>
 
-             {/* Right: Notification Area */}
              <div className="flex items-center gap-4">
-                 {/* Notification Icon */}
                  {user.role === Role.ADMIN && pendingCount > 0 && (
                     <Link 
                         to="/packages" 
@@ -408,8 +451,6 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
                         title={`${pendingCount} Approvals Pending`}
                     >
                         <Bell className="w-5 h-5 group-hover:rotate-12 transition-transform duration-300" />
-                        
-                        {/* Red Dot Badge */}
                         <span className="absolute top-1.5 right-2 flex h-2.5 w-2.5">
                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                             <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500 border-2 border-white"></span>
@@ -419,7 +460,6 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
              </div>
         </header>
 
-        {/* Mobile Header - High Visibility */}
         <header className="bg-white/90 backdrop-blur-md shadow-sm lg:hidden flex items-center justify-between p-4 z-40 sticky top-0 border-b border-slate-200">
           <div className="flex items-center gap-3">
                <button 
@@ -434,7 +474,6 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
           </div>
           
           <div className="flex items-center gap-3">
-             {/* NOTIFICATION BELL FOR ADMIN (Mobile) */}
              {user.role === Role.ADMIN && pendingCount > 0 && (
                 <Link to="/packages" className="relative p-2 mr-1 text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-full transition-colors border border-indigo-100 shadow-sm">
                     <Bell className="w-5 h-5" />
@@ -456,7 +495,6 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
           </div>
         </header>
 
-        {/* Content Area - Added ref for scrolling */}
         <main 
             ref={mainContentRef}
             className="flex-1 overflow-x-hidden overflow-y-auto p-4 lg:p-8 scroll-smooth relative perspective-1000"
