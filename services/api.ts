@@ -1,3 +1,4 @@
+
 import { Entry, Client, Appointment, DashboardStats, ServicePackage, User } from '../types';
 import { MOCK_CLIENTS, MOCK_ENTRIES, MOCK_APPOINTMENTS, MOCK_ITEMS, MOCK_TECHNICIANS, MOCK_PACKAGES, GOOGLE_SCRIPT_URL } from '../constants';
 
@@ -27,6 +28,23 @@ let DATA_CACHE: {
 // Increased Cache Duration for speed
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minute cache for entries/appts
 const OPTIONS_CACHE_DURATION = 15 * 60 * 1000; // 15 minutes for clients/items
+
+// Helper: Format Time from Sheet (Handles "Sat Dec 30 1899..." garbage)
+const formatTimeSafe = (val: any): string => {
+    if (!val) return '';
+    const strVal = String(val);
+    
+    // If it looks like a long ISO date or Sheet date string, parse it
+    if (strVal.includes('1899') || strVal.includes('T') || strVal.length > 10) {
+        try {
+            const d = new Date(val);
+            if (!isNaN(d.getTime())) {
+                return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+            }
+        } catch (e) {}
+    }
+    return strVal; // Return as is if it's already "10:00 AM" or similar
+};
 
 export const api = {
   // --- OPTION HELPERS (Clients, Technicians, Items) ---
@@ -142,9 +160,6 @@ export const api = {
     }
 
     // --- DEDUPLICATION LOGIC ---
-    // Remove local entries that have been confirmed synced to the server.
-    // We match based on unique content composite key since IDs differ (temp_ vs row_).
-    
     const indicesToRemove: number[] = [];
     
     LOCAL_NEW_ENTRIES.forEach((local, index) => {
@@ -152,7 +167,6 @@ export const api = {
             server.clientName === local.clientName &&
             server.date === local.date &&
             server.serviceType === local.serviceType &&
-            // Loose comparison for numbers/strings
             String(server.contactNo).replace(/\D/g,'') === String(local.contactNo).replace(/\D/g,'') &&
             Number(server.amount) === Number(local.amount)
         );
@@ -162,12 +176,11 @@ export const api = {
         }
     });
 
-    // Remove synced items from local cache (Iterate backwards to keep indices valid)
+    // Remove synced items from local cache
     for (let i = indicesToRemove.length - 1; i >= 0; i--) {
         LOCAL_NEW_ENTRIES.splice(indicesToRemove[i], 1);
     }
     
-    // Return remaining local entries + server entries
     return [...LOCAL_NEW_ENTRIES, ...allEntries];
   },
 
@@ -285,8 +298,12 @@ export const api = {
             const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getAppointments`);
             const data = await response.json();
             if (Array.isArray(data)) {
-                allAppts = data;
-                DATA_CACHE.appointments = data;
+                // Apply formatting to time immediately
+                allAppts = data.map((a: Appointment) => ({
+                    ...a,
+                    time: formatTimeSafe(a.time)
+                }));
+                DATA_CACHE.appointments = allAppts;
                 DATA_CACHE.lastFetch['appointments'] = now;
             }
            } catch (e) {
@@ -298,11 +315,29 @@ export const api = {
         }
     }
 
-    // Merge Local Appointments
-    const serverIds = new Set(allAppts.map(a => a.id));
-    const uniqueLocal = LOCAL_NEW_APPOINTMENTS.filter(a => !serverIds.has(a.id));
+    // --- DEDUPLICATION LOGIC FOR APPOINTMENTS ---
+    // Remove local appointments that have been confirmed synced to the server.
+    const indicesToRemove: number[] = [];
     
-    return [...uniqueLocal, ...allAppts];
+    LOCAL_NEW_APPOINTMENTS.forEach((local, index) => {
+        const isSynced = allAppts.some(server => 
+            server.clientName === local.clientName &&
+            server.date === local.date &&
+            // Loose comparison for contact
+            String(server.contact || '').replace(/\D/g,'') === String(local.contact || '').replace(/\D/g,'')
+        );
+        
+        if (isSynced) {
+            indicesToRemove.push(index);
+        }
+    });
+
+    // Remove synced items
+    for (let i = indicesToRemove.length - 1; i >= 0; i--) {
+        LOCAL_NEW_APPOINTMENTS.splice(indicesToRemove[i], 1);
+    }
+    
+    return [...LOCAL_NEW_APPOINTMENTS, ...allAppts];
   },
 
   addAppointment: async (appt: Omit<Appointment, 'id'>) => {

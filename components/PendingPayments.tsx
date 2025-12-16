@@ -253,7 +253,7 @@ const PendingPayments: React.FC = () => {
   };
 
   return (
-    <div className="max-w-7xl mx-auto pb-32 animate-in fade-in duration-500 relative min-h-screen">
+    <div className="max-w-7xl mx-auto pb-40 animate-in fade-in duration-500 relative min-h-screen">
         
         {/* KPI CARDS - Redesigned for Risk/Action/Success */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8">
@@ -477,30 +477,27 @@ const PendingPayments: React.FC = () => {
 
         {/* STICKY BOTTOM ACTION BAR (Bulk Actions) */}
         {selectedIds.size > 0 && (
-            <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-bottom-10 fade-in duration-300">
-                <div className="bg-slate-900 text-white rounded-2xl shadow-2xl p-2 pl-6 pr-2 flex items-center gap-6 border border-slate-700 ring-4 ring-black/10">
-                    <span className="font-bold text-sm whitespace-nowrap">
+            <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-bottom-10 fade-in duration-300 w-full max-w-md px-4">
+                <div className="bg-slate-900 text-white rounded-2xl shadow-2xl p-2 pl-6 pr-2 flex items-center justify-between gap-4 border border-slate-700 ring-4 ring-black/10">
+                    <span className="font-bold text-sm whitespace-nowrap flex items-center">
                         <span className="bg-indigo-600 px-2 py-0.5 rounded text-xs mr-2 border border-indigo-500">{selectedIds.size}</span>
                         Selected
                     </span>
                     
-                    <div className="h-6 w-px bg-slate-700"></div>
-
                     <div className="flex items-center gap-2">
                         <button 
                             onClick={() => handleBulkAction('MARK_REVIEWED')}
-                            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-xs font-bold transition-colors flex items-center"
+                            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-xs font-bold transition-colors flex items-center whitespace-nowrap"
                         >
                             <CheckSquare className="w-4 h-4 mr-2" /> Mark Followed Up
                         </button>
+                        <button 
+                            onClick={() => setSelectedIds(new Set())}
+                            className="p-2 hover:bg-slate-800 rounded-full transition-colors text-slate-400 hover:text-white"
+                        >
+                            <X className="w-5 h-5" />
+                        </button>
                     </div>
-                    
-                    <button 
-                        onClick={() => setSelectedIds(new Set())}
-                        className="p-2 hover:bg-slate-800 rounded-full transition-colors text-slate-400 hover:text-white"
-                    >
-                        <X className="w-5 h-5" />
-                    </button>
                 </div>
             </div>
         )}
@@ -508,21 +505,21 @@ const PendingPayments: React.FC = () => {
         {/* Update / Payment Modal */}
         {isModalOpen && selectedEntry && (
             <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-                <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-3xl overflow-hidden animate-in fade-in zoom-in-95 border border-white/20 flex flex-col max-h-[90vh]">
+                <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-3xl overflow-hidden animate-in fade-in zoom-in-95 border border-white/20 flex flex-col max-h-[90vh]">
                     
-                    <div className="bg-slate-900 px-8 py-6 flex justify-between items-center text-white shrink-0">
+                    <div className="bg-slate-900 px-6 py-5 flex justify-between items-center text-white shrink-0">
                         <div>
-                            <h3 className="font-black text-2xl tracking-tight">{selectedEntry.clientName}</h3>
-                            <div className="flex items-center gap-4 text-slate-400 text-xs font-bold mt-1">
+                            <h3 className="font-black text-xl tracking-tight">{selectedEntry.clientName}</h3>
+                            <div className="flex flex-wrap items-center gap-2 text-slate-400 text-xs font-bold mt-1">
                                 <span className="flex items-center"><Phone className="w-3 h-3 mr-1" /> {selectedEntry.contactNo}</span>
-                                <span className="w-1 h-1 bg-slate-600 rounded-full"></span>
-                                <span>Service: {new Date(selectedEntry.date).toLocaleDateString()}</span>
+                                <span className="hidden md:inline w-1 h-1 bg-slate-600 rounded-full"></span>
+                                <span>Due: ₹{selectedEntry.paymentMethod === 'PENDING' ? selectedEntry.amount : selectedEntry.pendingAmount}</span>
                             </div>
                         </div>
-                        <button onClick={() => setIsModalOpen(false)} className="hover:bg-slate-800 p-2.5 rounded-full transition-colors bg-slate-800/50"><X className="w-6 h-6" /></button>
+                        <button onClick={() => setIsModalOpen(false)} className="hover:bg-slate-800 p-2 rounded-full transition-colors bg-slate-800/50"><X className="w-6 h-6" /></button>
                     </div>
                     
-                    <div className="flex-1 overflow-y-auto p-8 scrollbar-hide">
+                    <div className="flex-1 overflow-y-auto p-6 scrollbar-hide">
                         <div className="flex flex-col md:flex-row gap-8">
                             {/* Left: Quick Actions */}
                             <div className={`flex-1 space-y-5 transition-opacity duration-300 ${modalMode === 'PAY' ? 'opacity-50 pointer-events-none grayscale' : 'opacity-100'}`}>
