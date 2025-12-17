@@ -122,10 +122,11 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
          <div className="max-w-sm w-full relative flex flex-col">
             
             <div className="text-center mb-10">
+               {/* INCREASED LOGO SIZE: h-24 on mobile, h-28 on desktop */}
                <img 
                  src={LOGO_URL}
                  alt="Mahaveer Logo" 
-                 className="h-16 mx-auto mb-6 object-contain"
+                 className="h-24 lg:h-28 mx-auto mb-6 object-contain"
                  onError={(e) => { e.currentTarget.style.display = 'none'; }} 
                />
                
