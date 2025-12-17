@@ -57,8 +57,8 @@ const NewEntryForm: React.FC = () => {
   
   const [formData, setFormData] = useState<Partial<Entry>>(initialFormState);
   
-  // Main form received amount (manual entry)
-  const [receivedAmount, setReceivedAmount] = useState<number | string>('');
+  // Main form pending amount (manual entry)
+  const [manualPendingAmount, setManualPendingAmount] = useState<number | string>('');
   const [isFormPartPayment, setIsFormPartPayment] = useState(false);
   
   // Notification State
@@ -78,7 +78,7 @@ const NewEntryForm: React.FC = () => {
   useEffect(() => {
       if (formData.serviceType === 'DEMO') {
           setFormData(prev => ({ ...prev, amount: 0, paymentMethod: 'CASH' }));
-          setReceivedAmount(0);
+          setManualPendingAmount('');
           setIsFormPartPayment(false);
       }
   }, [formData.serviceType]);
@@ -179,20 +179,28 @@ const NewEntryForm: React.FC = () => {
       return;
     }
 
+    let finalTotal = Number(formData.amount || 0);
     let pending = 0;
-    const totalBill = Number(formData.amount || 0);
 
     if (formData.paymentMethod === 'PENDING') {
-        pending = totalBill;
+        // Full pending
+        pending = finalTotal;
     } else if (isFormPartPayment) {
-        const paid = Number(receivedAmount || 0);
-        pending = Math.max(0, totalBill - paid);
+        // MAIN INPUT IS 'PAID AMOUNT'
+        // PENDING INPUT IS 'PENDING AMOUNT'
+        // TOTAL = PAID + PENDING
+        const paid = finalTotal;
+        const extra = Number(manualPendingAmount || 0);
+        
+        finalTotal = paid + extra; 
+        pending = extra;
     } else {
         pending = 0;
     }
 
     const entryToSubmit: Entry = {
         ...formData,
+        amount: finalTotal,
         pendingAmount: pending
     } as Entry;
 
@@ -216,7 +224,7 @@ const NewEntryForm: React.FC = () => {
       
       // Reset Form
       setFormData({ ...initialFormState, date: formData.date });
-      setReceivedAmount('');
+      setManualPendingAmount('');
       setIsFormPartPayment(false);
       setActivePackage(null);
       
@@ -340,11 +348,6 @@ const NewEntryForm: React.FC = () => {
 
   const isDemo = formData.serviceType === 'DEMO';
   
-  // Calculate Pending for Main Form
-  const currentTotal = Number(formData.amount || 0);
-  const currentReceived = isFormPartPayment ? Number(receivedAmount || 0) : currentTotal;
-  const formPending = Math.max(0, currentTotal - currentReceived);
-
   // Edit Modal Calculation
   const editPendingCalc = isPartPayment ? Math.max(0, Number(editTotalAmount) - Number(editReceivedAmount)) : 0;
 
@@ -632,9 +635,11 @@ const NewEntryForm: React.FC = () => {
                     </div>
                      <div className="p-6 space-y-8">
                          
-                         {/* Total Amount */}
+                         {/* Total Amount / Paid Amount */}
                          <div className="bg-white rounded-3xl p-6 border border-emerald-200 text-center shadow-inner relative overflow-hidden">
-                            <label className="text-emerald-800 font-black text-xs uppercase tracking-widest mb-2 block">Total Bill Amount</label>
+                            <label className="text-emerald-800 font-black text-xs uppercase tracking-widest mb-2 block">
+                                {isFormPartPayment ? 'Paid Amount' : 'Total Bill Amount'}
+                            </label>
                             <div className="relative flex justify-center items-center">
                                 <span className="text-emerald-500 text-3xl font-black mr-2">₹</span>
                                 <input
@@ -665,28 +670,20 @@ const NewEntryForm: React.FC = () => {
                             </div>
                         )}
 
-                        {/* Received & Pending Inputs */}
+                        {/* Manual Pending Input */}
                         {isFormPartPayment && formData.paymentMethod !== 'PENDING' && (
-                            <div className="animate-in fade-in slide-in-from-top-2 space-y-4">
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="bg-emerald-50 rounded-2xl p-3 border border-emerald-100">
-                                        <label className="block text-[10px] font-black uppercase tracking-widest text-emerald-600 mb-1 ml-1">Received</label>
-                                        <div className="flex items-center gap-1">
-                                            <span className="text-emerald-400 font-bold text-lg">₹</span>
-                                            <input 
-                                                type="number" 
-                                                value={receivedAmount}
-                                                onChange={(e) => setReceivedAmount(e.target.value)}
-                                                className="w-full bg-transparent text-lg font-black text-emerald-800 focus:outline-none border-b border-emerald-200 placeholder-emerald-200"
-                                                placeholder="0"
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="bg-red-50 rounded-2xl p-3 border border-red-100">
-                                        <label className="block text-[10px] font-black uppercase tracking-widest text-red-600 mb-1 ml-1">Pending</label>
-                                        <div className="flex items-center gap-1 h-[30px]">
-                                            <span className="text-red-600 font-black text-lg">₹ {formPending}</span>
-                                        </div>
+                            <div className="animate-in fade-in slide-in-from-top-2">
+                                <div className="bg-red-50 rounded-2xl p-4 border border-red-100">
+                                    <label className="block text-[10px] font-black uppercase tracking-widest text-red-600 mb-1 ml-1">Pending Amount</label>
+                                    <div className="flex items-center gap-1">
+                                        <span className="text-red-600 font-black text-lg">₹</span>
+                                        <input 
+                                            type="number" 
+                                            value={manualPendingAmount}
+                                            onChange={(e) => setManualPendingAmount(e.target.value)}
+                                            className="w-full bg-transparent text-lg font-black text-red-600 focus:outline-none border-b border-red-200 placeholder-red-200"
+                                            placeholder="Enter pending amount"
+                                        />
                                     </div>
                                 </div>
                             </div>
@@ -779,10 +776,7 @@ const NewEntryForm: React.FC = () => {
                  </div>
              ) : (
                  filteredTodayEntries.map((entry) => {
-                     // Check if purely pending method OR has partial pending due OR amount is 0/missing for non-demos
-                     // UPDATE: User requested to ONLY show the Amount Action if amount is NOT entered (i.e. 0). 
-                     // Even if Pending or Partial, if total amount > 0, it is considered "entered" and shouldn't prompt for immediate update here.
-                     
+                     // Check if amount is missing (0)
                      const isZeroAmount = (entry.amount === 0 || !entry.amount) && entry.serviceType !== 'DEMO' && entry.serviceType !== 'MUNDAN';
                      
                      // Only show action/highlight if amount is missing
