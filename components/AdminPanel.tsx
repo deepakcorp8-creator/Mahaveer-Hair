@@ -1,10 +1,10 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { 
-  Shield, Settings, Database, Download, UserPlus, Trash2, 
-  User as UserIcon, CheckCircle, XCircle, Lock, Search, 
-  FileSpreadsheet, FileText, Activity, Server, Clock, 
-  UploadCloud, Camera, MoreVertical, Edit2, Save
+  Shield, Database, Download, UserPlus, Trash2, 
+  CheckCircle, XCircle, Lock, 
+  FileSpreadsheet, FileText, Activity, 
+  Camera, Edit2, Save
 } from 'lucide-react';
 import { api } from '../services/api';
 import { User, Role } from '../types';
@@ -13,6 +13,9 @@ const AdminPanel: React.FC = () => {
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  
+  // State for Role Filtering
+  const [roleFilter, setRoleFilter] = useState<'ALL' | 'ADMIN' | 'USER'>('ALL');
   
   // User Form State
   const [showAddForm, setShowAddForm] = useState(false);
@@ -49,7 +52,7 @@ const AdminPanel: React.FC = () => {
         const data = await api.getUsers();
         setUsers(data);
     } catch (e) {
-      console.error(e);
+        console.error(e);
     } finally {
       setLoading(false);
     }
@@ -206,10 +209,19 @@ const AdminPanel: React.FC = () => {
       setSelectedPermissions(prev => prev.includes(moduleId) ? prev.filter(p => p !== moduleId) : [...prev, moduleId]);
   };
 
-  const filteredUsers = users.filter(u => 
-      u.username.toLowerCase().includes(searchTerm.toLowerCase()) || 
-      (u.department && u.department.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  // FILTERING LOGIC
+  const filteredUsers = users.filter(u => {
+      const searchLower = searchTerm.toLowerCase();
+      // Search Logic (Always true if empty)
+      const matchesSearch = searchTerm === '' || 
+                            u.username.toLowerCase().includes(searchLower) || 
+                            (u.department && u.department.toLowerCase().includes(searchLower));
+      
+      // Role Filter Logic (Always true if ALL)
+      const matchesRole = roleFilter === 'ALL' || u.role === roleFilter;
+
+      return matchesSearch && matchesRole;
+  });
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500 font-sans text-slate-800">
@@ -227,22 +239,6 @@ const AdminPanel: React.FC = () => {
             </div>
             <h2 className="text-3xl font-black text-slate-800 tracking-tight">Admin Control Panel</h2>
             <p className="text-slate-500 font-medium mt-1">Manage system settings, users and exports.</p>
-        </div>
-        
-        <div className="flex items-center gap-3">
-            <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <input 
-                    type="text" 
-                    placeholder="Search users..." 
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-9 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm w-64"
-                />
-            </div>
-            <button className="flex items-center gap-2 bg-white border border-slate-200 text-slate-600 px-4 py-2.5 rounded-xl font-bold text-sm shadow-sm hover:bg-slate-50 transition-colors">
-                <Settings className="w-4 h-4" /> Settings
-            </button>
         </div>
       </div>
 
@@ -264,11 +260,6 @@ const AdminPanel: React.FC = () => {
                     </div>
                     
                     <div className="flex gap-2">
-                        <div className="hidden sm:flex items-center bg-white border border-slate-200 rounded-lg p-1">
-                            <button className="px-3 py-1.5 text-xs font-bold bg-slate-100 rounded text-slate-700">All Roles</button>
-                            <button className="px-3 py-1.5 text-xs font-bold text-slate-400 hover:text-slate-600">Admins</button>
-                            <button className="px-3 py-1.5 text-xs font-bold text-slate-400 hover:text-slate-600">Users</button>
-                        </div>
                         <button 
                             onClick={() => {
                                 setShowAddForm(!showAddForm);
@@ -279,7 +270,7 @@ const AdminPanel: React.FC = () => {
                                 ${showAddForm ? 'bg-slate-700 hover:bg-slate-800' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-200'}`}
                         >
                             {showAddForm ? <XCircle className="w-4 h-4 mr-2" /> : <UserPlus className="w-4 h-4 mr-2" />}
-                            {showAddForm ? 'Close Form' : 'Add User'}
+                            {showAddForm ? 'Close' : 'Add User'}
                         </button>
                     </div>
                 </div>
@@ -414,7 +405,14 @@ const AdminPanel: React.FC = () => {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
-                            {filteredUsers.map((u, idx) => (
+                            {filteredUsers.length === 0 ? (
+                                <tr>
+                                    <td colSpan={4} className="px-6 py-8 text-center text-slate-400 font-bold">
+                                        No users found matching filter.
+                                    </td>
+                                </tr>
+                            ) : (
+                                filteredUsers.map((u, idx) => (
                                 <tr key={idx} className="hover:bg-slate-50/80 transition-colors group">
                                     <td className="px-6 py-4">
                                         <div className="flex items-center gap-4">
@@ -475,7 +473,7 @@ const AdminPanel: React.FC = () => {
                                         </div>
                                     </td>
                                 </tr>
-                            ))}
+                            )))}
                         </tbody>
                     </table>
                 </div>
