@@ -4,7 +4,7 @@ import {
   Shield, Database, Download, UserPlus, Trash2, 
   CheckCircle, XCircle, Lock, 
   FileSpreadsheet, FileText, Activity, 
-  Camera, Edit2, Save
+  Edit2, Save
 } from 'lucide-react';
 import { api } from '../services/api';
 import { User, Role } from '../types';
@@ -12,10 +12,6 @@ import { User, Role } from '../types';
 const AdminPanel: React.FC = () => {
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  
-  // State for Role Filtering
-  const [roleFilter, setRoleFilter] = useState<'ALL' | 'ADMIN' | 'USER'>('ALL');
   
   // User Form State
   const [showAddForm, setShowAddForm] = useState(false);
@@ -24,11 +20,9 @@ const AdminPanel: React.FC = () => {
       username: '', 
       password: '', 
       role: 'USER', 
-      department: '',
-      dpUrl: '' 
+      department: ''
   });
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>(['/new-entry']); 
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const formRef = useRef<HTMLDivElement>(null);
 
   // Available modules for permissions
@@ -94,45 +88,6 @@ const AdminPanel: React.FC = () => {
       document.body.removeChild(link);
   };
 
-  // --- DP UPLOAD LOGIC ---
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-      const file = event.target.files?.[0];
-      if (!file) return;
-
-      if (!file.type.startsWith('image/')) {
-          alert("Please upload an image file.");
-          return;
-      }
-
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = (e) => {
-          const img = new Image();
-          img.src = e.target?.result as string;
-          img.onload = () => {
-              const canvas = document.createElement('canvas');
-              const MAX_WIDTH = 400; 
-              const MAX_HEIGHT = 400;
-              let width = img.width;
-              let height = img.height;
-
-              if (width > height) {
-                  if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
-              } else {
-                  if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; }
-              }
-
-              canvas.width = width;
-              canvas.height = height;
-              const ctx = canvas.getContext('2d');
-              ctx?.drawImage(img, 0, 0, width, height);
-              
-              const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
-              setNewUser(prev => ({ ...prev, dpUrl: dataUrl }));
-          };
-      };
-  };
-
   const handleEditUser = (user: any, e: React.MouseEvent) => {
       // STOP PROPAGATION to prevent any row clicks if implemented later
       e.stopPropagation();
@@ -143,8 +98,7 @@ const AdminPanel: React.FC = () => {
           username: user.username,
           password: user.password, // Pre-fill existing password
           role: user.role,
-          department: user.department || '',
-          dpUrl: user.dpUrl || ''
+          department: user.department || ''
       });
       setSelectedPermissions(user.permissions || []);
       setIsEditing(true);
@@ -170,8 +124,7 @@ const AdminPanel: React.FC = () => {
             role: newUser.role as Role,
             department: newUser.department,
             password: newUser.password,
-            permissions: newUser.role === 'ADMIN' ? [] : selectedPermissions,
-            dpUrl: newUser.dpUrl
+            permissions: newUser.role === 'ADMIN' ? [] : selectedPermissions
         });
     } else {
         await api.addUser({
@@ -179,13 +132,12 @@ const AdminPanel: React.FC = () => {
             role: newUser.role as Role,
             department: newUser.department,
             password: newUser.password,
-            permissions: newUser.role === 'ADMIN' ? [] : selectedPermissions,
-            dpUrl: newUser.dpUrl
+            permissions: newUser.role === 'ADMIN' ? [] : selectedPermissions
         });
     }
     
     // Reset
-    setNewUser({ username: '', password: '', role: 'USER', department: '', dpUrl: '' });
+    setNewUser({ username: '', password: '', role: 'USER', department: '' });
     setSelectedPermissions(['/new-entry']);
     setShowAddForm(false);
     setIsEditing(false);
@@ -208,20 +160,6 @@ const AdminPanel: React.FC = () => {
   const handlePermissionChange = (moduleId: string) => {
       setSelectedPermissions(prev => prev.includes(moduleId) ? prev.filter(p => p !== moduleId) : [...prev, moduleId]);
   };
-
-  // FILTERING LOGIC
-  const filteredUsers = users.filter(u => {
-      const searchLower = searchTerm.toLowerCase();
-      // Search Logic (Always true if empty)
-      const matchesSearch = searchTerm === '' || 
-                            u.username.toLowerCase().includes(searchLower) || 
-                            (u.department && u.department.toLowerCase().includes(searchLower));
-      
-      // Role Filter Logic (Always true if ALL)
-      const matchesRole = roleFilter === 'ALL' || u.role === roleFilter;
-
-      return matchesSearch && matchesRole;
-  });
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500 font-sans text-slate-800">
@@ -264,7 +202,7 @@ const AdminPanel: React.FC = () => {
                             onClick={() => {
                                 setShowAddForm(!showAddForm);
                                 setIsEditing(false);
-                                setNewUser({ username: '', password: '', role: 'USER', department: '', dpUrl: '' });
+                                setNewUser({ username: '', password: '', role: 'USER', department: '' });
                             }}
                             className={`flex items-center text-sm font-bold text-white px-4 py-2 rounded-xl transition-all shadow-md 
                                 ${showAddForm ? 'bg-slate-700 hover:bg-slate-800' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-200'}`}
@@ -287,36 +225,8 @@ const AdminPanel: React.FC = () => {
                         
                         <form onSubmit={handleAddOrUpdateUser} className="grid grid-cols-1 md:grid-cols-12 gap-6">
                             
-                            {/* Photo Upload */}
-                            <div className="md:col-span-3 flex flex-col items-center">
-                                <div 
-                                    className="w-24 h-24 rounded-2xl bg-white border-2 border-dashed border-slate-300 flex items-center justify-center cursor-pointer hover:border-indigo-400 hover:bg-indigo-50 transition-all relative overflow-hidden group shadow-sm"
-                                    onClick={() => fileInputRef.current?.click()}
-                                >
-                                    {newUser.dpUrl ? (
-                                        <img 
-                                            src={newUser.dpUrl} 
-                                            className="w-full h-full object-cover" 
-                                            alt="Preview" 
-                                            onError={(e) => {
-                                                (e.target as HTMLImageElement).src = ''; 
-                                                // Fallback will show blank or we can hide image
-                                                setNewUser(prev => ({...prev, dpUrl: ''}));
-                                            }}
-                                        />
-                                    ) : (
-                                        <Camera className="w-8 h-8 text-slate-300" />
-                                    )}
-                                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <p className="text-white text-[10px] font-bold">Change</p>
-                                    </div>
-                                </div>
-                                <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
-                                <p className="text-[10px] text-slate-400 font-bold mt-2">Profile Picture</p>
-                            </div>
-
                             {/* Inputs */}
-                            <div className="md:col-span-9 grid grid-cols-2 gap-4">
+                            <div className="md:col-span-12 grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-[10px] font-black uppercase text-slate-500 mb-1">Username</label>
                                     <input 
@@ -405,32 +315,20 @@ const AdminPanel: React.FC = () => {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
-                            {filteredUsers.length === 0 ? (
+                            {users.length === 0 ? (
                                 <tr>
                                     <td colSpan={4} className="px-6 py-8 text-center text-slate-400 font-bold">
-                                        No users found matching filter.
+                                        No users found.
                                     </td>
                                 </tr>
                             ) : (
-                                filteredUsers.map((u, idx) => (
+                                users.map((u, idx) => (
                                 <tr key={idx} className="hover:bg-slate-50/80 transition-colors group">
                                     <td className="px-6 py-4">
                                         <div className="flex items-center gap-4">
-                                            {/* Large Avatar - Increased Size */}
-                                            <div className="w-14 h-14 rounded-full border-2 border-white shadow-md flex items-center justify-center text-xl font-black shrink-0 overflow-hidden bg-gradient-to-br from-slate-100 to-slate-200 text-slate-500">
-                                                {u.dpUrl ? (
-                                                    <img 
-                                                        src={u.dpUrl} 
-                                                        alt={u.username} 
-                                                        className="w-full h-full object-cover" 
-                                                        onError={(e) => {
-                                                            (e.target as HTMLImageElement).style.display = 'none';
-                                                            (e.target as HTMLImageElement).parentElement!.innerText = u.username.charAt(0).toUpperCase();
-                                                        }}
-                                                    />
-                                                ) : (
-                                                    u.username.charAt(0).toUpperCase()
-                                                )}
+                                            {/* Large Avatar - Standard Initials */}
+                                            <div className="w-12 h-12 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-lg font-black text-slate-500 shadow-sm">
+                                                {u.username.charAt(0).toUpperCase()}
                                             </div>
                                             <div>
                                                 <div className="font-black text-slate-800 text-base">{u.username}</div>
