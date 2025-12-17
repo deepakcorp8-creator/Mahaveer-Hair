@@ -1,6 +1,6 @@
 
 // =====================================================================================
-// ⚠️ MAHUVEER WEB APP - BACKEND SCRIPT (V14 - Auto-Fix Headers)
+// ⚠️ MAHUVEER WEB APP - BACKEND SCRIPT (V15 - Admin Edit Support)
 // =====================================================================================
 
 function doGet(e) {
@@ -215,8 +215,59 @@ function doPost(e) {
       if (users.some(row => row[0].toString().toLowerCase() === data.username.toLowerCase())) {
           return response({status: "error", message: "Exists"});
       }
-      loginSheet.appendRow([data.username, data.password, data.role, data.department, data.permissions]);
+      
+      // Structure: [Username, Password, Role, Dept, Permissions, DP, Gender, DOB, Address]
+      var finalDpUrl = data.dpUrl || '';
+      if (finalDpUrl.toString().indexOf('data:image') === 0) {
+          try {
+              var splitData = finalDpUrl.split('base64,');
+              var contentType = splitData[0].split(':')[1].split(';')[0];
+              var blob = Utilities.newBlob(Utilities.base64Decode(splitData[1]), contentType, "profile_" + data.username + "_" + new Date().getTime());
+              var file = DriveApp.createFile(blob);
+              file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+              finalDpUrl = "https://drive.google.com/uc?export=view&id=" + file.getId();
+          } catch(e) {}
+      }
+
+      loginSheet.appendRow([data.username, data.password, data.role, data.department, data.permissions, finalDpUrl, '', '', '']);
       return response({status: "success"});
+  }
+
+  // 15. ADMIN UPDATE USER
+  if (action == 'adminUpdateUser') {
+      const loginSheet = getSheet(ss, "LOGIN");
+      const dataRange = loginSheet.getDataRange();
+      const values = dataRange.getValues();
+      
+      for (let i = 1; i < values.length; i++) { 
+          // Match by original username (assuming passed as username, and we don't change username)
+          if (values[i][0].toString().toLowerCase() === data.username.toLowerCase()) {
+              const row = i + 1;
+              
+              // Handle Image Update
+              var finalDpUrl = data.dpUrl || values[i][5];
+              if (data.dpUrl && data.dpUrl.toString().indexOf('data:image') === 0) {
+                  try {
+                      var splitData = data.dpUrl.split('base64,');
+                      var contentType = splitData[0].split(':')[1].split(';')[0];
+                      var blob = Utilities.newBlob(Utilities.base64Decode(splitData[1]), contentType, "profile_" + data.username + "_" + new Date().getTime());
+                      var file = DriveApp.createFile(blob);
+                      file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+                      finalDpUrl = "https://drive.google.com/uc?export=view&id=" + file.getId();
+                  } catch (e) {}
+              }
+
+              // Update Fields: Password(2), Role(3), Dept(4), Perms(5), DP(6)
+              if (data.password) loginSheet.getRange(row, 2).setValue(data.password);
+              loginSheet.getRange(row, 3).setValue(data.role);
+              loginSheet.getRange(row, 4).setValue(data.department);
+              loginSheet.getRange(row, 5).setValue(data.permissions);
+              loginSheet.getRange(row, 6).setValue(finalDpUrl);
+              
+              return response({status: "success"});
+          }
+      }
+      return response({error: "User not found"});
   }
 
   // 10. DELETE USER
@@ -233,7 +284,7 @@ function doPost(e) {
       return response({error: "Not found"});
   }
 
-  // 13. UPDATE USER PROFILE
+  // 13. UPDATE USER PROFILE (Self Update)
   if (action == 'updateUser') {
       const loginSheet = getSheet(ss, "LOGIN");
       const dataRange = loginSheet.getDataRange();
@@ -251,14 +302,15 @@ function doPost(e) {
                       file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
                       finalDpUrl = "https://drive.google.com/uc?export=view&id=" + file.getId();
                   } catch (e) {
-                      finalDpUrl = values[i][4]; 
+                      finalDpUrl = values[i][5]; 
                   }
               }
               const row = i + 1;
-              loginSheet.getRange(row, 5).setValue(finalDpUrl);   
-              loginSheet.getRange(row, 6).setValue(data.gender || ''); 
-              loginSheet.getRange(row, 7).setValue(data.dob || '');     
-              loginSheet.getRange(row, 8).setValue(data.address || ''); 
+              // Updates Cols 6, 7, 8, 9 (DP, Gender, DOB, Address)
+              loginSheet.getRange(row, 6).setValue(finalDpUrl);   
+              loginSheet.getRange(row, 7).setValue(data.gender || ''); 
+              loginSheet.getRange(row, 8).setValue(data.dob || '');     
+              loginSheet.getRange(row, 9).setValue(data.address || ''); 
               return response({status: "success", newDpUrl: finalDpUrl});
           }
       }
@@ -324,6 +376,12 @@ function getSheet(ss, name) {
              var headers = ["START DATE", "CLIENT NAME", "PACKAGE NAME", "TOTAL COST", "TOTAL SERVICES", "STATUS"];
              sheet.appendRow(headers);
              sheet.getRange(1, 1, 1, headers.length).setFontWeight("bold");
+        }
+        else if (name === "LOGIN") {
+             // Recreating Login Headers
+             var headers = ["USERNAME", "PASSWORD", "ROLE", "DEPARTMENT", "PERMISSIONS", "DP URL", "GENDER", "DOB", "ADDRESS"];
+             sheet.appendRow(headers);
+             sheet.getRange(1, 1, 1, headers.length).setFontWeight("bold").setBackground("#f3f4f6");
         }
     }
     
@@ -402,19 +460,18 @@ function getOptions(ss) {
 function getUsers(ss) {
     const sheet = getSheet(ss, "LOGIN");
     if (!sheet || sheet.getLastRow() <= 1) return response([]);
-    const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 8).getValues();
+    const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 9).getValues();
     
     return response(data.map(row => ({ 
         username: row[0], 
         password: row[1], 
         role: row[2], 
         department: row[3], 
-        permissions: '', 
-        branch: row[3], 
-        dpUrl: row[4],  
-        gender: row[5], 
-        dob: formatDate(row[6]), 
-        address: row[7] 
+        permissions: row[4] || '', // Col 5
+        dpUrl: row[5],             // Col 6
+        gender: row[6],            // Col 7
+        dob: formatDate(row[7]),   // Col 8
+        address: row[8]            // Col 9
     })));
 }
 

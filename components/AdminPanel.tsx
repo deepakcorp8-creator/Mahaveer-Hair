@@ -16,6 +16,7 @@ const AdminPanel: React.FC = () => {
   
   // User Form State
   const [showAddForm, setShowAddForm] = useState(false);
+  const [isEditing, setIsEditing] = useState(false); // Track if we are editing
   const [newUser, setNewUser] = useState({ 
       username: '', 
       password: '', 
@@ -128,24 +129,54 @@ const AdminPanel: React.FC = () => {
       };
   };
 
-  const handleAddUser = async (e: React.FormEvent) => {
+  const handleEditUser = (user: any) => {
+      setNewUser({
+          username: user.username,
+          password: user.password, // Pre-fill existing password
+          role: user.role,
+          department: user.department || '',
+          dpUrl: user.dpUrl || ''
+      });
+      setSelectedPermissions(user.permissions || []);
+      setIsEditing(true);
+      setShowAddForm(true);
+      
+      // Scroll to form
+      const formEl = document.getElementById('user-form-container');
+      if(formEl) formEl.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const handleAddOrUpdateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newUser.username || !newUser.password) return;
     
     setLoading(true);
-    await api.addUser({
-        username: newUser.username,
-        role: newUser.role as Role,
-        department: newUser.department,
-        password: newUser.password,
-        permissions: newUser.role === 'ADMIN' ? [] : selectedPermissions,
-        dpUrl: newUser.dpUrl // Send the image data
-    });
+    
+    if (isEditing) {
+        await api.updateUserAdmin({
+            username: newUser.username,
+            role: newUser.role as Role,
+            department: newUser.department,
+            password: newUser.password,
+            permissions: newUser.role === 'ADMIN' ? [] : selectedPermissions,
+            dpUrl: newUser.dpUrl
+        });
+    } else {
+        await api.addUser({
+            username: newUser.username,
+            role: newUser.role as Role,
+            department: newUser.department,
+            password: newUser.password,
+            permissions: newUser.role === 'ADMIN' ? [] : selectedPermissions,
+            dpUrl: newUser.dpUrl
+        });
+    }
     
     // Reset
     setNewUser({ username: '', password: '', role: 'USER', department: '', dpUrl: '' });
     setSelectedPermissions(['/new-entry']);
     setShowAddForm(false);
+    setIsEditing(false);
     await loadData();
     setLoading(false);
   };
@@ -230,7 +261,11 @@ const AdminPanel: React.FC = () => {
                             <button className="px-3 py-1.5 text-xs font-bold text-slate-400 hover:text-slate-600">Users</button>
                         </div>
                         <button 
-                            onClick={() => setShowAddForm(!showAddForm)}
+                            onClick={() => {
+                                setShowAddForm(!showAddForm);
+                                setIsEditing(false);
+                                setNewUser({ username: '', password: '', role: 'USER', department: '', dpUrl: '' });
+                            }}
                             className="flex items-center text-sm font-bold text-white bg-indigo-600 px-4 py-2 rounded-xl hover:bg-indigo-700 transition-all shadow-md shadow-indigo-200"
                         >
                             <UserPlus className="w-4 h-4 mr-2" />
@@ -239,10 +274,10 @@ const AdminPanel: React.FC = () => {
                     </div>
                 </div>
 
-                {/* ADD USER FORM */}
+                {/* ADD / EDIT USER FORM */}
                 {showAddForm && (
-                    <div className="p-6 bg-slate-50 border-b border-slate-200 animate-in slide-in-from-top-4">
-                        <form onSubmit={handleAddUser} className="grid grid-cols-1 md:grid-cols-12 gap-6">
+                    <div id="user-form-container" className="p-6 bg-slate-50 border-b border-slate-200 animate-in slide-in-from-top-4">
+                        <form onSubmit={handleAddOrUpdateUser} className="grid grid-cols-1 md:grid-cols-12 gap-6">
                             
                             {/* Photo Upload */}
                             <div className="md:col-span-3 flex flex-col items-center">
@@ -269,10 +304,11 @@ const AdminPanel: React.FC = () => {
                                     <label className="block text-[10px] font-black uppercase text-slate-500 mb-1">Username</label>
                                     <input 
                                         type="text" 
-                                        className="w-full rounded-xl border-slate-200 border p-2.5 text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none"
+                                        className={`w-full rounded-xl border-slate-200 border p-2.5 text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none ${isEditing ? 'bg-slate-100 text-slate-500 cursor-not-allowed' : ''}`}
                                         value={newUser.username}
                                         onChange={e => setNewUser({...newUser, username: e.target.value})}
                                         required
+                                        readOnly={isEditing}
                                     />
                                 </div>
                                 <div>
@@ -332,7 +368,7 @@ const AdminPanel: React.FC = () => {
                             <div className="md:col-span-12 flex justify-end gap-3">
                                 <button type="button" onClick={() => setShowAddForm(false)} className="px-5 py-2.5 rounded-xl text-xs font-bold text-slate-500 hover:bg-slate-100">Cancel</button>
                                 <button type="submit" disabled={loading} className="bg-slate-900 text-white px-6 py-2.5 rounded-xl font-bold text-xs hover:bg-black transition-all shadow-lg">
-                                    {loading ? 'Creating...' : 'Create User'}
+                                    {loading ? 'Saving...' : (isEditing ? 'Update User' : 'Create User')}
                                 </button>
                             </div>
                         </form>
@@ -387,12 +423,17 @@ const AdminPanel: React.FC = () => {
                                     </td>
                                     <td className="px-6 py-4 text-right">
                                         <div className="flex items-center justify-end gap-2 opacity-60 group-hover:opacity-100 transition-opacity">
-                                            <button className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">
+                                            <button 
+                                                onClick={() => handleEditUser(u)}
+                                                className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                                                title="Edit User"
+                                            >
                                                 <Edit2 className="w-4 h-4" />
                                             </button>
                                             <button 
                                                 onClick={(e) => handleDeleteUser(e, u.username)}
                                                 className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                title="Delete User"
                                             >
                                                 <Trash2 className="w-4 h-4" />
                                             </button>
