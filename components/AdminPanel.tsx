@@ -4,7 +4,7 @@ import {
   Shield, Settings, Database, Download, UserPlus, Trash2, 
   User as UserIcon, CheckCircle, XCircle, Lock, Search, 
   FileSpreadsheet, FileText, Activity, Server, Clock, 
-  UploadCloud, Camera, MoreVertical, Edit2
+  UploadCloud, Camera, MoreVertical, Edit2, Save
 } from 'lucide-react';
 import { api } from '../services/api';
 import { User, Role } from '../types';
@@ -26,6 +26,7 @@ const AdminPanel: React.FC = () => {
   });
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>(['/new-entry']); 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const formRef = useRef<HTMLDivElement>(null);
 
   // Available modules for permissions
   const availableModules = [
@@ -129,7 +130,12 @@ const AdminPanel: React.FC = () => {
       };
   };
 
-  const handleEditUser = (user: any) => {
+  const handleEditUser = (user: any, e: React.MouseEvent) => {
+      // STOP PROPAGATION to prevent any row clicks if implemented later
+      e.stopPropagation();
+      e.preventDefault();
+
+      // Set State
       setNewUser({
           username: user.username,
           password: user.password, // Pre-fill existing password
@@ -141,9 +147,12 @@ const AdminPanel: React.FC = () => {
       setIsEditing(true);
       setShowAddForm(true);
       
-      // Scroll to form
-      const formEl = document.getElementById('user-form-container');
-      if(formEl) formEl.scrollIntoView({ behavior: 'smooth' });
+      // Scroll to form with a slight delay to ensure render
+      setTimeout(() => {
+          if(formRef.current) {
+              formRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+      }, 100);
   };
 
   const handleAddOrUpdateUser = async (e: React.FormEvent) => {
@@ -266,27 +275,44 @@ const AdminPanel: React.FC = () => {
                                 setIsEditing(false);
                                 setNewUser({ username: '', password: '', role: 'USER', department: '', dpUrl: '' });
                             }}
-                            className="flex items-center text-sm font-bold text-white bg-indigo-600 px-4 py-2 rounded-xl hover:bg-indigo-700 transition-all shadow-md shadow-indigo-200"
+                            className={`flex items-center text-sm font-bold text-white px-4 py-2 rounded-xl transition-all shadow-md 
+                                ${showAddForm ? 'bg-slate-700 hover:bg-slate-800' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-200'}`}
                         >
-                            <UserPlus className="w-4 h-4 mr-2" />
-                            {showAddForm ? 'Close' : 'Add User'}
+                            {showAddForm ? <XCircle className="w-4 h-4 mr-2" /> : <UserPlus className="w-4 h-4 mr-2" />}
+                            {showAddForm ? 'Close Form' : 'Add User'}
                         </button>
                     </div>
                 </div>
 
                 {/* ADD / EDIT USER FORM */}
                 {showAddForm && (
-                    <div id="user-form-container" className="p-6 bg-slate-50 border-b border-slate-200 animate-in slide-in-from-top-4">
+                    <div ref={formRef} id="user-form-container" className="p-6 bg-slate-50 border-b border-slate-200 animate-in slide-in-from-top-4">
+                        <div className="flex items-center justify-between mb-4">
+                            <h4 className="text-sm font-black uppercase tracking-widest text-indigo-600">
+                                {isEditing ? 'Edit User Details' : 'Create New User'}
+                            </h4>
+                            {isEditing && <span className="text-[10px] bg-indigo-100 text-indigo-700 px-2 py-1 rounded font-bold">Editing Mode</span>}
+                        </div>
+                        
                         <form onSubmit={handleAddOrUpdateUser} className="grid grid-cols-1 md:grid-cols-12 gap-6">
                             
                             {/* Photo Upload */}
                             <div className="md:col-span-3 flex flex-col items-center">
                                 <div 
-                                    className="w-24 h-24 rounded-2xl bg-white border-2 border-dashed border-slate-300 flex items-center justify-center cursor-pointer hover:border-indigo-400 hover:bg-indigo-50 transition-all relative overflow-hidden group"
+                                    className="w-24 h-24 rounded-2xl bg-white border-2 border-dashed border-slate-300 flex items-center justify-center cursor-pointer hover:border-indigo-400 hover:bg-indigo-50 transition-all relative overflow-hidden group shadow-sm"
                                     onClick={() => fileInputRef.current?.click()}
                                 >
                                     {newUser.dpUrl ? (
-                                        <img src={newUser.dpUrl} className="w-full h-full object-cover" alt="Preview" />
+                                        <img 
+                                            src={newUser.dpUrl} 
+                                            className="w-full h-full object-cover" 
+                                            alt="Preview" 
+                                            onError={(e) => {
+                                                (e.target as HTMLImageElement).src = ''; 
+                                                // Fallback will show blank or we can hide image
+                                                setNewUser(prev => ({...prev, dpUrl: ''}));
+                                            }}
+                                        />
                                     ) : (
                                         <Camera className="w-8 h-8 text-slate-300" />
                                     )}
@@ -367,7 +393,8 @@ const AdminPanel: React.FC = () => {
 
                             <div className="md:col-span-12 flex justify-end gap-3">
                                 <button type="button" onClick={() => setShowAddForm(false)} className="px-5 py-2.5 rounded-xl text-xs font-bold text-slate-500 hover:bg-slate-100">Cancel</button>
-                                <button type="submit" disabled={loading} className="bg-slate-900 text-white px-6 py-2.5 rounded-xl font-bold text-xs hover:bg-black transition-all shadow-lg">
+                                <button type="submit" disabled={loading} className="bg-slate-900 text-white px-6 py-2.5 rounded-xl font-bold text-xs hover:bg-black transition-all shadow-lg flex items-center">
+                                    {loading ? <span className="animate-spin mr-2">⏳</span> : <Save className="w-3 h-3 mr-2" />}
                                     {loading ? 'Saving...' : (isEditing ? 'Update User' : 'Create User')}
                                 </button>
                             </div>
@@ -391,10 +418,18 @@ const AdminPanel: React.FC = () => {
                                 <tr key={idx} className="hover:bg-slate-50/80 transition-colors group">
                                     <td className="px-6 py-4">
                                         <div className="flex items-center gap-4">
-                                            {/* Large Avatar */}
-                                            <div className="w-12 h-12 rounded-full border-2 border-white shadow-md flex items-center justify-center text-lg font-black shrink-0 overflow-hidden bg-gradient-to-br from-slate-100 to-slate-200 text-slate-500">
+                                            {/* Large Avatar - Increased Size */}
+                                            <div className="w-14 h-14 rounded-full border-2 border-white shadow-md flex items-center justify-center text-xl font-black shrink-0 overflow-hidden bg-gradient-to-br from-slate-100 to-slate-200 text-slate-500">
                                                 {u.dpUrl ? (
-                                                    <img src={u.dpUrl} alt={u.username} className="w-full h-full object-cover" />
+                                                    <img 
+                                                        src={u.dpUrl} 
+                                                        alt={u.username} 
+                                                        className="w-full h-full object-cover" 
+                                                        onError={(e) => {
+                                                            (e.target as HTMLImageElement).style.display = 'none';
+                                                            (e.target as HTMLImageElement).parentElement!.innerText = u.username.charAt(0).toUpperCase();
+                                                        }}
+                                                    />
                                                 ) : (
                                                     u.username.charAt(0).toUpperCase()
                                                 )}
@@ -424,15 +459,15 @@ const AdminPanel: React.FC = () => {
                                     <td className="px-6 py-4 text-right">
                                         <div className="flex items-center justify-end gap-2 opacity-60 group-hover:opacity-100 transition-opacity">
                                             <button 
-                                                onClick={() => handleEditUser(u)}
-                                                className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                                                onClick={(e) => handleEditUser(u, e)}
+                                                className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors border border-transparent hover:border-indigo-100 shadow-sm"
                                                 title="Edit User"
                                             >
                                                 <Edit2 className="w-4 h-4" />
                                             </button>
                                             <button 
                                                 onClick={(e) => handleDeleteUser(e, u.username)}
-                                                className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-100 shadow-sm"
                                                 title="Delete User"
                                             >
                                                 <Trash2 className="w-4 h-4" />
