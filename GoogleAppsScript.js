@@ -1,6 +1,6 @@
 
 // =====================================================================================
-// ⚠️ MAHUVEER WEB APP - BACKEND SCRIPT (V16 - Date Format Fix)
+// ⚠️ MAHUVEER WEB APP - BACKEND SCRIPT (V14 - Auto-Fix Headers)
 // =====================================================================================
 
 function doGet(e) {
@@ -32,7 +32,7 @@ function doPost(e) {
     }
 
     dbSheet.appendRow([
-      toSheetDate(data.date), // Col 1 (Formatted)
+      data.date,              // Col 1
       data.clientName,        // Col 2
       data.contactNo,         // Col 3
       data.address,           // Col 4
@@ -41,13 +41,13 @@ function doPost(e) {
       data.patchMethod,       // Col 7
       data.technician,        // Col 8
       data.workStatus,        // Col 9
-      data.amount,            // Col 10
+      data.amount,            // Col 10 (Total Paid Initially)
       data.paymentMethod,     // Col 11
       data.remark,            // Col 12
       data.numberOfService,   // Col 13
       invoiceUrl,             // Col 14
       data.patchSize || '',   // Col 15
-      data.pendingAmount || 0 // Col 16
+      data.pendingAmount || 0 // Col 16 (P) - Initial Pending
     ]);
     
     return response({status: "success", invoiceUrl: invoiceUrl});
@@ -96,12 +96,24 @@ function doPost(e) {
               }
 
               // --- 3. INSERT INTO PAYMENT COLLECTION SHEET ---
-              var formattedNextDate = toSheetDate(data.nextCallDate);
-              var todayDateStr = toSheetDate(new Date()); // Transaction date as DD/MM/YYYY
+              var formattedNextDate = "";
+              if (data.nextCallDate) {
+                  try {
+                      var parts = data.nextCallDate.split('-'); 
+                      if (parts.length === 3) {
+                          formattedNextDate = parts[2] + '/' + parts[1] + '/' + parts[0];
+                      } else {
+                          formattedNextDate = data.nextCallDate;
+                      }
+                  } catch(e) { formattedNextDate = ""; }
+              }
+
+              const today = new Date();
+              const dateStr = today.getFullYear() + '-' + (today.getMonth()+1) + '-' + today.getDate();
               
               collectionSheet.appendRow([
                   data.id,                  // ID
-                  todayDateStr,             // Date of transaction
+                  dateStr,                  // Date of transaction
                   data.clientName,          // Client Name
                   data.contactNo || '',     // Contact
                   data.address || '',       // Address
@@ -126,12 +138,12 @@ function doPost(e) {
   if (action == 'addPackage') {
     const pkgSheet = getSheet(ss, "PACKAGE PLAN");
     pkgSheet.appendRow([
-      toSheetDate(data.startDate), data.clientName, data.packageName, data.totalCost, data.totalServices, data.status || 'PENDING'
+      data.startDate, data.clientName, data.packageName, data.totalCost, data.totalServices, data.status || 'PENDING'
     ]);
     return response({status: "success"});
   }
 
-  // 3. UPDATE PACKAGE STATUS
+  // 3. UPDATE PACKAGE
   if (action == 'updatePackageStatus') {
     const pkgSheet = getSheet(ss, "PACKAGE PLAN");
     try {
@@ -156,7 +168,7 @@ function doPost(e) {
     const pkgSheet = getSheet(ss, "PACKAGE PLAN");
     try {
         const rowId = parseInt(data.id.split('_')[1]);
-        pkgSheet.getRange(rowId, 1).setValue(toSheetDate(data.startDate));
+        pkgSheet.getRange(rowId, 1).setValue(data.startDate);
         pkgSheet.getRange(rowId, 3).setValue(data.packageName);
         pkgSheet.getRange(rowId, 4).setValue(data.totalCost);
         pkgSheet.getRange(rowId, 5).setValue(data.totalServices);
@@ -192,7 +204,7 @@ function doPost(e) {
   // 8. ADD CLIENT
   if (action == 'addClient') {
       const clientSheet = getSheet(ss, "CLIENT MASTER");
-      clientSheet.appendRow([data.name, data.contact, data.address, data.gender, data.email, toSheetDate(data.dob)]);
+      clientSheet.appendRow([data.name, data.contact, data.address, data.gender, data.email, data.dob]);
       return response({status: "success"});
   }
 
@@ -203,53 +215,8 @@ function doPost(e) {
       if (users.some(row => row[0].toString().toLowerCase() === data.username.toLowerCase())) {
           return response({status: "error", message: "Exists"});
       }
-      
-      var finalDpUrl = data.dpUrl || '';
-      if (finalDpUrl.toString().indexOf('data:image') === 0) {
-          try {
-              var splitData = finalDpUrl.split('base64,');
-              var contentType = splitData[0].split(':')[1].split(';')[0];
-              var blob = Utilities.newBlob(Utilities.base64Decode(splitData[1]), contentType, "profile_" + data.username + "_" + new Date().getTime());
-              var file = DriveApp.createFile(blob);
-              file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-              finalDpUrl = "https://drive.google.com/uc?export=view&id=" + file.getId();
-          } catch(e) {}
-      }
-
-      loginSheet.appendRow([data.username, data.password, data.role, data.department, data.permissions, finalDpUrl, '', '', '']);
+      loginSheet.appendRow([data.username, data.password, data.role, data.department, data.permissions]);
       return response({status: "success"});
-  }
-
-  // 15. ADMIN UPDATE USER
-  if (action == 'adminUpdateUser') {
-      const loginSheet = getSheet(ss, "LOGIN");
-      const dataRange = loginSheet.getDataRange();
-      const values = dataRange.getValues();
-      
-      for (let i = 1; i < values.length; i++) { 
-          if (values[i][0].toString().toLowerCase() === data.username.toLowerCase()) {
-              const row = i + 1;
-              var finalDpUrl = data.dpUrl || values[i][5];
-              if (data.dpUrl && data.dpUrl.toString().indexOf('data:image') === 0) {
-                  try {
-                      var splitData = data.dpUrl.split('base64,');
-                      var contentType = splitData[0].split(':')[1].split(';')[0];
-                      var blob = Utilities.newBlob(Utilities.base64Decode(splitData[1]), contentType, "profile_" + data.username + "_" + new Date().getTime());
-                      var file = DriveApp.createFile(blob);
-                      file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-                      finalDpUrl = "https://drive.google.com/uc?export=view&id=" + file.getId();
-                  } catch (e) {}
-              }
-
-              if (data.password) loginSheet.getRange(row, 2).setValue(data.password);
-              loginSheet.getRange(row, 3).setValue(data.role);
-              loginSheet.getRange(row, 4).setValue(data.department);
-              loginSheet.getRange(row, 5).setValue(data.permissions);
-              loginSheet.getRange(row, 6).setValue(finalDpUrl);
-              return response({status: "success"});
-          }
-      }
-      return response({error: "User not found"});
   }
 
   // 10. DELETE USER
@@ -266,7 +233,7 @@ function doPost(e) {
       return response({error: "Not found"});
   }
 
-  // 13. UPDATE USER PROFILE (Self Update)
+  // 13. UPDATE USER PROFILE
   if (action == 'updateUser') {
       const loginSheet = getSheet(ss, "LOGIN");
       const dataRange = loginSheet.getDataRange();
@@ -284,14 +251,14 @@ function doPost(e) {
                       file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
                       finalDpUrl = "https://drive.google.com/uc?export=view&id=" + file.getId();
                   } catch (e) {
-                      finalDpUrl = values[i][5]; 
+                      finalDpUrl = values[i][4]; 
                   }
               }
               const row = i + 1;
-              loginSheet.getRange(row, 6).setValue(finalDpUrl);   
-              loginSheet.getRange(row, 7).setValue(data.gender || ''); 
-              loginSheet.getRange(row, 8).setValue(toSheetDate(data.dob));     
-              loginSheet.getRange(row, 9).setValue(data.address || ''); 
+              loginSheet.getRange(row, 5).setValue(finalDpUrl);   
+              loginSheet.getRange(row, 6).setValue(data.gender || ''); 
+              loginSheet.getRange(row, 7).setValue(data.dob || '');     
+              loginSheet.getRange(row, 8).setValue(data.address || ''); 
               return response({status: "success", newDpUrl: finalDpUrl});
           }
       }
@@ -302,7 +269,7 @@ function doPost(e) {
   if (action == 'addAppointment') {
     const apptSheet = getSheet(ss, "APPOINTMENT");
     const id = 'appt_' + new Date().getTime();
-    apptSheet.appendRow([id, toSheetDate(data.date), data.clientName, data.contact, data.address, data.note, data.status, data.branch, data.time]);
+    apptSheet.appendRow([id, data.date, data.clientName, data.contact, data.address, data.note, data.status, data.branch, data.time]);
     return response({status: "success", id: id});
   }
 
@@ -322,21 +289,33 @@ function doPost(e) {
   return response({error: "Unknown action"});
 }
 
-// ⚠️ REVISED GET SHEET FUNCTION
+// ⚠️ REVISED GET SHEET FUNCTION TO AUTO-RESTORE HEADERS
 function getSheet(ss, name) {
     var sheet = ss.getSheetByName(name);
+    
+    // Fallbacks for specific sheet names
     if (!sheet && name == "DATA BASE") {
         sheet = ss.getSheetByName("Data Base") || ss.getSheetByName("Database") || ss.getSheetByName("DB");
     }
-    if (!sheet) sheet = ss.insertSheet(name);
 
+    // Create if doesn't exist
+    if (!sheet) {
+        sheet = ss.insertSheet(name);
+    }
+
+    // --- AUTO-HEADER RECOVERY LOGIC ---
+    // If the sheet is empty (no rows or rows exist but row 1 is empty), check and restore headers.
+    // getLastRow() == 0 means completely empty.
     if (sheet.getLastRow() === 0) {
         if (name === "APPOINTMENT") {
+            // Recreating Appointment Headers
             var headers = ["ID", "DATE", "CLIENT NAME", "CONTACT NO", "ADDRESS", "NOTE", "STATUS", "BRANCH", "TIME"];
             sheet.appendRow(headers);
+            // Style them
             sheet.getRange(1, 1, 1, headers.length).setFontWeight("bold").setBackground("#e0e7ff");
         }
         else if (name === "PAYMENT COLLECTION") {
+             // Recreating Payment Collection Headers
              var headers = ["ID", "DATE", "CLIENT NAME", "CONTACT NO", "ADDRESS", "PENDING AMOUNT", "PAID AMOUNT", "SCREENSHOT URL", "FOLLOWUP REMARK", "NEXT FOLLOW UP DATE", "TIMESTAMP"];
              sheet.appendRow(headers);
              sheet.getRange(1, 1, 1, headers.length).setFontWeight("bold").setBackground("#d1fae5");
@@ -346,65 +325,9 @@ function getSheet(ss, name) {
              sheet.appendRow(headers);
              sheet.getRange(1, 1, 1, headers.length).setFontWeight("bold");
         }
-        else if (name === "LOGIN") {
-             var headers = ["USERNAME", "PASSWORD", "ROLE", "DEPARTMENT", "PERMISSIONS", "DP URL", "GENDER", "DOB", "ADDRESS"];
-             sheet.appendRow(headers);
-             sheet.getRange(1, 1, 1, headers.length).setFontWeight("bold").setBackground("#f3f4f6");
-        }
     }
+    
     return sheet;
-}
-
-// --- DATE FORMAT HELPERS ---
-
-/** 
- * Converts YYYY-MM-DD or Date Object -> DD/MM/YYYY String for Sheet 
- */
-function toSheetDate(input) {
-  if (!input) return "";
-  
-  // 1. Check YYYY-MM-DD
-  var ymd = String(input).match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (ymd) {
-     return ymd[3] + '/' + ymd[2] + '/' + ymd[1];
-  }
-  
-  // 2. Check Date Object
-  if (Object.prototype.toString.call(input) === '[object Date]') {
-     var d = input.getDate();
-     var m = input.getMonth() + 1;
-     var y = input.getFullYear();
-     return (d < 10 ? '0' + d : d) + '/' + (m < 10 ? '0' + m : m) + '/' + y;
-  }
-  
-  return String(input);
-}
-
-/** 
- * Converts DD/MM/YYYY or Date Object -> YYYY-MM-DD String for API/Frontend 
- */
-function formatDate(date) {
-  if (!date) return "";
-  
-  // 1. Date Object (Sheet Auto Conversion)
-  if (Object.prototype.toString.call(date) === '[object Date]') {
-     try { 
-       var y = date.getFullYear();
-       var m = date.getMonth() + 1;
-       var d = date.getDate();
-       return y + '-' + (m < 10 ? '0' + m : m) + '-' + (d < 10 ? '0' + d : d);
-     } catch (e) { return ""; }
-  }
-  
-  var str = String(date).trim();
-  
-  // 2. DD/MM/YYYY String (Sheet Text)
-  var dmy = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
-  if (dmy) {
-     return dmy[3] + '-' + (dmy[2].length == 1 ? '0' + dmy[2] : dmy[2]) + '-' + (dmy[1].length == 1 ? '0' + dmy[1] : dmy[1]);
-  }
-  
-  return str;
 }
 
 // --- DATA FETCHING HELPERS ---
@@ -421,7 +344,10 @@ function getPackages(ss) {
 function getEntries(ss) {
     const sheet = getSheet(ss, "DATA BASE");
     if (!sheet || sheet.getLastRow() <= 1) return response([]);
+    
+    // Read only up to Col 16 (P) since Q,R,S are removed from main DB
     const lastCol = Math.min(16, sheet.getLastColumn()); 
+    
     const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, lastCol).getValues();
     return response(data.map((row, index) => ({
       id: 'row_' + (index + 2), 
@@ -476,18 +402,19 @@ function getOptions(ss) {
 function getUsers(ss) {
     const sheet = getSheet(ss, "LOGIN");
     if (!sheet || sheet.getLastRow() <= 1) return response([]);
-    const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 9).getValues();
+    const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 8).getValues();
     
     return response(data.map(row => ({ 
         username: row[0], 
         password: row[1], 
         role: row[2], 
         department: row[3], 
-        permissions: row[4] || '', 
-        dpUrl: row[5],             
-        gender: row[6],            
-        dob: formatDate(row[7]),   
-        address: row[8]            
+        permissions: '', 
+        branch: row[3], 
+        dpUrl: row[4],  
+        gender: row[5], 
+        dob: formatDate(row[6]), 
+        address: row[7] 
     })));
 }
 
@@ -527,4 +454,12 @@ function createInvoice(data) {
 
 function response(data) {
   return ContentService.createTextOutput(JSON.stringify(data)).setMimeType(ContentService.MimeType.JSON);
+}
+
+function formatDate(date) {
+  if (!date) return "";
+  if (Object.prototype.toString.call(date) === '[object Date]') {
+     try { const d = new Date(date); d.setHours(12); return d.toISOString().split('T')[0]; } catch (e) { return ""; }
+  }
+  return String(date);
 }

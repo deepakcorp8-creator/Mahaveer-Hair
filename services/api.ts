@@ -1,3 +1,4 @@
+
 import { Entry, Client, Appointment, DashboardStats, ServicePackage, User } from '../types';
 import { MOCK_CLIENTS, MOCK_ENTRIES, MOCK_APPOINTMENTS, MOCK_ITEMS, MOCK_TECHNICIANS, MOCK_PACKAGES, GOOGLE_SCRIPT_URL } from '../constants';
 
@@ -27,6 +28,23 @@ let DATA_CACHE: {
 // Increased Cache Duration for speed
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minute cache for entries/appts
 const OPTIONS_CACHE_DURATION = 15 * 60 * 1000; // 15 minutes for clients/items
+
+// Helper: Format Time from Sheet (Handles "Sat Dec 30 1899..." garbage)
+const formatTimeSafe = (val: any): string => {
+    if (!val) return '';
+    const strVal = String(val);
+    
+    // If it looks like a long ISO date or Sheet date string, parse it
+    if (strVal.includes('1899') || strVal.includes('T') || strVal.length > 10) {
+        try {
+            const d = new Date(val);
+            if (!isNaN(d.getTime())) {
+                return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+            }
+        } catch (e) {}
+    }
+    return strVal; // Return as is if it's already "10:00 AM" or similar
+};
 
 export const api = {
   // --- OPTION HELPERS (Clients, Technicians, Items) ---
@@ -141,11 +159,29 @@ export const api = {
         }
     }
 
-    // Merge with local new entries
-    const serverIds = new Set(allEntries.map(e => e.id));
-    const uniqueLocal = LOCAL_NEW_ENTRIES.filter(e => !serverIds.has(e.id));
+    // --- DEDUPLICATION LOGIC ---
+    const indicesToRemove: number[] = [];
     
-    return [...uniqueLocal, ...allEntries];
+    LOCAL_NEW_ENTRIES.forEach((local, index) => {
+        const isSynced = allEntries.some(server => 
+            server.clientName === local.clientName &&
+            server.date === local.date &&
+            server.serviceType === local.serviceType &&
+            String(server.contactNo).replace(/\D/g,'') === String(local.contactNo).replace(/\D/g,'') &&
+            Number(server.amount) === Number(local.amount)
+        );
+        
+        if (isSynced) {
+            indicesToRemove.push(index);
+        }
+    });
+
+    // Remove synced items from local cache
+    for (let i = indicesToRemove.length - 1; i >= 0; i--) {
+        LOCAL_NEW_ENTRIES.splice(indicesToRemove[i], 1);
+    }
+    
+    return [...LOCAL_NEW_ENTRIES, ...allEntries];
   },
 
   updateEntryStatus: async (id: string, status: string) => {
@@ -172,7 +208,7 @@ export const api = {
     }
     return true;
   },
-
+  
   updateEntry: async (entry: Entry) => {
     // 1. Update Local Cache
     const localEntry = LOCAL_NEW_ENTRIES.find(e => e.id === entry.id);
@@ -184,33 +220,38 @@ export const api = {
     }
 
     // 2. Mock Data Update
-    const mockIdx = MOCK_ENTRIES.findIndex(e => e.id === entry.id);
-    if(mockIdx !== -1) MOCK_ENTRIES[mockIdx] = entry;
+    const mockEntry = MOCK_ENTRIES.find(e => e.id === entry.id);
+    if(mockEntry) Object.assign(mockEntry, entry);
 
-    // 3. Live Update (Fire & Forget)
+    // 3. Live Update
     if (isLive) {
-        fetch(GOOGLE_SCRIPT_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-            body: JSON.stringify({ action: 'editEntry', ...entry })
-        }).catch(e => console.error("BG Update Fail", e));
+        try {
+            await fetch(GOOGLE_SCRIPT_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify({ action: 'editEntry', ...entry })
+            });
+        } catch(e) {
+            console.error("Failed to update entry", e);
+            throw e;
+        }
     }
     return true;
   },
-  
+
   // NEW: Update Payment Follow Up (With Image)
   updatePaymentFollowUp: async (payload: {
       id: string,
       clientName: string,
+      contactNo?: string,
+      address?: string,
       paymentMethod?: string,
       pendingAmount?: number,
+      paidAmount?: number,
       nextCallDate?: string,
       remark?: string,
       screenshotBase64?: string,
-      existingScreenshotUrl?: string,
-      contactNo?: string,
-      address?: string,
-      paidAmount?: number
+      existingScreenshotUrl?: string
   }) => {
       if (isLive) {
           try {
@@ -228,6 +269,7 @@ export const api = {
                 if(entry) {
                     if(payload.paymentMethod) entry.paymentMethod = payload.paymentMethod as any;
                     if(payload.pendingAmount !== undefined) entry.pendingAmount = payload.pendingAmount;
+                    if(payload.paidAmount) entry.amount = (Number(entry.amount) || 0) + payload.paidAmount;
                     if(payload.nextCallDate) entry.nextCallDate = payload.nextCallDate;
                     if(payload.remark) entry.remark = payload.remark;
                     if(data.screenshotUrl) entry.paymentScreenshotUrl = data.screenshotUrl;
@@ -256,8 +298,12 @@ export const api = {
             const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getAppointments`);
             const data = await response.json();
             if (Array.isArray(data)) {
-                allAppts = data;
-                DATA_CACHE.appointments = data;
+                // Apply formatting to time immediately
+                allAppts = data.map((a: Appointment) => ({
+                    ...a,
+                    time: formatTimeSafe(a.time)
+                }));
+                DATA_CACHE.appointments = allAppts;
                 DATA_CACHE.lastFetch['appointments'] = now;
             }
            } catch (e) {
@@ -269,11 +315,29 @@ export const api = {
         }
     }
 
-    // Merge Local Appointments
-    const serverIds = new Set(allAppts.map(a => a.id));
-    const uniqueLocal = LOCAL_NEW_APPOINTMENTS.filter(a => !serverIds.has(a.id));
+    // --- DEDUPLICATION LOGIC FOR APPOINTMENTS ---
+    // Remove local appointments that have been confirmed synced to the server.
+    const indicesToRemove: number[] = [];
     
-    return [...uniqueLocal, ...allAppts];
+    LOCAL_NEW_APPOINTMENTS.forEach((local, index) => {
+        const isSynced = allAppts.some(server => 
+            server.clientName === local.clientName &&
+            server.date === local.date &&
+            // Loose comparison for contact
+            String(server.contact || '').replace(/\D/g,'') === String(local.contact || '').replace(/\D/g,'')
+        );
+        
+        if (isSynced) {
+            indicesToRemove.push(index);
+        }
+    });
+
+    // Remove synced items
+    for (let i = indicesToRemove.length - 1; i >= 0; i--) {
+        LOCAL_NEW_APPOINTMENTS.splice(indicesToRemove[i], 1);
+    }
+    
+    return [...LOCAL_NEW_APPOINTMENTS, ...allAppts];
   },
 
   addAppointment: async (appt: Omit<Appointment, 'id'>) => {
@@ -505,28 +569,6 @@ export const api = {
           }
       }
       return true; 
-  },
-
-  updateUserAdmin: async (user: User & { password?: string }) => {
-      const payload = {
-          ...user,
-          permissions: user.permissions ? user.permissions.join(',') : ''
-      };
-
-      if (isLive) {
-          try {
-             await fetch(GOOGLE_SCRIPT_URL, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                  body: JSON.stringify({ action: 'adminUpdateUser', ...payload })
-             });
-             return true;
-          } catch (e) {
-              console.error("Failed to update user", e);
-              return false;
-          }
-      }
-      return true;
   },
   
   deleteUser: async (username: string) => {

@@ -1,8 +1,7 @@
 
-import React, { useState } from 'react';
-import { authService } from '../services/auth';
+import React, { useState, useRef } from 'react';
 import { User } from '../types';
-import { Lock, Eye, EyeOff, User as UserIcon, ArrowRight, ShieldCheck, LayoutDashboard, Mail, CheckCircle2 } from 'lucide-react';
+import { Lock, Eye, EyeOff, Mail, ArrowRight, ShieldCheck, Zap, Sparkles, Fingerprint, Activity, MousePointer2 } from 'lucide-react';
 
 interface LoginProps {
   onLogin: (user: User) => void;
@@ -14,216 +13,300 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-
+  
+  const containerRef = useRef<HTMLDivElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
   const LOGO_URL = "https://i.ibb.co/wFDKjmJS/MAHAVEER-Logo-1920x1080.png";
+
+  /**
+   * COLOR PALETTE (Requested):
+   * #161B2F - Deepest Midnight
+   * #242F49 - Deep Navy
+   * #384358 - Slate
+   * #FFA586 - Peach Highlight
+   * #B51A2B - Crimson/Red
+   * #541A2E - Deep Wine
+   */
+
+  // Subtle 3D Tilt Effect - Optimized to not block input focus
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!cardRef.current || window.innerWidth < 1024) return;
+    const card = cardRef.current;
+    const rect = card.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const centerX = rect.width / 2;
+    const centerY = rect.height / 2;
+    const rotateX = (y - centerY) / 25;
+    const rotateY = (centerX - x) / 25;
+    card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
+  };
+
+  const handleMouseLeave = () => {
+    if (!cardRef.current) return;
+    cardRef.current.style.transform = `perspective(1000px) rotateX(0deg) rotateY(0deg)`;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading) return;
+    
     setLoading(true);
     setError('');
-
     try {
+      const { authService } = await import('../services/auth');
       const user = await authService.login(username.trim(), password.trim());
-      if (user) {
+      if (user) { 
         onLogin(user);
-      } else {
-        setError('Invalid credentials');
+      } else { 
+        setError('Security credentials rejected.'); 
       }
-    } catch (err) {
-      setError('Login failed. Please try again.');
-    } finally {
-      setLoading(false);
+    } catch (err) { 
+      setError('System connection error. Retry.'); 
+    } finally { 
+      setLoading(false); 
     }
   };
 
   return (
-    <div className="min-h-screen flex w-full bg-white font-sans overflow-hidden">
+    <div 
+      ref={containerRef}
+      className="min-h-screen w-full flex items-center justify-center relative overflow-hidden font-sans bg-[#161B2F] text-[#FFA586] selection:bg-[#B51A2B] selection:text-white"
+    >
       
-      {/* LEFT PANEL - DESKTOP ONLY (Hero Section) */}
-      <div className="hidden lg:flex w-[60%] relative flex-col justify-between p-16 text-white overflow-hidden bg-[#0F172A]">
-         
-         {/* Background Gradients */}
-         <div className="absolute inset-0 z-0">
-            <div className="absolute inset-0 bg-gradient-to-br from-[#1e1b4b] via-[#0f172a] to-[#020617] opacity-95"></div>
-            <div className="absolute top-[-20%] left-[-10%] w-[800px] h-[800px] bg-indigo-600/20 rounded-full blur-[120px]"></div>
-            <div className="absolute bottom-[-10%] right-[-10%] w-[600px] h-[600px] bg-blue-600/10 rounded-full blur-[100px]"></div>
-            <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10 mix-blend-overlay"></div>
-         </div>
+      {/* --- LAYER 0: ANIMATED BACKGROUND (Non-Interactive) --- */}
+      <div className="absolute inset-0 z-0 pointer-events-none">
+        {/* Shifting Plasma Blobs */}
+        <div className="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] bg-[#B51A2B]/20 rounded-full blur-[120px] animate-blob-morph" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] bg-[#541A2E]/40 rounded-full blur-[120px] animate-blob-morph-delayed" />
+        
+        {/* Static Grid texture */}
+        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-20" />
+        
+        {/* Floating Particle Elements */}
+        {[...Array(12)].map((_, i) => (
+          <div 
+            key={i}
+            className="absolute rounded-full animate-float-slow opacity-10 bg-white"
+            style={{
+              width: `${Math.random() * 4 + 2}px`,
+              height: `${Math.random() * 4 + 2}px`,
+              top: `${Math.random() * 100}%`,
+              left: `${Math.random() * 100}%`,
+              animationDelay: `${i * 1.2}s`
+            }}
+          />
+        ))}
+      </div>
 
-         {/* Content */}
-         <div className="relative z-20 h-full flex flex-col">
-            
-            {/* Header Badge */}
-            <div className="flex items-center gap-3 mb-8">
-               <div className="w-10 h-10 bg-white/10 backdrop-blur-md rounded-xl flex items-center justify-center border border-white/10 shadow-lg">
-                  <ShieldCheck className="w-5 h-5 text-indigo-300" />
-               </div>
-               <span className="font-bold tracking-[0.25em] text-xs uppercase text-indigo-100/70">Secure Portal</span>
-            </div>
+      {/* --- LAYER 1: CONTENT WRAPPER --- */}
+      <div className="relative z-10 w-full max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-24 items-center">
+        
+        {/* LEFT: BRANDING (With Movementable Text) */}
+        <div className="flex flex-col items-start space-y-10 animate-in fade-in slide-in-from-left-12 duration-1000">
+           
+           <div className="inline-flex items-center gap-4 bg-[#242F49]/60 border border-[#384358] px-6 py-3 rounded-2xl backdrop-blur-xl shadow-2xl">
+              <div className="p-1.5 bg-[#B51A2B] rounded-lg shadow-inner">
+                <Sparkles className="w-5 h-5 text-white animate-pulse" />
+              </div>
+              <span className="text-[11px] font-black uppercase tracking-[0.4em] text-white">Elite Restoration Hub</span>
+           </div>
 
-            {/* Typography */}
-            <div className="mb-12">
-                <h1 className="text-[3.5rem] font-black tracking-tight leading-[1.1] mb-6 drop-shadow-xl">
-                   Manage Your <br/>
-                   <span className="text-transparent bg-clip-text bg-gradient-to-r from-sky-300 to-indigo-300">
-                     Hair Solutions
-                   </span> <br/>
-                   Professionally.
-                </h1>
-                <p className="text-slate-400 text-lg max-w-lg leading-relaxed font-medium">
-                   Smart dashboard to manage appointments, clients & inventory — all in one place.
+           <div className="space-y-6">
+              <h1 className="text-7xl md:text-[8rem] font-black tracking-tighter leading-[0.8] uppercase select-none cursor-default">
+                <span className="block text-white transition-all hover:tracking-widest duration-700 animate-float-text">REDEFINE</span>
+                <span className="block text-transparent bg-clip-text bg-gradient-to-r from-[#B51A2B] via-[#FFA586] to-[#B51A2B] animate-shimmer-text">ESTHETICS</span>
+              </h1>
+              
+              <div className="relative pl-10 space-y-5">
+                <div className="absolute left-0 top-0 w-1.5 h-full bg-gradient-to-b from-[#B51A2B] to-transparent rounded-full" />
+                <p className="text-2xl md:text-3xl font-bold text-[#FFA586] max-w-md leading-tight italic drop-shadow-lg">
+                  "Where Art Meets Scientific Precision."
                 </p>
-            </div>
+                <p className="text-xs font-black uppercase tracking-[0.2em] text-[#384358] flex items-center gap-2">
+                   <Activity className="w-4 h-4 text-[#B51A2B]" /> Bio-Metric Node 09 Active
+                </p>
+              </div>
+           </div>
 
-            {/* 3D Dashboard Preview (CSS Transform) */}
-            <div className="flex-1 relative perspective-[2000px] group pointer-events-none select-none">
-                <div className="relative w-[110%] h-full transform rotate-x-[20deg] rotate-y-[-15deg] rotate-z-[5deg] translate-x-[5%] transition-transform duration-1000 ease-out group-hover:rotate-x-[10deg] group-hover:rotate-y-[-5deg]">
+           <div className="flex gap-4">
+              {[MousePointer2, Zap, ShieldCheck].map((Icon, idx) => (
+                  <div key={idx} className="p-4 bg-white/5 border border-white/10 rounded-2xl hover:bg-white/10 hover:border-[#B51A2B] transition-all transform hover:-translate-y-2 group cursor-pointer">
+                      <Icon className="w-6 h-6 text-[#384358] group-hover:text-[#B51A2B] animate-bounce-slow" />
+                  </div>
+              ))}
+           </div>
+        </div>
+
+        {/* RIGHT: THE 3D LOGIN CARD */}
+        <div 
+          ref={cardRef}
+          onMouseMove={handleMouseMove}
+          onMouseLeave={handleMouseLeave}
+          className="w-full max-w-[500px] mx-auto transition-transform duration-300 ease-out animate-in fade-in slide-in-from-right-12 duration-1000 z-20"
+        >
+            <div className="relative">
+                {/* 3D Inner Shadow & Glow */}
+                <div className="absolute -inset-4 bg-gradient-to-br from-[#B51A2B]/30 to-[#161B2F]/40 rounded-[4rem] blur-3xl opacity-40 animate-pulse-slow" />
+                
+                {/* Main Crystal Card */}
+                <div className="relative bg-[#242F49]/50 backdrop-blur-[60px] rounded-[3.5rem] border-2 border-white/10 p-10 md:p-14 shadow-[0_50px_100px_-20px_rgba(0,0,0,0.8)] overflow-visible">
                     
-                    {/* Glass Container */}
-                    <div className="absolute inset-0 bg-gradient-to-br from-[#1e293b]/90 to-[#0f172a]/90 backdrop-blur-xl rounded-2xl border border-white/10 shadow-2xl overflow-hidden p-4 flex flex-col gap-4">
-                        {/* Fake Header */}
-                        <div className="h-10 w-full flex items-center gap-3 border-b border-white/5 pb-2 px-2">
-                            <div className="flex gap-2">
-                                <div className="w-3 h-3 rounded-full bg-red-500/80"></div>
-                                <div className="w-3 h-3 rounded-full bg-amber-500/80"></div>
-                                <div className="w-3 h-3 rounded-full bg-emerald-500/80"></div>
+                    {/* Interior Light Sweep */}
+                    <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent rounded-[3.5rem] pointer-events-none" />
+
+                    {/* LOGO PLATE (Floating Above Form) */}
+                    <div className="flex justify-center mb-12 -mt-20 lg:-mt-24">
+                        <div className="relative p-2 rounded-3xl transform hover:scale-110 transition-transform duration-700">
+                            <div className="absolute inset-0 bg-white blur-3xl opacity-20" />
+                            <div className="relative bg-white p-6 rounded-2xl shadow-2xl border-4 border-[#384358]">
+                                <img 
+                                    src={LOGO_URL} 
+                                    alt="Mahaveer Logo" 
+                                    className="h-16 md:h-20 w-auto object-contain" 
+                                />
                             </div>
-                            <div className="ml-4 h-6 w-48 bg-white/5 rounded-lg"></div>
-                        </div>
-                        {/* Fake Content Grid */}
-                        <div className="flex-1 grid grid-cols-4 gap-4 p-2">
-                            <div className="col-span-1 h-32 bg-indigo-500/10 rounded-xl border border-white/5"></div>
-                            <div className="col-span-1 h-32 bg-blue-500/10 rounded-xl border border-white/5"></div>
-                            <div className="col-span-1 h-32 bg-emerald-500/10 rounded-xl border border-white/5"></div>
-                            <div className="col-span-1 h-32 bg-amber-500/10 rounded-xl border border-white/5"></div>
-                            <div className="col-span-3 h-64 bg-white/5 rounded-xl border border-white/5 flex items-center justify-center">
-                                <LayoutDashboard className="w-24 h-24 text-white/5" />
-                            </div>
-                            <div className="col-span-1 h-64 bg-white/5 rounded-xl border border-white/5"></div>
                         </div>
                     </div>
 
-                    {/* Reflection */}
-                    <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-transparent rounded-2xl pointer-events-none"></div>
+                    <div className="text-center mb-10">
+                        <h2 className="text-3xl font-black text-white tracking-tight uppercase flex items-center justify-center gap-3">
+                           <Fingerprint className="w-8 h-8 text-[#B51A2B] animate-pulse" />
+                           SECURE LOGIN
+                        </h2>
+                        <div className="mt-2 flex items-center justify-center gap-3">
+                           <div className="h-px w-8 bg-[#384358]" />
+                           <p className="text-[10px] font-black text-[#384358] uppercase tracking-[0.5em]">Staff Identification</p>
+                           <div className="h-px w-8 bg-[#384358]" />
+                        </div>
+                    </div>
+
+                    {/* --- THE FORM (Guaranteed Interactive) --- */}
+                    <form onSubmit={handleSubmit} className="space-y-6 relative z-30">
+                        
+                        <div className="space-y-2 group/input">
+                            <label className="text-[10px] font-black text-[#384358] uppercase tracking-widest ml-3">User ID</label>
+                            <div className="relative">
+                                <div className="absolute inset-y-0 left-0 pl-6 flex items-center pointer-events-none">
+                                    <Mail className="h-5 w-5 text-[#384358] group-focus-within/input:text-[#B51A2B] transition-colors" />
+                                </div>
+                                <input 
+                                    type="text" 
+                                    value={username} 
+                                    onChange={(e) => setUsername(e.target.value)} 
+                                    className="w-full pl-14 pr-6 py-5 bg-[#161B2F]/80 border-2 border-[#384358] rounded-2xl text-white font-black placeholder:text-[#384358] focus:outline-none focus:ring-4 focus:ring-[#B51A2B]/20 focus:border-[#B51A2B] transition-all shadow-inner" 
+                                    placeholder="Enter Employee ID" 
+                                    required 
+                                    autoComplete="username"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="space-y-2 group/input">
+                            <label className="text-[10px] font-black text-[#384358] uppercase tracking-widest ml-3">Security Key</label>
+                            <div className="relative">
+                                <div className="absolute inset-y-0 left-0 pl-6 flex items-center pointer-events-none">
+                                    <Lock className="h-5 w-5 text-[#384358] group-focus-within/input:text-[#B51A2B] transition-colors" />
+                                </div>
+                                <input 
+                                    type={showPassword ? "text" : "password"} 
+                                    value={password} 
+                                    onChange={(e) => setPassword(e.target.value)} 
+                                    className="w-full pl-14 pr-16 py-5 bg-[#161B2F]/80 border-2 border-[#384358] rounded-2xl text-white font-black placeholder:text-[#384358] focus:outline-none focus:ring-4 focus:ring-[#B51A2B]/20 focus:border-[#B51A2B] transition-all shadow-inner" 
+                                    placeholder="••••••••" 
+                                    required 
+                                    autoComplete="current-password"
+                                />
+                                <button 
+                                    type="button" 
+                                    onClick={() => setShowPassword(!showPassword)} 
+                                    className="absolute inset-y-0 right-0 pr-6 text-[#384358] hover:text-[#B51A2B] transition-colors z-40"
+                                >
+                                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                </button>
+                            </div>
+                        </div>
+
+                        {error && (
+                            <div className="p-4 bg-red-950/30 border border-red-500/30 text-red-200 text-[11px] font-black uppercase tracking-widest rounded-xl animate-shake flex items-center gap-3">
+                               <div className="w-2 h-2 rounded-full bg-red-500 animate-ping" />
+                               {error}
+                            </div>
+                        )}
+
+                        <button 
+                            type="submit" 
+                            disabled={loading} 
+                            className="w-full group py-6 bg-gradient-to-r from-[#B51A2B] via-[#541A2E] to-[#B51A2B] hover:from-[#B51A2B] hover:to-[#B51A2B] text-white font-black text-xl rounded-2xl shadow-[0_20px_40px_-10px_rgba(181,26,43,0.5)] transition-all transform active:scale-[0.97] flex items-center justify-center uppercase tracking-[0.3em] border-t border-white/20 relative overflow-hidden"
+                        >
+                            {loading ? (
+                                <RefreshCw className="w-8 h-8 animate-spin" />
+                            ) : (
+                                <span className="flex items-center gap-4">
+                                   Verify <ArrowRight className="w-6 h-6 group-hover:translate-x-3 transition-transform text-[#FFA586]" />
+                                </span>
+                            )}
+                        </button>
+
+                        <div className="text-center pt-8 border-t border-white/5">
+                            <p className="text-[10px] font-black text-[#384358] uppercase tracking-[0.5em] leading-relaxed">
+                                Managed & Protected by <br/>
+                                <span className="text-[#B51A2B]/60 font-black">@Mahaveer V.5.0.2</span>
+                            </p>
+                        </div>
+                    </form>
                 </div>
             </div>
-
-            {/* Footer Text */}
-            <div className="mt-8 flex items-center gap-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                <span>© 2025 Mahaveer</span>
-                <span className="w-1 h-1 bg-slate-700 rounded-full"></span>
-                <span>v1.0.0</span>
-            </div>
-         </div>
+        </div>
       </div>
 
-      {/* RIGHT PANEL - FORM (Mobile Optimized) */}
-      <div className="w-full lg:w-[40%] flex items-center justify-center p-6 bg-white">
-         <div className="max-w-sm w-full relative flex flex-col">
-            
-            <div className="text-center mb-10">
-               {/* INCREASED LOGO SIZE: h-24 on mobile, h-28 on desktop */}
-               <img 
-                 src={LOGO_URL}
-                 alt="Mahaveer Logo" 
-                 className="h-24 lg:h-28 mx-auto mb-6 object-contain"
-                 onError={(e) => { e.currentTarget.style.display = 'none'; }} 
-               />
-               
-               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-50 border border-slate-100 mb-6">
-                   <ShieldCheck className="w-3.5 h-3.5 text-slate-400" />
-                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Secure Login</span>
-               </div>
-
-               <h2 className="text-3xl font-black text-slate-800 tracking-tight mb-2">Welcome Back</h2>
-               <p className="text-slate-500 text-sm font-medium">Please enter your details to sign in.</p>
-            </div>
-
-            <form onSubmit={handleSubmit} className="space-y-6">
-               <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-2 ml-1">Email or Username</label>
-                  <div className="relative group">
-                      <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                          <Mail className="h-5 w-5 text-slate-400 group-focus-within:text-slate-600 transition-colors" />
-                      </div>
-                      <input 
-                         type="text"
-                         value={username}
-                         onChange={(e) => setUsername(e.target.value)}
-                         className="w-full pl-11 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:border-slate-300 focus:ring-4 focus:ring-slate-100 transition-all font-semibold text-slate-800 placeholder:text-slate-400 outline-none"
-                         placeholder="Enter your email or username"
-                         required
-                      />
-                  </div>
-               </div>
-
-               <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-2 ml-1">Password</label>
-                  <div className="relative group">
-                      <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                          <Lock className="h-5 w-5 text-slate-400 group-focus-within:text-slate-600 transition-colors" />
-                      </div>
-                      <input 
-                         type={showPassword ? "text" : "password"}
-                         value={password}
-                         onChange={(e) => setPassword(e.target.value)}
-                         className="w-full pl-11 pr-12 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:border-slate-300 focus:ring-4 focus:ring-slate-100 transition-all font-semibold text-slate-800 placeholder:text-slate-400 outline-none"
-                         placeholder="••••••••••"
-                         required
-                      />
-                      <button 
-                         type="button"
-                         onClick={() => setShowPassword(!showPassword)}
-                         className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
-                      >
-                         {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                      </button>
-                  </div>
-               </div>
-
-               {/* Error Message */}
-               {error && (
-                   <div className="p-3 rounded-xl bg-red-50 text-red-600 text-xs font-bold flex items-center border border-red-100 animate-in slide-in-from-top-1">
-                       <CheckCircle2 className="w-4 h-4 mr-2" />
-                       {error}
-                   </div>
-               )}
-
-               <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full py-4 bg-[#0F172A] hover:bg-black text-white font-bold rounded-2xl shadow-xl shadow-slate-200 transition-all transform active:scale-[0.98] flex items-center justify-center text-base tracking-wide mt-4 border border-slate-800"
-               >
-                   {loading ? (
-                       <span className="flex items-center gap-2">
-                           <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                           Verifying...
-                       </span>
-                   ) : (
-                       <span className="flex items-center">
-                           Sign In <ArrowRight className="w-5 h-5 ml-2" />
-                       </span>
-                   )}
-               </button>
-            </form>
-
-            <div className="mt-12 flex items-center justify-center gap-6 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                <span className="flex items-center gap-1.5"><Lock className="w-3 h-3" /> Secure Login</span>
-                <span className="w-px h-3 bg-slate-300"></span>
-                <span className="flex items-center gap-1.5"><ShieldCheck className="w-3 h-3" /> Data Protected</span>
-            </div>
-
-             {/* Footer */}
-             <div className="mt-8 pt-6 border-t border-slate-100 text-center">
-                 <p className="text-[10px] text-slate-400 font-medium">© {new Date().getFullYear()} Mahaveer Hair Solution</p>
-                 <p className="text-[10px] text-slate-400 mt-1 font-medium">
-                    Developed by <span className="text-indigo-600 font-black uppercase tracking-wide">Deepak Sahu</span>
-                 </p>
-             </div>
-         </div>
+      {/* FOOTER BAR */}
+      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-6 px-10 py-3 bg-white/5 backdrop-blur-2xl rounded-full border border-white/10 shadow-2xl text-[10px] font-black uppercase tracking-[0.6em] text-[#384358] pointer-events-none select-none z-20">
+         <ShieldCheck className="w-4 h-4 text-[#B51A2B] animate-pulse" />
+         Bio-Tech Secure Active
       </div>
+
+      <style dangerouslySetInnerHTML={{ __html: `
+        @keyframes blob-morph {
+          0%, 100% { border-radius: 40% 60% 70% 30% / 40% 40% 60% 60%; transform: translate(0, 0) scale(1) rotate(0deg); }
+          33% { border-radius: 70% 30% 50% 50% / 30% 60% 40% 70%; transform: translate(10%, -10%) scale(1.1) rotate(120deg); }
+          66% { border-radius: 100% 60% 60% 100% / 100% 100% 60% 60%; transform: translate(-10%, 10%) scale(0.95) rotate(240deg); }
+        }
+        .animate-blob-morph { animation: blob-morph 25s ease-in-out infinite; }
+        .animate-blob-morph-delayed { animation: blob-morph 25s ease-in-out 4s infinite reverse; }
+
+        @keyframes shimmer-text {
+          0% { background-position: -200% center; }
+          100% { background-position: 200% center; }
+        }
+        .animate-shimmer-text { background-size: 200% auto; animation: shimmer-text 8s linear infinite; }
+
+        @keyframes float-text {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-10px); }
+        }
+        .animate-float-text { animation: float-text 6s ease-in-out infinite; }
+
+        .animate-bounce-slow { animation: bounce 3s infinite; }
+        .animate-pulse-slow { animation: pulse 8s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+
+        .animate-shake { animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both; }
+        @keyframes shake {
+          10%, 90% { transform: translate3d(-1px, 0, 0); }
+          20%, 80% { transform: translate3d(2px, 0, 0); }
+          30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+          40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+      `}} />
     </div>
   );
 };
+
+// Simple Refresh Icon locally to avoid import depth issues
+const RefreshCw = ({ className }: { className?: string }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /><path d="M3 3v5h5" /><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" /><path d="M16 21v-5h5" />
+    </svg>
+);
 
 export default Login;

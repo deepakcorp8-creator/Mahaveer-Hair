@@ -1,6 +1,9 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+// Fix: Use namespace import for react-router-dom to resolve named export resolution issues
+import * as RouterDom from 'react-router-dom';
+const { HashRouter, Routes, Route, Navigate } = RouterDom;
+const Router = HashRouter;
 import Layout from './components/Layout';
 import Dashboard from './components/Dashboard';
 import NewEntryForm from './components/NewEntryForm';
