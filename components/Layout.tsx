@@ -225,36 +225,39 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
               })}
         </nav>
 
-        <div className="p-4 relative z-10 shrink-0 bg-gradient-to-t from-[#0B1120] to-transparent space-y-4">
+        <div className="p-4 relative z-10 shrink-0 bg-gradient-to-t from-[#0B1120] to-transparent space-y-3">
             {/* User Profile Info */}
             <div onClick={() => setIsProfileModalOpen(true)} className="bg-[#131C2E] rounded-xl p-3 border border-slate-700/50 flex items-center justify-between group hover:bg-[#1A263E] transition-all cursor-pointer shadow-sm">
                 <div className="flex items-center space-x-3 overflow-hidden">
-                    <div className="relative w-10 h-10 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 p-[1px] shadow-md">
+                    <div className="relative w-9 h-9 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 p-[1px] shadow-md">
                         <div className="w-full h-full rounded-[7px] bg-[#131C2E] flex items-center justify-center overflow-hidden">
-                            {user.dpUrl ? <img src={user.dpUrl} alt="Profile" className="w-full h-full object-cover" /> : <span className="text-white font-black text-sm uppercase">{user.username.charAt(0)}</span>}
+                            {user.dpUrl ? <img src={user.dpUrl} alt="Profile" className="w-full h-full object-cover" /> : <span className="text-white font-black text-xs uppercase">{user.username.charAt(0)}</span>}
                         </div>
                     </div>
                     <div className="flex flex-col min-w-0">
-                        <span className="text-sm font-black text-white truncate">{user.username}</span>
-                        <span className="text-[10px] text-slate-500 font-bold uppercase tracking-tighter">{user.role}</span>
+                        <span className="text-[13px] font-black text-white truncate">{user.username}</span>
+                        <span className="text-[9px] text-slate-500 font-bold uppercase tracking-tighter">{user.role}</span>
                     </div>
                 </div>
                 <button onClick={(e) => { e.stopPropagation(); onLogout(); }} className="text-slate-500 hover:text-red-400 p-2 transition-colors"><LogOut className="w-4 h-4" /></button>
             </div>
 
-            {/* HIGH VISIBILITY PREMIUM DEVELOPER CREDIT */}
-            <div className="px-1">
-                 <div className="relative group bg-gradient-to-br from-indigo-900/60 via-slate-900 to-[#B51A2B]/20 border border-white/10 rounded-2xl p-4 transition-all duration-300 hover:border-[#B51A2B]/50 hover:shadow-[0_0_30px_rgba(181,26,43,0.2)] overflow-hidden">
-                    <div className="absolute -bottom-2 -right-2 p-1 opacity-10 group-hover:opacity-30 transition-opacity">
-                        <Cpu className="w-16 h-16 text-white -rotate-12" />
-                    </div>
+            {/* PROFESSIONAL SIDEBAR FOOTER */}
+            <div className="px-1 space-y-3">
+                 <div className="text-center">
+                    <span className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] opacity-80 block mb-1">
+                      @ 2025 Mahaveer Hair Solution
+                    </span>
+                 </div>
+
+                 <div className="relative group bg-gradient-to-br from-indigo-900/30 via-slate-900 to-transparent border border-white/5 rounded-xl p-3 transition-all duration-300 hover:border-indigo-500/30 hover:bg-indigo-900/10">
                     <div className="flex items-center gap-3 relative z-10">
-                        <div className="p-2.5 bg-gradient-to-br from-[#B51A2B] to-purple-700 rounded-xl shadow-xl group-hover:scale-110 group-hover:rotate-6 transition-all duration-500">
-                            <Code2 className="w-4 h-4 text-white" />
+                        <div className="p-1.5 bg-gradient-to-br from-[#B51A2B] to-indigo-600 rounded-lg shadow-lg group-hover:scale-110 transition-transform duration-500">
+                            <Code2 className="w-3.5 h-3.5 text-white" />
                         </div>
                         <div className="flex flex-col">
-                            <span className="text-[9px] font-black uppercase tracking-[0.3em] text-indigo-300 mb-0.5">Software Architect</span>
-                            <span className="text-[13px] font-black text-white group-hover:text-[#FFA586] transition-colors whitespace-nowrap">Deepak Sahu</span>
+                            <span className="text-[8px] font-black uppercase tracking-[0.1em] text-indigo-400 mb-0.5">Software Architect</span>
+                            <span className="text-[11px] font-black text-slate-300 group-hover:text-white transition-colors whitespace-nowrap">Deepak Sahu</span>
                         </div>
                     </div>
                  </div>

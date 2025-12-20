@@ -4,8 +4,8 @@ import { MOCK_CLIENTS, MOCK_ENTRIES, MOCK_APPOINTMENTS, MOCK_ITEMS, MOCK_TECHNIC
 
 const isLive = GOOGLE_SCRIPT_URL && GOOGLE_SCRIPT_URL.startsWith('http');
 
-const LOCAL_NEW_ENTRIES: Entry[] = [];
-const LOCAL_NEW_APPOINTMENTS: Appointment[] = [];
+let LOCAL_NEW_ENTRIES: Entry[] = [];
+let LOCAL_NEW_APPOINTMENTS: Appointment[] = [];
 
 let DATA_CACHE: {
     options: any | null;
@@ -67,12 +67,16 @@ export const api = {
         try {
             const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getEntries`);
             const data = await response.json();
-            if (Array.isArray(data)) { allEntries = data; DATA_CACHE.entries = data; DATA_CACHE.lastFetch['entries'] = now; }
+            if (Array.isArray(data)) { 
+                allEntries = data; 
+                DATA_CACHE.entries = data; 
+                DATA_CACHE.lastFetch['entries'] = now;
+                // Fix: Clear local optimistic items once server has updated
+                LOCAL_NEW_ENTRIES = [];
+            }
         } catch (e) { allEntries = DATA_CACHE.entries || [...MOCK_ENTRIES]; }
     } else { allEntries = [...MOCK_ENTRIES]; }
-    const serverIds = new Set(allEntries.map(e => e.id));
-    const uniqueLocal = LOCAL_NEW_ENTRIES.filter(e => !serverIds.has(e.id));
-    return [...uniqueLocal, ...allEntries];
+    return allEntries;
   },
 
   updateEntry: async (entry: Entry) => {
@@ -80,10 +84,10 @@ export const api = {
         try { await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'editEntry', ...entry }) }); }
         catch(e) { console.error("Update Fail", e); throw e; }
     }
-    [LOCAL_NEW_ENTRIES, DATA_CACHE.entries || []].forEach(arr => {
-        const item = arr.find(e => e.id === entry.id);
+    if (DATA_CACHE.entries) {
+        const item = DATA_CACHE.entries.find(e => e.id === entry.id);
         if (item) Object.assign(item, entry);
-    });
+    }
     return true;
   },
 
@@ -117,12 +121,16 @@ export const api = {
         try {
             const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getAppointments`);
             const data = await response.json();
-            if (Array.isArray(data)) { allAppts = data; DATA_CACHE.appointments = data; DATA_CACHE.lastFetch['appointments'] = now; }
+            if (Array.isArray(data)) { 
+                allAppts = data; 
+                DATA_CACHE.appointments = data; 
+                DATA_CACHE.lastFetch['appointments'] = now; 
+                // Fix: Clear local optimistic items once server has updated
+                LOCAL_NEW_APPOINTMENTS = [];
+            }
         } catch (e) { allAppts = DATA_CACHE.appointments || [...MOCK_APPOINTMENTS]; }
     } else { allAppts = [...MOCK_APPOINTMENTS]; }
-    const serverIds = new Set(allAppts.map(a => a.id));
-    const uniqueLocal = LOCAL_NEW_APPOINTMENTS.filter(a => !serverIds.has(a.id));
-    return [...uniqueLocal, ...allAppts];
+    return allAppts;
   },
 
   addAppointment: async (appt: Omit<Appointment, 'id'>) => {
@@ -134,10 +142,10 @@ export const api = {
   },
   
   updateAppointmentStatus: async (id: string, status: Appointment['status']) => {
-    [LOCAL_NEW_APPOINTMENTS, DATA_CACHE.appointments || []].forEach(arr => {
-        const item = arr.find(a => a.id === id);
+    if (DATA_CACHE.appointments) {
+        const item = DATA_CACHE.appointments.find(a => a.id === id);
         if (item) item.status = status;
-    });
+    }
     if (isLive) fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'updateAppointmentStatus', id, status }) });
     return true;
   },
@@ -218,6 +226,11 @@ export const api = {
       if (isLive) await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'addUser', ...user, permissions: user.permissions ? user.permissions.join(',') : '' }) });
       return true;
   },
+
+  updateUser: async (user: User & { password?: string }) => {
+      if (isLive) await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'editUser', ...user, permissions: user.permissions ? user.permissions.join(',') : '' }) });
+      return true;
+  },
   
   deleteUser: async (username: string) => {
        if (isLive) await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'deleteUser', username }) });
@@ -235,28 +248,16 @@ export const api = {
   },
 
   getDashboardStats: async (): Promise<DashboardStats> => {
-    // Force fresh fetch for accurate statistics
     const [entries, options] = await Promise.all([
         api.getEntries(true),
         api.getOptions(true)
     ]);
-    
-    // FIX: Total Clients comes from CLIENT MASTER sheet (Options.clients)
     const totalClients = options.clients ? options.clients.length : 0;
-    
-    // Total Revenue from DATA BASE sheet (Column J / Amount)
     const totalAmount = entries.reduce((sum: number, e: any) => sum + Number(e.amount || 0), 0);
-    
-    // New Clients Today (Count 'NEW' entries with today's date)
     const today = new Date().toISOString().split('T')[0];
     const newClientsToday = entries.filter((e: any) => e.date === today && e.serviceType === 'NEW').length;
-    
-    // Total Services Done
     const serviceCount = entries.length;
-
-    // Total Outstanding (Sum of Pending Amount Column P)
     const totalOutstanding = entries.reduce((sum: number, e: any) => sum + Number(e.pendingAmount || 0), 0);
-
     return { totalClients, totalAmount, newClientsToday, serviceCount, totalOutstanding };
   }
 };
