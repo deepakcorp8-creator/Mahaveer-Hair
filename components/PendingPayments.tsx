@@ -166,10 +166,42 @@ const PendingPayments: React.FC = () => {
             <div className="bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-3xl p-6 text-white shadow-xl shadow-emerald-200 flex items-center justify-between group hover:-translate-y-1 transition-transform"><div><div className="flex items-center gap-2 mb-2"><span className="bg-white/20 p-1.5 rounded-lg backdrop-blur-sm"><IndianRupee className="w-4 h-4 text-white" /></span><p className="text-emerald-100 text-xs font-black uppercase tracking-widest">Today Collection</p></div><h3 className="text-3xl font-black">₹{sessionCollected.toLocaleString()}</h3><p className="text-xs font-bold text-emerald-100 mt-1 opacity-80">Session Total</p></div></div>
         </div>
 
-        <div className="bg-white p-4 rounded-2xl shadow-sm border-2 border-slate-200 mb-6 sticky top-4 z-20 flex flex-col md:flex-row gap-4 items-center">
-            <div className="relative flex-1 w-full"><Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" /><input type="text" placeholder="Search Client Name, Phone..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-bold text-sm" /></div>
-            <div className="relative w-full md:w-auto"><input type="date" value={filterDate} onChange={(e) => setFilterDate(e.target.value)} className="w-full pl-4 pr-3 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 text-sm font-bold text-slate-600" /></div>
-            <div className="relative w-full md:w-auto group"><select value={sortBy} onChange={(e) => setSortBy(e.target.value as any)} className="w-full appearance-none pl-4 pr-10 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 text-sm font-bold text-slate-600 cursor-pointer"><option value="DATE_ASC">📅 Due Date (Earliest)</option><option value="DATE_DESC">📅 Due Date (Latest)</option><option value="AMOUNT_DESC">💰 Amount (High to Low)</option></select><ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" /></div>
+        {/* FIXED FILTER BAR: Adjusted sticky top for mobile and added z-index for visibility */}
+        <div className="sticky top-[70px] lg:top-4 z-[40] mb-6">
+            <div className="bg-white p-4 rounded-2xl shadow-xl border-2 border-slate-200 flex flex-col sm:flex-row gap-4 items-center">
+                <div className="relative flex-1 w-full">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <input 
+                        type="text" 
+                        placeholder="Search Client Name, Phone..." 
+                        value={searchTerm} 
+                        onChange={(e) => setSearchTerm(e.target.value)} 
+                        className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-bold text-sm" 
+                    />
+                </div>
+                <div className="flex flex-row gap-3 w-full sm:w-auto">
+                    <div className="relative flex-1 sm:flex-none">
+                        <input 
+                            type="date" 
+                            value={filterDate} 
+                            onChange={(e) => setFilterDate(e.target.value)} 
+                            className="w-full pl-4 pr-3 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 text-sm font-bold text-slate-600" 
+                        />
+                    </div>
+                    <div className="relative flex-1 sm:flex-none group">
+                        <select 
+                            value={sortBy} 
+                            onChange={(e) => setSortBy(e.target.value as any)} 
+                            className="w-full appearance-none pl-4 pr-10 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 text-sm font-bold text-slate-600 cursor-pointer"
+                        >
+                            <option value="DATE_ASC">📅 Due (Old)</option>
+                            <option value="DATE_DESC">📅 Due (New)</option>
+                            <option value="AMOUNT_DESC">💰 Amount</option>
+                        </select>
+                        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                    </div>
+                </div>
+            </div>
         </div>
 
         <div className="space-y-4">
@@ -184,27 +216,46 @@ const PendingPayments: React.FC = () => {
                     const isOverdue = entry.nextCallDate && entry.nextCallDate < todayStr;
                     const isSelected = selectedIds.has(entry.id);
                     return (
-                        <div key={entry.id} className={`group relative bg-white rounded-2xl p-4 border-2 transition-all duration-300 flex flex-col md:flex-row items-center gap-4 ${isSelected ? 'border-indigo-500 bg-indigo-50/10' : isToday ? 'border-amber-300' : isOverdue ? 'border-red-300' : 'border-slate-300'}`}>
-                            <div className="flex items-center gap-4 w-full md:w-[25%]"><button onClick={() => toggleSelection(entry.id)} className={`w-6 h-6 rounded-md border-2 flex-shrink-0 flex items-center justify-center transition-colors ${isSelected ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-slate-300 bg-white'}`}>{isSelected && <Check className="w-4 h-4" />}</button><div className={`w-12 h-12 rounded-xl flex items-center justify-center text-lg font-black shrink-0 border ${isToday ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-500'}`}>{entry.clientName.charAt(0)}</div><div className="min-w-0"><h4 className="font-black text-slate-800 text-base truncate">{entry.clientName}</h4><p className="text-xs font-bold text-slate-400 truncate">{entry.contactNo}</p></div></div>
+                        <div key={entry.id} className={`group relative bg-white rounded-2xl p-4 border-2 transition-all duration-300 flex flex-col md:flex-row items-center gap-4 ${isSelected ? 'border-indigo-500 bg-indigo-50/10' : isToday ? 'border-amber-300 shadow-amber-50' : isOverdue ? 'border-red-300 shadow-red-50' : 'border-slate-100 shadow-sm'}`}>
+                            <div className="flex items-center gap-4 w-full md:w-[25%]">
+                                <button onClick={() => toggleSelection(entry.id)} className={`w-6 h-6 rounded-md border-2 flex-shrink-0 flex items-center justify-center transition-colors ${isSelected ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-slate-300 bg-white'}`}>{isSelected && <Check className="w-4 h-4" />}</button>
+                                <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-lg font-black shrink-0 border ${isToday ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-500'}`}>{entry.clientName.charAt(0)}</div>
+                                <div className="min-w-0 flex-1"><h4 className="font-black text-slate-800 text-base truncate">{entry.clientName}</h4><p className="text-xs font-bold text-slate-400 truncate">{entry.contactNo}</p></div>
+                            </div>
                             <div className="flex-1 w-full grid grid-cols-1 md:grid-cols-3 gap-3">
                                 <div className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 flex flex-col justify-center"><span className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-0.5">Service Date</span><span className="text-xs font-bold text-slate-700 flex items-center"><Calendar className="w-3 h-3 mr-1.5" />{formatDateDisplay(entry.date)}</span></div>
                                 <div className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 flex flex-col justify-center"><span className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-0.5">Next Follow-up</span><span className={`text-xs font-bold flex items-center ${isOverdue ? 'text-red-600' : isToday ? 'text-amber-600' : 'text-slate-700'}`}><Clock className="w-3 h-3 mr-1.5" />{entry.nextCallDate ? formatDateDisplay(entry.nextCallDate) : 'Not Scheduled'}</span></div>
                                 
-                                {/* REMARK BOX - ENHANCED WITH HOVER REVEAL */}
+                                {/* REMARK BOX - ENHANCED WITH POPOVER REVEAL */}
                                 <div 
-                                    className="bg-amber-50 border border-amber-200 rounded-xl p-2.5 flex flex-col justify-center transition-all duration-300 hover:border-amber-400 group/rem relative cursor-help overflow-hidden hover:overflow-visible z-0 hover:z-[30]"
+                                    className="bg-amber-50 border border-amber-200 rounded-xl p-2.5 flex flex-col justify-center transition-all duration-300 hover:border-amber-400 group/rem relative cursor-help"
                                     title={entry.remark || 'No remarks'}
                                 >
                                     <span className="text-[10px] font-black text-amber-600 uppercase tracking-wider mb-0.5">Last Remark</span>
-                                    <span className="text-xs font-bold text-slate-700 truncate group-hover/rem:whitespace-normal group-hover/rem:overflow-visible transition-all duration-300">
+                                    <span className="text-xs font-bold text-slate-700 truncate block">
                                         {entry.remark || 'No remarks'}
                                     </span>
+                                    
+                                    {/* FULL REMARK POPOVER ON HOVER */}
+                                    {entry.remark && entry.remark.length > 20 && (
+                                        <div className="absolute left-0 bottom-full mb-2 hidden group-hover/rem:block z-[100] animate-in fade-in zoom-in-95 slide-in-from-bottom-2 duration-200">
+                                            <div className="bg-slate-900 text-white text-xs font-medium p-4 rounded-2xl shadow-2xl min-w-[200px] max-w-[300px] border border-slate-700 leading-relaxed whitespace-normal break-words">
+                                                <div className="text-[9px] font-black uppercase text-indigo-400 mb-1 border-b border-white/10 pb-1">Full Remark</div>
+                                                {entry.remark}
+                                                <div className="absolute top-full left-6 -mt-1 w-3 h-3 bg-slate-900 transform rotate-45 border-r border-b border-slate-700"></div>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
-                            <div className="flex items-center justify-between w-full md:w-auto gap-6 pl-2 border-l border-slate-200"><div className="text-right"><p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Pending</p><p className="text-xl font-black text-slate-800">₹{dueAmount}</p></div>
+                            <div className="flex items-center justify-between w-full md:w-auto gap-6 pl-2 border-l border-slate-200">
+                                <div className="text-right">
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Pending</p>
+                                    <p className="text-xl font-black text-slate-800">₹{dueAmount}</p>
+                                </div>
                                 <div className="flex items-center gap-2">
-                                    <button onClick={() => openFollowUpModal(entry, 'FOLLOWUP')} className="px-4 py-2.5 rounded-xl bg-white text-indigo-600 font-bold text-sm border border-indigo-200 flex items-center">Follow Up</button>
-                                    <button onClick={() => openFollowUpModal(entry, 'PAY')} className="px-5 py-2.5 rounded-xl bg-emerald-600 text-white font-bold text-sm shadow-lg flex items-center">Paid</button>
+                                    <button onClick={() => openFollowUpModal(entry, 'FOLLOWUP')} className="px-4 py-2.5 rounded-xl bg-white text-indigo-600 font-bold text-sm border border-indigo-200 flex items-center hover:bg-indigo-50 transition-colors">Follow Up</button>
+                                    <button onClick={() => openFollowUpModal(entry, 'PAY')} className="px-5 py-2.5 rounded-xl bg-emerald-600 text-white font-bold text-sm shadow-lg flex items-center hover:bg-emerald-700 transition-all active:scale-95">Paid</button>
                                 </div>
                             </div>
                         </div>
