@@ -4,7 +4,6 @@ import { MOCK_CLIENTS, MOCK_ENTRIES, MOCK_APPOINTMENTS, MOCK_ITEMS, MOCK_TECHNIC
 
 const isLive = GOOGLE_SCRIPT_URL && GOOGLE_SCRIPT_URL.startsWith('http');
 
-// Use 'let' so we can clear these arrays when server data arrives
 let LOCAL_NEW_ENTRIES: Entry[] = [];
 let LOCAL_NEW_APPOINTMENTS: Appointment[] = [];
 
@@ -24,6 +23,15 @@ let DATA_CACHE: {
 
 const CACHE_DURATION = 5 * 60 * 1000;
 const OPTIONS_CACHE_DURATION = 15 * 60 * 1000;
+
+// Helper to format date to DD/MM/YYYY for consistent sheet storage
+const toDDMMYYYY = (dateStr: string) => {
+    if (!dateStr) return "";
+    if (dateStr.includes('/')) return dateStr;
+    const parts = dateStr.split('-');
+    if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    return dateStr;
+};
 
 export const api = {
   getOptions: async (forceRefresh = false) => {
@@ -46,16 +54,27 @@ export const api = {
 
   addClient: async (client: Client) => {
     DATA_CACHE.options = null;
-    if (isLive) fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'addClient', ...client }) }).catch(err => console.error("Sync Error", err));
-    else MOCK_CLIENTS.push(client);
-    return client;
+    const formattedClient = { ...client, dob: toDDMMYYYY(client.dob) };
+    if (isLive) fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'addClient', ...formattedClient }) }).catch(err => console.error("Sync Error", err));
+    else MOCK_CLIENTS.push(formattedClient);
+    return formattedClient;
   },
 
   addEntry: async (entry: Omit<Entry, 'id'>) => {
-    const newEntry = { ...entry, id: 'temp_' + Date.now() + Math.random().toString(36).substr(2, 5) };
+    const entryWithFormattedDate = { ...entry, date: toDDMMYYYY(entry.date) };
+    const newEntry = { ...entryWithFormattedDate, id: 'temp_' + Date.now() + Math.random().toString(36).substr(2, 5) };
+    
     LOCAL_NEW_ENTRIES.push(newEntry as Entry);
-    if (isLive) fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'addEntry', ...entry }) }).catch(e => console.error("Sync Error", e));
-    else MOCK_ENTRIES.push(newEntry as Entry);
+    
+    if (isLive) {
+      fetch(GOOGLE_SCRIPT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'addEntry', ...entryWithFormattedDate })
+      }).catch(e => console.error("Sync Error", e));
+    } else {
+        MOCK_ENTRIES.push(newEntry as Entry);
+    }
     return newEntry;
   },
 
@@ -72,42 +91,45 @@ export const api = {
                 allEntries = data; 
                 DATA_CACHE.entries = data; 
                 DATA_CACHE.lastFetch['entries'] = now;
-                // CRITICAL FIX: Clear local temporary items once server data is successfully fetched
+                // Once we have a fresh server copy, clear local temp items to prevent "Double Entry"
                 LOCAL_NEW_ENTRIES = [];
             }
         } catch (e) { allEntries = DATA_CACHE.entries || [...MOCK_ENTRIES]; }
     } else { allEntries = [...MOCK_ENTRIES]; }
     
-    // If we still have local entries (e.g. offline or just added), merge them safely
-    const serverIds = new Set(allEntries.map(e => e.id));
-    const uniqueLocal = LOCAL_NEW_ENTRIES.filter(e => !serverIds.has(e.id));
+    // Strict Deduplication based on multiple factors to ensure no phantom entries
+    const serverCheck = new Set(allEntries.map(e => `${e.clientName}|${e.date}|${e.amount}`));
+    const uniqueLocal = LOCAL_NEW_ENTRIES.filter(e => !serverCheck.has(`${e.clientName}|${e.date}|${e.amount}`));
+    
     return [...uniqueLocal, ...allEntries];
   },
 
   updateEntry: async (entry: Entry) => {
+    const formatted = { ...entry, date: toDDMMYYYY(entry.date) };
     if (isLive) {
-        try { await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'editEntry', ...entry }) }); }
+        try { await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'editEntry', ...formatted }) }); }
         catch(e) { console.error("Update Fail", e); throw e; }
     }
     if (DATA_CACHE.entries) {
-        const item = DATA_CACHE.entries.find(e => e.id === entry.id);
-        if (item) Object.assign(item, entry);
+        const item = DATA_CACHE.entries.find(e => e.id === formatted.id);
+        if (item) Object.assign(item, formatted);
     }
     return true;
   },
 
-  updatePaymentFollowUp: async (payload: { id: string, clientName: string, contactNo?: string, address?: string, paymentMethod?: string, pendingAmount?: number, nextCallDate?: string, remark?: string, screenshotBase64?: string, existingScreenshotUrl?: string, paidAmount?: number }) => {
+  updatePaymentFollowUp: async (payload: any) => {
+      const formattedPayload = { ...payload, nextCallDate: toDDMMYYYY(payload.nextCallDate) };
       if (isLive) {
           try {
-              const res = await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'updatePaymentFollowUp', ...payload }) });
+              const res = await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'updatePaymentFollowUp', ...formattedPayload }) });
               const data = await res.json();
               if(DATA_CACHE.entries) {
                 const entry = DATA_CACHE.entries.find(e => e.id === payload.id);
                 if(entry) {
                     if(payload.paymentMethod) entry.paymentMethod = payload.paymentMethod as any;
                     if(payload.pendingAmount !== undefined) entry.pendingAmount = payload.pendingAmount;
-                    if(payload.nextCallDate) entry.nextCallDate = payload.nextCallDate;
-                    if(payload.remark) entry.remark = payload.remark;
+                    if(payload.nextCallDate) entry.nextCallDate = formattedPayload.nextCallDate;
+                    if(payload.remark) entry.remark = String(payload.remark);
                     if(data.screenshotUrl) entry.paymentScreenshotUrl = data.screenshotUrl;
                 }
               }
@@ -130,21 +152,18 @@ export const api = {
                 allAppts = data; 
                 DATA_CACHE.appointments = data; 
                 DATA_CACHE.lastFetch['appointments'] = now; 
-                // CRITICAL FIX: Clear local temporary items once server data is successfully fetched
                 LOCAL_NEW_APPOINTMENTS = [];
             }
         } catch (e) { allAppts = DATA_CACHE.appointments || [...MOCK_APPOINTMENTS]; }
     } else { allAppts = [...MOCK_APPOINTMENTS]; }
-    
-    const serverIds = new Set(allAppts.map(a => a.id));
-    const uniqueLocal = LOCAL_NEW_APPOINTMENTS.filter(a => !serverIds.has(a.id));
-    return [...uniqueLocal, ...allAppts];
+    return allAppts;
   },
 
   addAppointment: async (appt: Omit<Appointment, 'id'>) => {
-    const newAppt = { ...appt, id: 'temp_' + Date.now() };
+    const formatted = { ...appt, date: toDDMMYYYY(appt.date) };
+    const newAppt = { ...formatted, id: 'temp_' + Date.now() };
     LOCAL_NEW_APPOINTMENTS.push(newAppt as Appointment);
-    if (isLive) fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'addAppointment', ...appt }) }).catch(e => console.error(e));
+    if (isLive) fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'addAppointment', ...formatted }) }).catch(e => console.error(e));
     else MOCK_APPOINTMENTS.push(newAppt as Appointment);
     return newAppt;
   },
@@ -178,7 +197,8 @@ export const api = {
 
   addPackage: async (pkg: Omit<ServicePackage, 'id'>) => {
       DATA_CACHE.packages = null;
-      if (isLive) await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'addPackage', ...pkg, status: 'PENDING' }) });
+      const formatted = { ...pkg, startDate: toDDMMYYYY(pkg.startDate) };
+      if (isLive) await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'addPackage', ...formatted, status: 'PENDING' }) });
       return true;
   },
 
@@ -196,7 +216,8 @@ export const api = {
 
   editPackage: async (pkg: ServicePackage) => {
       DATA_CACHE.packages = null;
-      if (isLive) await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'editPackage', ...pkg }) });
+      const formatted = { ...pkg, startDate: toDDMMYYYY(pkg.startDate) };
+      if (isLive) await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'editPackage', ...formatted }) });
       return true;
   },
 
@@ -245,10 +266,11 @@ export const api = {
        return true;
   },
 
-  updateUserProfile: async (payload: { username: string, dpUrl?: string, gender?: string, dob?: string, address?: string }) => {
+  updateUserProfile: async (payload: any) => {
+      const formatted = { ...payload, dob: toDDMMYYYY(payload.dob) };
       if (isLive) {
           try {
-              const res = await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'updateUserProfile', ...payload }) });
+              const res = await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'updateUserProfile', ...formatted }) });
               return await res.json();
           } catch (e) { console.error("Failed to update profile", e); throw e; }
       }

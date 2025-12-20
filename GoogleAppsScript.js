@@ -1,6 +1,6 @@
 
 // =====================================================================================
-// ⚠️ MAHAVEER WEB APP - BACKEND SCRIPT (V22 - Reinforced Date Formatting)
+// ⚠️ MAHAVEER WEB APP - BACKEND SCRIPT (V23 - Robust Column Mapping & Duplicate Protection)
 // =====================================================================================
 
 function doGet(e) {
@@ -34,26 +34,33 @@ function doPost(e) {
       }
     }
 
-    dbSheet.appendRow([
-      toSheetDate(data.date),              
-      data.clientName,        
-      data.contactNo,         
-      data.address,           
-      data.branch,            
-      data.serviceType,       
-      data.patchMethod,       
-      data.technician,        
-      data.workStatus,        
-      data.amount,            
-      data.paymentMethod,     
-      data.remark,            
-      data.numberOfService,   
-      invoiceUrl,             
-      data.patchSize || '',   
-      data.pendingAmount || 0 
-    ]);
+    // Explicit row mapping to match your sheet exactly
+    const newRow = [
+      toSheetDate(data.date),              // A (1)
+      data.clientName,        // B (2)
+      data.contactNo,         // C (3)
+      data.address,           // D (4)
+      data.branch,            // E (5)
+      data.serviceType,       // F (6)
+      data.patchMethod,       // G (7)
+      data.technician,        // H (8)
+      data.workStatus,        // I (9)
+      data.amount,            // J (10)
+      data.paymentMethod,     // K (11)
+      String(data.remark || ""), // L (12) - Ensure Remark is STRING
+      data.numberOfService,   // M (13)
+      invoiceUrl,             // N (14)
+      data.patchSize || '',   // O (15)
+      data.pendingAmount || 0 // P (16)
+    ];
+
+    dbSheet.appendRow(newRow);
+    const lastRow = dbSheet.getLastRow();
     
-    dbSheet.getRange(dbSheet.getLastRow(), 1).setNumberFormat("dd/mm/yyyy");
+    // FORMATTING PROTECTIONS
+    dbSheet.getRange(lastRow, 1).setNumberFormat("dd/mm/yyyy"); // Date column
+    dbSheet.getRange(lastRow, 12).setNumberFormat("@"); // Force Remark column as PLAIN TEXT (@)
+    
     return response({status: "success", invoiceUrl: invoiceUrl});
   }
 
@@ -74,7 +81,11 @@ function doPost(e) {
               }
               if (data.pendingAmount !== undefined) dbSheet.getRange(rowId, 16).setValue(data.pendingAmount);
               if (data.paymentMethod) dbSheet.getRange(rowId, 11).setValue(data.paymentMethod);
-              if (data.remark) dbSheet.getRange(rowId, 12).setValue(data.remark);
+              
+              // REMARK UPDATE - Force format to Text before setting
+              const remarkCell = dbSheet.getRange(rowId, 12);
+              remarkCell.setNumberFormat("@");
+              remarkCell.setValue(String(data.remark || ""));
               
               const today = getTodayInSheetFormat();
               const nextCall = toSheetDate(data.nextCallDate);
@@ -88,14 +99,15 @@ function doPost(e) {
                 data.pendingAmount || 0, 
                 Number(data.paidAmount || 0), 
                 screenshotUrl, 
-                data.remark || '', 
+                String(data.remark || ""), 
                 nextCall || '', 
                 new Date().toString()
               ]);
 
-              const lastRow = collectionSheet.getLastRow();
-              collectionSheet.getRange(lastRow, 2).setNumberFormat("dd/mm/yyyy");
-              collectionSheet.getRange(lastRow, 10).setNumberFormat("dd/mm/yyyy");
+              const lastC = collectionSheet.getLastRow();
+              collectionSheet.getRange(lastC, 2).setNumberFormat("dd/mm/yyyy");
+              collectionSheet.getRange(lastC, 9).setNumberFormat("@"); // Text Remark
+              collectionSheet.getRange(lastC, 10).setNumberFormat("dd/mm/yyyy");
 
               return response({status: "success", screenshotUrl: screenshotUrl});
           }
@@ -115,7 +127,13 @@ function doPost(e) {
         if (data.serviceType) dbSheet.getRange(rowId, 6).setValue(data.serviceType);    
         if (data.amount !== undefined) dbSheet.getRange(rowId, 10).setValue(data.amount);
         if (data.paymentMethod) dbSheet.getRange(rowId, 11).setValue(data.paymentMethod); 
-        if (data.remark !== undefined) dbSheet.getRange(rowId, 12).setValue(data.remark);        
+        
+        if (data.remark !== undefined) {
+            const rCell = dbSheet.getRange(rowId, 12);
+            rCell.setNumberFormat("@");
+            rCell.setValue(String(data.remark));
+        }
+        
         if (data.pendingAmount !== undefined) dbSheet.getRange(rowId, 16).setValue(data.pendingAmount); 
         return response({status: "success"});
     } catch(e) { return response({error: "Failed"}); }
@@ -232,20 +250,9 @@ function fromSheetDate(val) {
      const year = d.getFullYear();
      const month = ("0" + (d.getMonth() + 1)).slice(-2);
      const day = ("0" + d.getDate()).slice(-2);
-     return year + "-" + month + "-" + day;
+     return day + "/" + month + "/" + year; // Return consistent display format
   }
-  const str = String(val).trim();
-  if (str.includes('/')) {
-    const parts = str.split('/'); 
-    if (parts.length === 3) {
-        const d = parts[0].padStart(2, '0');
-        const m = parts[1].padStart(2, '0');
-        const y = parts[2];
-        return y + "-" + m + "-" + d;
-    }
-  }
-  if (str.includes('-') && str.split('-')[0].length === 4) return str;
-  return str;
+  return String(val).trim();
 }
 
 function getTodayInSheetFormat() {
@@ -272,7 +279,7 @@ function getEntries(ss) {
       return {
         id: 'row_' + (index + 2), 
         date: fromSheetDate(row[0]), 
-        clientName: row[1], contactNo: row[2], address: row[3], branch: row[4], serviceType: row[5], patchMethod: row[6], technician: row[7], workStatus: row[8], amount: totalBill, paymentMethod: payMethod, remark: row[11], numberOfService: row[12], invoiceUrl: row[13], patchSize: row[14], pendingAmount: pendingAmount
+        clientName: row[1], contactNo: row[2], address: row[3], branch: row[4], serviceType: row[5], patchMethod: row[6], technician: row[7], workStatus: row[8], amount: totalBill, paymentMethod: payMethod, remark: String(row[11] || ""), numberOfService: row[12], invoiceUrl: row[13], patchSize: row[14], pendingAmount: pendingAmount
       };
     }).reverse());
 }
