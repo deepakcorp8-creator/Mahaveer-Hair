@@ -267,7 +267,7 @@ const AdminPanel: React.FC = () => {
                                 <td className="px-8 py-6">
                                     <div className="flex items-center">
                                         <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-white to-slate-100 flex items-center justify-center mr-4 text-base font-black text-indigo-600 border-2 border-indigo-50 shadow-md group-hover:scale-110 transition-transform">
-                                            {u.dpUrl ? <img src={u.dpUrl} className="w-full h-full object-cover" /> : u.username?.charAt(0).toUpperCase()}
+                                            {u.username?.charAt(0).toUpperCase()}
                                         </div>
                                         <div>
                                             <div className="font-black text-slate-800 text-lg leading-none mb-1.5 uppercase">{u.username}</div>
@@ -310,7 +310,7 @@ const AdminPanel: React.FC = () => {
                                     <div className="flex justify-end gap-2">
                                         <button 
                                             onClick={() => handleEditClick(u)}
-                                            className="p-3 rounded-2xl bg-white border-2 border-slate-100 text-slate-400 hover:text-indigo-600 hover:border-indigo-200 hover:bg-indigo-50 shadow-sm transition-all"
+                                            className="p-3 rounded-2xl bg-white border-2 border-slate-100 text-slate-400 hover:text-indigo-600 hover:border-indigo-300 hover:bg-indigo-50 shadow-sm transition-all"
                                             title="Update Security Profile"
                                             disabled={loading}
                                         >
