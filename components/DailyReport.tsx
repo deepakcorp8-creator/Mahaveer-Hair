@@ -31,6 +31,12 @@ const DailyReport: React.FC = () => {
     }
   };
 
+  const formatDateDisplay = (dateStr: string) => {
+    if (!dateStr || !dateStr.includes('-')) return dateStr;
+    const [y, m, d] = dateStr.split('-');
+    return `${d}/${m}/${y}`;
+  };
+
   const filteredData = entries.filter(entry => {
     if (entry.date !== selectedDate) return false;
     if (serviceFilter !== 'ALL' && entry.serviceType !== serviceFilter) return false;
@@ -45,7 +51,6 @@ const DailyReport: React.FC = () => {
   const serviceCount = dailyEntries.filter(e => e.serviceType === 'SERVICE').length;
   const totalTxns = dailyEntries.length;
 
-  // FIX: Calculate actual received amounts and correct pending total
   const paymentStats = {
     CASH: dailyEntries
       .filter(e => e.paymentMethod === 'CASH')
@@ -56,17 +61,14 @@ const DailyReport: React.FC = () => {
     CARD: dailyEntries
       .filter(e => e.paymentMethod === 'CARD')
       .reduce((s, e) => s + (Number(e.amount || 0) - Number(e.pendingAmount || 0)), 0),
-    // Pending card now correctly sums Column P (Pending Amount) across all entries
     PENDING: dailyEntries.reduce((s, e) => s + Number(e.pendingAmount || 0), 0),
   };
 
-  // Base 3D Card Style
   const card3D = "bg-white rounded-2xl shadow-[0_8px_30px_-5px_rgba(0,0,0,0.1)] border border-slate-200 p-5 transition-transform duration-300 hover:-translate-y-1 hover:shadow-xl relative overflow-hidden";
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-10">
       
-      {/* Header & Date Picker (3D) */}
       <div className="flex flex-col md:flex-row justify-between items-center bg-white p-6 rounded-3xl shadow-[0_15px_35px_-10px_rgba(0,0,0,0.08)] border border-slate-200 backdrop-blur-sm">
         <div>
            <div className="flex items-center gap-2">
@@ -75,7 +77,7 @@ const DailyReport: React.FC = () => {
                    <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
                </button>
            </div>
-           <p className="text-slate-500 font-bold mt-1">Transactions for {new Date(selectedDate).toDateString()}</p>
+           <p className="text-slate-500 font-bold mt-1">Transactions for {formatDateDisplay(selectedDate)}</p>
         </div>
         <div className="mt-4 md:mt-0 flex items-center bg-white border-2 border-slate-200 rounded-xl p-1.5 shadow-sm">
             <div className="px-3 py-2 text-indigo-600 bg-indigo-50 rounded-lg mr-2">
@@ -90,9 +92,7 @@ const DailyReport: React.FC = () => {
         </div>
       </div>
 
-      {/* Stats Cards - Distinct & Visible 3D Pop */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          {/* Total Collection */}
           <div className="rounded-3xl p-6 text-white shadow-xl shadow-indigo-500/20 bg-gradient-to-br from-indigo-600 to-indigo-800 transform hover:scale-[1.02] transition-transform duration-300 relative overflow-hidden border border-indigo-700">
               <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-10 -mt-10 blur-2xl"></div>
               <div className="flex justify-between items-start relative z-10">
@@ -106,7 +106,6 @@ const DailyReport: React.FC = () => {
               </div>
           </div>
           
-          {/* New Patches - Blue */}
            <div className={`${card3D} border-l-8 border-l-blue-500`}>
               <div className="flex justify-between items-start">
                   <div>
@@ -119,7 +118,6 @@ const DailyReport: React.FC = () => {
               </div>
           </div>
 
-          {/* Services Done - Violet */}
           <div className={`${card3D} border-l-8 border-l-violet-500`}>
               <div className="flex justify-between items-start">
                   <div>
@@ -132,7 +130,6 @@ const DailyReport: React.FC = () => {
               </div>
           </div>
 
-          {/* Total Entries - Slate */}
           <div className={`${card3D} border-l-8 border-l-slate-500`}>
               <div className="flex justify-between items-start">
                   <div>
@@ -146,7 +143,6 @@ const DailyReport: React.FC = () => {
           </div>
       </div>
 
-      {/* Payment Breakdown Cards - Floating Pills with Stronger Colors */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="bg-white border-2 border-slate-100 p-4 rounded-2xl shadow-sm flex items-center gap-4 hover:shadow-md transition-shadow hover:border-emerald-200">
               <div className="p-3 rounded-full bg-emerald-100 text-emerald-600 shadow-sm border border-emerald-200"><Wallet className="w-5 h-5"/></div>
@@ -178,7 +174,6 @@ const DailyReport: React.FC = () => {
           </div>
       </div>
 
-      {/* Filters Bar - Floating */}
       <div className="bg-white p-5 rounded-2xl shadow-[0_10px_25px_-5px_rgba(0,0,0,0.05)] border border-slate-200 flex flex-col md:flex-row gap-6 items-center justify-between sticky top-4 z-20">
           <div className="flex items-center gap-3 w-full md:w-auto">
               <div className="bg-indigo-50 p-2 rounded-lg border border-indigo-100"><Filter className="w-4 h-4 text-indigo-600" /></div>
@@ -223,7 +218,6 @@ const DailyReport: React.FC = () => {
           </div>
       </div>
 
-      {/* Detailed Table - 3D Container */}
       <div className="bg-white rounded-3xl shadow-[0_20px_40px_-12px_rgba(0,0,0,0.1)] border border-slate-200 overflow-hidden">
          <div className="overflow-x-auto">
              <table className="w-full text-left text-sm text-slate-600">
@@ -247,7 +241,7 @@ const DailyReport: React.FC = () => {
                              <tr key={idx} className="hover:bg-slate-50 transition-colors group">
                                  <td className="px-6 py-5">
                                      <div className="font-black text-slate-800 text-base">{entry.clientName}</div>
-                                     <div className="text-xs font-bold text-slate-400 mt-1">{entry.date}</div>
+                                     <div className="text-xs font-bold text-slate-400 mt-1">{formatDateDisplay(entry.date)}</div>
                                  </td>
                                  <td className="px-6 py-5">
                                      <div className="font-bold text-slate-700">{entry.contactNo}</div>
@@ -255,7 +249,6 @@ const DailyReport: React.FC = () => {
                                  </td>
                                  <td className="px-6 py-5">
                                     <div className="flex flex-col items-start gap-2">
-                                        {/* Service Badge */}
                                         <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border shadow-sm
                                         ${entry.serviceType === 'NEW' ? 'bg-blue-50 text-blue-700 border-blue-200' : 
                                           entry.serviceType === 'SERVICE' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 
@@ -267,7 +260,6 @@ const DailyReport: React.FC = () => {
                                             {entry.serviceType}
                                         </span>
 
-                                        {/* Technician & Method */}
                                         <div className="space-y-1 pl-1">
                                             <div className="flex items-center text-sm font-bold text-slate-700">
                                                 <User className="w-3.5 h-3.5 mr-1.5 text-slate-400" />
@@ -280,7 +272,6 @@ const DailyReport: React.FC = () => {
                                                 </span>
                                             </div>
 
-                                            {/* Patch Size (if exists) */}
                                             {entry.patchSize && (
                                                  <div className="flex items-center text-[11px] font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-md border border-indigo-100 w-fit mt-1.5">
                                                     <Ruler className="w-3 h-3 mr-1.5" />
@@ -298,7 +289,6 @@ const DailyReport: React.FC = () => {
                                  </td>
                                  <td className="px-6 py-5 text-center">
                                      <div className="flex items-center justify-center gap-2">
-                                         {/* Cloud PDF (if exists) */}
                                          {entry.invoiceUrl && entry.invoiceUrl.startsWith('http') && (
                                              <a 
                                                 href={entry.invoiceUrl} 
@@ -311,7 +301,6 @@ const DailyReport: React.FC = () => {
                                              </a>
                                          )}
                                          
-                                         {/* Instant Print (Local) */}
                                          <button
                                             onClick={() => generateInvoice(entry)}
                                             className="inline-flex items-center justify-center p-2 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200 transition-colors shadow-sm"
