@@ -261,13 +261,16 @@ const DailyReport: React.FC = () => {
                                         </span>
 
                                         <div className="space-y-1 pl-1">
-                                            <div className="flex items-center text-sm font-bold text-slate-700">
+                                            <div className="flex items-center text-sm font-bold text-slate-700 cursor-help" title={`Technician: ${entry.technician}`}>
                                                 <User className="w-3.5 h-3.5 mr-1.5 text-slate-400" />
                                                 {entry.technician}
                                             </div>
                                             
                                             <div className="flex items-center gap-2">
-                                                <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 uppercase">
+                                                <span 
+                                                    className="text-[10px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 uppercase cursor-help"
+                                                    title={`Method: ${entry.patchMethod || 'N/A'}`}
+                                                >
                                                     {entry.patchMethod || 'N/A'}
                                                 </span>
                                             </div>

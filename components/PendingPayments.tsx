@@ -104,22 +104,6 @@ const PendingPayments: React.FC = () => {
       setSelectedIds(newSet);
   };
 
-  const handleBulkAction = async (action: 'MARK_REVIEWED') => {
-      if (!window.confirm(`Mark ${selectedIds.size} as reviewed?`)) return;
-      setLoading(true);
-      try {
-          const nextDate = new Date();
-          nextDate.setDate(nextDate.getDate() + 3);
-          const dateStr = nextDate.toISOString().split('T')[0];
-          for (const id of selectedIds) {
-              const entry = entries.find(e => e.id === id);
-              if (entry) await api.updatePaymentFollowUp({ id: entry.id, clientName: entry.clientName, remark: "Bulk update: Reviewed", nextCallDate: dateStr, pendingAmount: entry.pendingAmount });
-          }
-          setSelectedIds(new Set());
-          await loadData();
-      } catch(e) { alert("Some updates failed."); } finally { setLoading(false); }
-  };
-
   const openFollowUpModal = (entry: Entry, mode: 'BOTH' | 'PAY' | 'FOLLOWUP' = 'BOTH') => {
       setSelectedEntry(entry);
       setModalMode(mode);
@@ -205,7 +189,17 @@ const PendingPayments: React.FC = () => {
                             <div className="flex-1 w-full grid grid-cols-1 md:grid-cols-3 gap-3">
                                 <div className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 flex flex-col justify-center"><span className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-0.5">Service Date</span><span className="text-xs font-bold text-slate-700 flex items-center"><Calendar className="w-3 h-3 mr-1.5" />{formatDateDisplay(entry.date)}</span></div>
                                 <div className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 flex flex-col justify-center"><span className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-0.5">Next Follow-up</span><span className={`text-xs font-bold flex items-center ${isOverdue ? 'text-red-600' : isToday ? 'text-amber-600' : 'text-slate-700'}`}><Clock className="w-3 h-3 mr-1.5" />{entry.nextCallDate ? formatDateDisplay(entry.nextCallDate) : 'Not Scheduled'}</span></div>
-                                <div className="bg-amber-50 border border-amber-200 rounded-xl p-2.5 flex flex-col justify-center truncate"><span className="text-[10px] font-black text-amber-600 uppercase tracking-wider mb-0.5">Last Remark</span><span className="text-xs font-bold text-slate-700 truncate">{entry.remark || 'No remarks'}</span></div>
+                                
+                                {/* REMARK BOX - ENHANCED WITH HOVER REVEAL */}
+                                <div 
+                                    className="bg-amber-50 border border-amber-200 rounded-xl p-2.5 flex flex-col justify-center transition-all duration-300 hover:border-amber-400 group/rem relative cursor-help overflow-hidden hover:overflow-visible z-0 hover:z-[30]"
+                                    title={entry.remark || 'No remarks'}
+                                >
+                                    <span className="text-[10px] font-black text-amber-600 uppercase tracking-wider mb-0.5">Last Remark</span>
+                                    <span className="text-xs font-bold text-slate-700 truncate group-hover/rem:whitespace-normal group-hover/rem:overflow-visible transition-all duration-300">
+                                        {entry.remark || 'No remarks'}
+                                    </span>
+                                </div>
                             </div>
                             <div className="flex items-center justify-between w-full md:w-auto gap-6 pl-2 border-l border-slate-200"><div className="text-right"><p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Pending</p><p className="text-xl font-black text-slate-800">₹{dueAmount}</p></div>
                                 <div className="flex items-center gap-2">
