@@ -1,6 +1,6 @@
 
 // =====================================================================================
-// ⚠️ MAHUVEER WEB APP - BACKEND SCRIPT (V16 - Full Invoice Implementation)
+// ⚠️ MAHAVEER WEB APP - BACKEND SCRIPT (V18 - Matches Professional Image Format)
 // =====================================================================================
 
 function doGet(e) {
@@ -21,44 +21,173 @@ function doPost(e) {
   const data = JSON.parse(e.postData.contents);
   const action = data.action;
 
-  // 1. ADD ENTRY
   if (action == 'addEntry') {
     const dbSheet = getSheet(ss, "DATA BASE");
     if (!dbSheet) return response({error: "Sheet 'DATA BASE' not found"});
 
     var invoiceUrl = "";
-    if (Number(data.amount) > 0) {
+    if (Number(data.amount) >= 0) {
       try { 
-        // Calling the real implementation below
         invoiceUrl = createInvoice(data); 
       } catch (e) { 
-        invoiceUrl = "Error Generating: " + e.toString(); 
+        invoiceUrl = "Error: " + e.toString(); 
       }
     }
 
     dbSheet.appendRow([
-      data.date,              // Col 1 (A)
-      data.clientName,        // Col 2 (B)
-      data.contactNo,         // Col 3 (C)
-      data.address,           // Col 4 (D)
-      data.branch,            // Col 5 (E)
-      data.serviceType,       // Col 6 (F)
-      data.patchMethod,       // Col 7 (G)
-      data.technician,        // Col 8 (H)
-      data.workStatus,        // Col 9 (I)
-      data.amount,            // Col 10 (J)
-      data.paymentMethod,     // Col 11 (K)
-      data.remark,            // Col 12 (L)
-      data.numberOfService,   // Col 13 (M)
-      invoiceUrl,             // Col 14 (N)
-      data.patchSize || '',   // Col 15 (O)
-      data.pendingAmount || 0 // Col 16 (P)
+      data.date,              
+      data.clientName,        
+      data.contactNo,         
+      data.address,           
+      data.branch,            
+      data.serviceType,       
+      data.patchMethod,       
+      data.technician,        
+      data.workStatus,        
+      data.amount,            
+      data.paymentMethod,     
+      data.remark,            
+      data.numberOfService,   
+      invoiceUrl,             
+      data.patchSize || '',   
+      data.pendingAmount || 0 
     ]);
     
     return response({status: "success", invoiceUrl: invoiceUrl});
   }
 
-  // ... (Keep existing updatePaymentFollowUp, editEntry, updateUserProfile etc.)
+  // --- PROFESSIONAL INVOICE GENERATOR (MATCHES IMAGE) ---
+  function createInvoice(data) {
+    const docName = "Invoice_" + data.clientName + "_" + data.date;
+    const doc = DocumentApp.create(docName);
+    const body = doc.getBody();
+    body.clear();
+    body.setMarginTop(30);
+    body.setMarginBottom(30);
+    body.setMarginLeft(40);
+    body.setMarginRight(40);
+    
+    const LOGO_URL = "https://i.ibb.co/wFDKjmJS/MAHAVEER-Logo-1920x1080.png";
+    const invoiceNo = "INV-2025-" + Math.floor(1000 + Math.random() * 9000);
+    
+    // 1. Logo
+    try {
+      const resp = UrlFetchApp.fetch(LOGO_URL);
+      const logo = body.insertImage(0, resp.getBlob());
+      logo.setWidth(200);
+      logo.setHeight(60);
+      const imgPara = body.getChild(0).asParagraph();
+      imgPara.setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+    } catch(e) {}
+    
+    // 2. Address Header
+    let branchAddr = "2nd Floor Rais Reality, front Anupam garden, GE Road Raipur Chhattisgarh";
+    let branchContact = "+91-9144939828";
+    if (data.branch === 'JDP') {
+      branchAddr = "Varghese Wings, Near Vishal Mega Mart Dharampura, Jagdalpur, Chhattisgarh";
+      branchContact = "09725567348";
+    }
+    
+    const headerPara = body.appendParagraph(branchAddr + "\nContact: " + branchContact + " | Email: info@mahaveerhairsolution.com");
+    headerPara.setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+    headerPara.setFontSize(9);
+    headerPara.setForegroundColor('#666666');
+    
+    body.appendHorizontalRule();
+    
+    // 3. Meta Row (Invoice #, Date, Branch)
+    const metaTable = body.appendTable([
+      ["INVOICE NUMBER", "DATE ISSUED", "BRANCH CODE"],
+      [invoiceNo, data.date, data.branch || "RPR"]
+    ]);
+    metaTable.setBorderWidth(0);
+    metaTable.getRow(0).setAttributes({[DocumentApp.Attribute.BOLD]: true, [DocumentApp.Attribute.FONT_SIZE]: 8, [DocumentApp.Attribute.FOREGROUND_COLOR]: '#888888'});
+    metaTable.getRow(1).setAttributes({[DocumentApp.Attribute.BOLD]: true, [DocumentApp.Attribute.FONT_SIZE]: 10});
+    metaTable.setColumnWidth(0, 150);
+    metaTable.setColumnWidth(1, 150);
+    
+    body.appendParagraph("\n");
+    
+    // 4. Detail Boxes (Bill To vs Service Info)
+    const detailTable = body.appendTable([
+      ["BILL TO", "SERVICE INFO"],
+      [
+        data.clientName.toUpperCase() + "\n" + (data.address || "RAIPUR") + "\nPh: " + data.contactNo,
+        "SERVICE Application\nTechnician: " + (data.technician || "N/A").toUpperCase() + "\nMethod: " + (data.patchMethod || "TAPING")
+      ]
+    ]);
+    detailTable.setBorderWidth(1);
+    detailTable.setBorderColor('#dddddd');
+    
+    const labelRow = detailTable.getRow(0);
+    labelRow.setAttributes({[DocumentApp.Attribute.BOLD]: true, [DocumentApp.Attribute.BACKGROUND_COLOR]: '#ffffff', [DocumentApp.Attribute.FONT_SIZE]: 8, [DocumentApp.Attribute.FOREGROUND_COLOR]: '#444444'});
+    
+    const contentRow = detailTable.getRow(1);
+    contentRow.setAttributes({[DocumentApp.Attribute.FONT_SIZE]: 10, [DocumentApp.Attribute.BOLD]: true});
+    
+    body.appendParagraph("\n");
+    
+    // 5. Main Item Table
+    const itemTable = body.appendTable([
+      ["DESCRIPTION", "QTY", "PRICE", "TOTAL"],
+      ["SERVICE " + data.serviceType, "1", "₹" + data.amount, "₹" + data.amount]
+    ]);
+    
+    const itemHeader = itemTable.getRow(0);
+    itemHeader.setAttributes({
+      [DocumentApp.Attribute.BOLD]: true,
+      [DocumentApp.Attribute.BACKGROUND_COLOR]: '#333333',
+      [DocumentApp.Attribute.FOREGROUND_COLOR]: '#ffffff',
+      [DocumentApp.Attribute.FONT_SIZE]: 9
+    });
+    
+    const itemData = itemTable.getRow(1);
+    itemData.setAttributes({[DocumentApp.Attribute.FONT_SIZE]: 10});
+    itemTable.setColumnWidth(0, 250);
+    
+    body.appendParagraph("\n");
+    
+    // 6. Totals Section
+    const paidAmount = Number(data.amount) - (Number(data.pendingAmount) || 0);
+    const totalTable = body.appendTable([
+      ["Subtotal", "₹" + data.amount],
+      ["Pending Amount", "₹" + (data.pendingAmount || 0)],
+      ["Payment Mode", data.paymentMethod],
+      ["Total Paid", "₹" + paidAmount]
+    ]);
+    totalTable.setBorderWidth(0);
+    totalTable.setColumnWidth(0, 350);
+    
+    for (let r=0; r<4; r++) {
+      totalTable.getRow(r).getCell(0).setAttributes({[DocumentApp.Attribute.HORIZONTAL_ALIGNMENT]: DocumentApp.HorizontalAlignment.RIGHT, [DocumentApp.Attribute.FONT_SIZE]: 9, [DocumentApp.Attribute.FOREGROUND_COLOR]: '#666666'});
+      totalTable.getRow(r).getCell(1).setAttributes({[DocumentApp.Attribute.HORIZONTAL_ALIGNMENT]: DocumentApp.HorizontalAlignment.RIGHT, [DocumentApp.Attribute.FONT_SIZE]: 10, [DocumentApp.Attribute.BOLD]: true});
+    }
+    
+    const finalRow = totalTable.getRow(3);
+    finalRow.getCell(0).setAttributes({[DocumentApp.Attribute.FONT_SIZE]: 12, [DocumentApp.Attribute.BOLD]: true, [DocumentApp.Attribute.FOREGROUND_COLOR]: '#000000'});
+    finalRow.getCell(1).setAttributes({[DocumentApp.Attribute.FONT_SIZE]: 14, [DocumentApp.Attribute.BOLD]: true});
+    
+    // 7. Footer
+    body.appendParagraph("\n\n\n");
+    body.appendHorizontalRule();
+    
+    const footerTable = body.appendTable([
+      [
+        "TERMS & CONDITIONS\n• Goods once sold will not be returned.\n• Subject to Raipur Jurisdiction only.\n• Interest @ 24% p.a. will be charged if bill is not paid.\n• E. & O.E.",
+        "FOR, MAHAVEER HAIR SOLUTION\n\n\nSYSTEM GENERATED INVOICE\nNo physical signature required"
+      ]
+    ]);
+    footerTable.setBorderWidth(0);
+    footerTable.getCell(0).setAttributes({[DocumentApp.Attribute.FONT_SIZE]: 7, [DocumentApp.Attribute.FOREGROUND_COLOR]: '#888888'});
+    footerTable.getCell(1).setAttributes({[DocumentApp.Attribute.FONT_SIZE]: 8, [DocumentApp.Attribute.BOLD]: true, [DocumentApp.Attribute.HORIZONTAL_ALIGNMENT]: DocumentApp.HorizontalAlignment.RIGHT});
+    
+    doc.saveAndClose();
+    const file = DriveApp.getFileById(doc.getId());
+    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    return doc.getUrl();
+  }
+
+  // --- OTHER ACTIONS ---
   if (action == 'updatePaymentFollowUp') {
       const dbSheet = getSheet(ss, "DATA BASE");
       const collectionSheet = getSheet(ss, "PAYMENT COLLECTION");
@@ -112,69 +241,6 @@ function doPost(e) {
       return response({error: "User not found"});
   }
 
-  // --- ADDED INVOICE GENERATOR FUNCTION ---
-  function createInvoice(data) {
-    const docName = "Invoice_" + data.clientName + "_" + data.date;
-    const doc = DocumentApp.create(docName);
-    const body = doc.getBody();
-    
-    // Header
-    body.insertParagraph(0, "MAHAVEER HAIR SOLUTION").setHeading(DocumentApp.ParagraphHeading.HEADING1).setAlignment(DocumentApp.HorizontalAlignment.CENTER);
-    
-    let addr = "2nd Floor Rais Reality, front Anupam garden, GE Road Raipur Chhattisgarh";
-    let contact = "+91-9144939828";
-    if (data.branch === 'JDP') {
-      addr = "Varghese Wings, Near Vishal Mega Mart Dharampura, Jagdalpur, Chhattisgarh";
-      contact = "09725567348";
-    }
-    
-    body.appendParagraph(addr).setAlignment(DocumentApp.HorizontalAlignment.CENTER);
-    body.appendParagraph("Contact: " + contact).setAlignment(DocumentApp.HorizontalAlignment.CENTER);
-    body.appendHorizontalRule();
-    
-    body.appendParagraph("TAX INVOICE / RECEIPT").setHeading(DocumentApp.ParagraphHeading.HEADING2).setAlignment(DocumentApp.HorizontalAlignment.CENTER);
-    
-    // Details
-    body.appendParagraph("Date: " + data.date);
-    body.appendParagraph("Bill To: " + data.clientName);
-    body.appendParagraph("Contact No: " + data.contactNo);
-    body.appendParagraph("Location: " + (data.address || 'N/A'));
-    body.appendParagraph("Branch: " + data.branch);
-    
-    body.appendHorizontalRule();
-    
-    // Table
-    const table = body.appendTable([
-      ["DESCRIPTION", "METHOD", "AMOUNT"],
-      [data.serviceType + " SERVICE", data.patchMethod || 'N/A', "₹ " + data.amount]
-    ]);
-    
-    table.getRow(0).setAttributes({ [DocumentApp.Attribute.BOLD]: true, [DocumentApp.Attribute.BACKGROUND_COLOR]: '#f3f3f3' });
-    
-    body.appendParagraph("\nTotal Bill: ₹ " + data.amount).setBold(true);
-    body.appendParagraph("Payment Method: " + data.paymentMethod);
-    
-    if (data.pendingAmount > 0) {
-      body.appendParagraph("Status: PARTIAL PAYMENT").setBold(true).setForegroundColor('#FF0000');
-      body.appendParagraph("Pending Balance: ₹ " + data.pendingAmount).setForegroundColor('#FF0000');
-    } else {
-      body.appendParagraph("Status: FULLY PAID").setBold(true).setForegroundColor('#008000');
-    }
-
-    if (data.remark) body.appendParagraph("\nNotes: " + data.remark).setItalic(true);
-    
-    body.appendParagraph("\n\nThank you for choosing Mahaveer Hair Solution.");
-    body.appendParagraph("This is a computer generated document.").setFontSize(8).setForegroundColor('#888888');
-    
-    doc.saveAndClose();
-    
-    const file = DriveApp.getFileById(doc.getId());
-    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-    
-    return doc.getUrl();
-  }
-
-  // --- REST OF ACTIONS ---
   if (action == 'addPackage') {
     const pkgSheet = getSheet(ss, "PACKAGE PLAN");
     pkgSheet.appendRow([data.startDate, data.clientName, data.packageName, data.totalCost, data.totalServices, data.status || 'PENDING']);
@@ -262,7 +328,6 @@ function getSheet(ss, name) {
     if (!sheet) {
         sheet = ss.insertSheet(name);
         if (name === "DATA BASE") sheet.appendRow(["DATE","CLIENT NAME","CONTACT","ADDRESS","BRANCH","SERVICE","METHOD","TECH","STATUS","TOTAL BILL","MODE","REMARK","SRV_NO","INVOICE","SIZE","PENDING"]);
-        if (name === "PAYMENT COLLECTION") sheet.appendRow(["ID","DATE","CLIENT","PHONE","ADDRESS","REMAINING","PAID","PROOF","REMARK","NEXT_CALL","TIMESTAMP"]);
     }
     return sheet;
 }
