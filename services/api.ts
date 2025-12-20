@@ -33,6 +33,24 @@ const toDDMMYYYY = (dateStr: string) => {
     return dateStr;
 };
 
+// CRITICAL FIX: Robust Date Normalizer to handle Sheet's inconsistent formats
+const normalizeToISO = (dateStr: string) => {
+    if (!dateStr) return "";
+    // If already YYYY-MM-DD
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+    // If DD/MM/YYYY
+    if (dateStr.includes('/')) {
+        const parts = dateStr.split('/');
+        if (parts.length === 3) {
+            const day = parts[0].padStart(2, '0');
+            const month = parts[1].padStart(2, '0');
+            const year = parts[2];
+            return `${year}-${month}-${day}`;
+        }
+    }
+    return dateStr;
+};
+
 export const api = {
   getOptions: async (forceRefresh = false) => {
     const now = Date.now();
@@ -88,16 +106,15 @@ export const api = {
             const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getEntries`);
             const data = await response.json();
             if (Array.isArray(data)) { 
-                allEntries = data; 
-                DATA_CACHE.entries = data; 
+                // Normalize dates on arrival to YYYY-MM-DD
+                allEntries = data.map((e: any) => ({ ...e, date: normalizeToISO(e.date) }));
+                DATA_CACHE.entries = allEntries; 
                 DATA_CACHE.lastFetch['entries'] = now;
-                // Once we have a fresh server copy, clear local temp items to prevent "Double Entry"
                 LOCAL_NEW_ENTRIES = [];
             }
         } catch (e) { allEntries = DATA_CACHE.entries || [...MOCK_ENTRIES]; }
     } else { allEntries = [...MOCK_ENTRIES]; }
     
-    // Strict Deduplication based on multiple factors to ensure no phantom entries
     const serverCheck = new Set(allEntries.map(e => `${e.clientName}|${e.date}|${e.amount}`));
     const uniqueLocal = LOCAL_NEW_ENTRIES.filter(e => !serverCheck.has(`${e.clientName}|${e.date}|${e.amount}`));
     
@@ -112,7 +129,7 @@ export const api = {
     }
     if (DATA_CACHE.entries) {
         const item = DATA_CACHE.entries.find(e => e.id === formatted.id);
-        if (item) Object.assign(item, formatted);
+        if (item) Object.assign(item, { ...formatted, date: normalizeToISO(formatted.date) });
     }
     return true;
   },
@@ -128,7 +145,7 @@ export const api = {
                 if(entry) {
                     if(payload.paymentMethod) entry.paymentMethod = payload.paymentMethod as any;
                     if(payload.pendingAmount !== undefined) entry.pendingAmount = payload.pendingAmount;
-                    if(payload.nextCallDate) entry.nextCallDate = formattedPayload.nextCallDate;
+                    if(payload.nextCallDate) entry.nextCallDate = normalizeToISO(formattedPayload.nextCallDate);
                     if(payload.remark) entry.remark = String(payload.remark);
                     if(data.screenshotUrl) entry.paymentScreenshotUrl = data.screenshotUrl;
                 }
@@ -149,8 +166,8 @@ export const api = {
             const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getAppointments`);
             const data = await response.json();
             if (Array.isArray(data)) { 
-                allAppts = data; 
-                DATA_CACHE.appointments = data; 
+                allAppts = data.map((a: any) => ({ ...a, date: normalizeToISO(a.date) })); 
+                DATA_CACHE.appointments = allAppts; 
                 DATA_CACHE.lastFetch['appointments'] = now; 
                 LOCAL_NEW_APPOINTMENTS = [];
             }
@@ -185,7 +202,7 @@ export const api = {
               const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getPackages&t=${now}`);
               const data = await response.json();
               if (Array.isArray(data)) {
-                  const formattedData = data.map((pkg: any) => ({ ...pkg, status: pkg.status ? pkg.status : 'PENDING' }));
+                  const formattedData = data.map((pkg: any) => ({ ...pkg, startDate: normalizeToISO(pkg.startDate), status: pkg.status ? pkg.status : 'PENDING' }));
                   DATA_CACHE.packages = formattedData;
                   DATA_CACHE.lastFetch['packages'] = now;
                   return formattedData;
@@ -245,7 +262,7 @@ export const api = {
           try {
               const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getUsers`);
               const data = await response.json();
-              if (Array.isArray(data)) return data.map((u: any) => ({ ...u, permissions: u.permissions ? u.permissions.split(',') : [] }));
+              if (Array.isArray(data)) return data.map((u: any) => ({ ...u, dob: normalizeToISO(u.dob), permissions: u.permissions ? u.permissions.split(',') : [] }));
           } catch (e) { console.warn(e); }
       }
       return [];

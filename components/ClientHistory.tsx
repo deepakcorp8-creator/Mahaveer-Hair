@@ -31,15 +31,40 @@ const ClientHistory: React.FC = () => {
   };
 
   const formatDateDisplay = (dateStr: string) => {
-    if (!dateStr || !dateStr.includes('-')) return dateStr;
-    const [y, m, d] = dateStr.split('-');
-    return `${d}/${m}/${y}`;
+    if (!dateStr) return "N/A";
+    // If it's standard ISO YYYY-MM-DD
+    if (dateStr.includes('-')) {
+        const parts = dateStr.split('-');
+        if (parts.length === 3) {
+            // Check if year is first
+            if (parts[0].length === 4) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+            // If DD-MM-YYYY
+            return `${parts[0]}/${parts[1]}/${parts[2]}`;
+        }
+    }
+    return dateStr;
   };
+
+  const getSafeDayName = (dateStr: string) => {
+      if (!dateStr) return "";
+      try {
+          // If DD/MM/YYYY, fix for constructor
+          let isoDate = dateStr;
+          if (dateStr.includes('/')) {
+              const p = dateStr.split('/');
+              isoDate = `${p[2]}-${p[1]}-${p[0]}`;
+          }
+          const d = new Date(isoDate);
+          if (isNaN(d.getTime())) return "";
+          return d.toLocaleDateString('en-US', { weekday: 'short' });
+      } catch (e) { return ""; }
+  }
 
   // Filter Logic
   const filteredData = entries.filter(e => {
-      if (startDate && e.date < startDate) return false;
-      if (endDate && e.date > endDate) return false;
+      const entryDate = e.date; 
+      if (startDate && entryDate < startDate) return false;
+      if (endDate && entryDate > endDate) return false;
       if (searchTerm) {
           const term = searchTerm.toLowerCase();
           const matchName = e.clientName.toLowerCase().includes(term);
@@ -162,14 +187,14 @@ const ClientHistory: React.FC = () => {
                              <tr key={idx} className="hover:bg-slate-50 transition-colors group">
                                  <td className="px-8 py-5 whitespace-nowrap">
                                      <div className="font-bold text-slate-700">{formatDateDisplay(entry.date)}</div>
-                                     <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wide bg-slate-100 px-2 py-0.5 rounded w-fit mt-1">{new Date(entry.date).toLocaleDateString('en-US', { weekday: 'short' })}</div>
+                                     <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wide bg-slate-100 px-2 py-0.5 rounded w-fit mt-1">{getSafeDayName(entry.date)}</div>
                                  </td>
                                  <td className="px-8 py-5">
                                      <div className="font-black text-slate-800 text-base">{entry.clientName}</div>
                                      <div className="flex items-center gap-2 mt-1"><span className="text-[11px] font-bold text-slate-500 bg-white shadow-sm px-2 py-0.5 rounded border border-slate-200">{entry.contactNo}</span></div>
                                  </td>
                                  <td className="px-8 py-5">
-                                    <div className="flex flex-col items-start gap-1.5"><span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border shadow-sm ${entry.serviceType === 'NEW' ? 'bg-blue-50 text-blue-700 border-blue-200' : entry.serviceType === 'SERVICE' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-50 text-slate-700 border-slate-200'}`}>{entry.serviceType}</span><div className="text-xs font-bold text-slate-500 flex items-center pl-1"><User className="w-3 h-3 mr-1.5 text-slate-400" />{entry.technician}</div></div>
+                                    <div className="flex flex-col items-start gap-1.5"><span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border shadow-sm ${entry.serviceType === 'NEW' ? 'bg-blue-50 text-blue-700 border-blue-200' : entry.serviceType === 'SERVICE' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : entry.serviceType === 'DEMO' ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-slate-50 text-slate-700 border-slate-200'}`}>{entry.serviceType}</span><div className="text-xs font-bold text-slate-500 flex items-center pl-1"><User className="w-3 h-3 mr-1.5 text-slate-400" />{entry.technician}</div></div>
                                  </td>
                                  <td className="px-8 py-5"><div className="flex items-center gap-2"><span className="font-bold text-xs uppercase text-slate-600 bg-white border border-slate-200 px-3 py-1.5 rounded-lg shadow-sm">{entry.paymentMethod}</span></div></td>
                                  <td className="px-8 py-5 text-right"><div className="font-black text-slate-900 text-lg">₹{entry.amount}</div></td>
