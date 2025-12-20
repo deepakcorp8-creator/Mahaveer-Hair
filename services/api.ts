@@ -2,15 +2,11 @@
 import { Entry, Client, Appointment, DashboardStats, ServicePackage, User } from '../types';
 import { MOCK_CLIENTS, MOCK_ENTRIES, MOCK_APPOINTMENTS, MOCK_ITEMS, MOCK_TECHNICIANS, MOCK_PACKAGES, GOOGLE_SCRIPT_URL } from '../constants';
 
-// Helper to check if we have a valid URL
 const isLive = GOOGLE_SCRIPT_URL && GOOGLE_SCRIPT_URL.startsWith('http');
 
-// --- LOCAL CACHE & STATE MANAGEMENT ---
-// 1. Temporary storage for items added in this session (shows up immediately)
 const LOCAL_NEW_ENTRIES: Entry[] = [];
 const LOCAL_NEW_APPOINTMENTS: Appointment[] = [];
 
-// 2. Data Cache to prevent "Slow" performance (prevents fetching on every keystroke)
 let DATA_CACHE: {
     options: any | null;
     packages: ServicePackage[] | null;
@@ -25,604 +21,239 @@ let DATA_CACHE: {
     lastFetch: {}
 };
 
-// Increased Cache Duration for speed
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minute cache for entries/appts
-const OPTIONS_CACHE_DURATION = 15 * 60 * 1000; // 15 minutes for clients/items
-
-// Helper: Format Time from Sheet (Handles "Sat Dec 30 1899..." garbage)
-const formatTimeSafe = (val: any): string => {
-    if (!val) return '';
-    const strVal = String(val);
-    
-    // If it looks like a long ISO date or Sheet date string, parse it
-    if (strVal.includes('1899') || strVal.includes('T') || strVal.length > 10) {
-        try {
-            const d = new Date(val);
-            if (!isNaN(d.getTime())) {
-                return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-            }
-        } catch (e) {}
-    }
-    return strVal; // Return as is if it's already "10:00 AM" or similar
-};
+const CACHE_DURATION = 5 * 60 * 1000;
+const OPTIONS_CACHE_DURATION = 15 * 60 * 1000;
 
 export const api = {
-  // --- OPTION HELPERS (Clients, Technicians, Items) ---
   getOptions: async (forceRefresh = false) => {
-    // Return cached if valid
     const now = Date.now();
-    if (!forceRefresh && DATA_CACHE.options && (now - (DATA_CACHE.lastFetch['options'] || 0) < OPTIONS_CACHE_DURATION)) {
-        return DATA_CACHE.options;
-    }
-
+    if (!forceRefresh && DATA_CACHE.options && (now - (DATA_CACHE.lastFetch['options'] || 0) < OPTIONS_CACHE_DURATION)) return DATA_CACHE.options;
     if (isLive) {
       try {
         const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getOptions`);
         const data = await response.json();
         if (data && data.clients) {
-            const result = {
-                clients: data.clients,
-                technicians: data.technicians || MOCK_TECHNICIANS,
-                items: data.items || MOCK_ITEMS
-            };
-            // Update Cache
+            const result = { clients: data.clients, technicians: data.technicians || MOCK_TECHNICIANS, items: data.items || MOCK_ITEMS };
             DATA_CACHE.options = result;
             DATA_CACHE.lastFetch['options'] = now;
             return result;
         }
-      } catch (e) {
-        console.warn("Failed to fetch options, using mock/cache", e);
-      }
+      } catch (e) { console.warn("Fallback to mock options", e); }
     }
-    
-    // Fallback or Initial Mock
-    return {
-      clients: MOCK_CLIENTS,
-      technicians: MOCK_TECHNICIANS,
-      items: MOCK_ITEMS
-    };
-  },
-
-  getClientDetails: async (name: string) => {
-    // Optimized: Use cache instead of fetching
-    const options = await api.getOptions();
-    return options.clients.find((c: any) => c.name.toLowerCase() === name.toLowerCase());
+    return { clients: MOCK_CLIENTS, technicians: MOCK_TECHNICIANS, items: MOCK_ITEMS };
   },
 
   addClient: async (client: Client) => {
-    // Invalidate Cache
     DATA_CACHE.options = null;
-    
-    if (isLive) {
-        // Fire and forget - don't await
-        fetch(GOOGLE_SCRIPT_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({ action: 'addClient', ...client })
-        }).catch(err => console.error("BG Sync Error", err));
-    } else {
-        MOCK_CLIENTS.push(client);
-    }
+    if (isLive) fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'addClient', ...client }) }).catch(err => console.error("Sync Error", err));
+    else MOCK_CLIENTS.push(client);
     return client;
   },
 
-  // --- ENTRIES ---
   addEntry: async (entry: Omit<Entry, 'id'>) => {
     const newEntry = { ...entry, id: 'temp_' + Date.now() + Math.random().toString(36).substr(2, 5) };
-    
-    // Add to local cache immediately
     LOCAL_NEW_ENTRIES.push(newEntry as Entry);
-    
-    if (isLive) {
-      // OPTIMISTIC UI: Don't await the fetch. Let it run in background.
-      fetch(GOOGLE_SCRIPT_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'text/plain;charset=utf-8', 
-        },
-        body: JSON.stringify({
-          action: 'addEntry',
-          ...entry
-        })
-      }).catch(e => console.error("Error sending to sheet", e));
-    } else {
-        MOCK_ENTRIES.push(newEntry as Entry);
-    }
-
+    if (isLive) fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'addEntry', ...entry }) }).catch(e => console.error("Sync Error", e));
+    else MOCK_ENTRIES.push(newEntry as Entry);
     return newEntry;
   },
 
   getEntries: async (forceRefresh = false) => {
     let allEntries: Entry[] = [];
     const now = Date.now();
-
-    // Check Cache
     if (!forceRefresh && DATA_CACHE.entries && (now - (DATA_CACHE.lastFetch['entries'] || 0) < CACHE_DURATION)) {
         allEntries = DATA_CACHE.entries;
-    } else {
-        if (isLive) {
-           try {
+    } else if (isLive) {
+        try {
             const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getEntries`);
             const data = await response.json();
-            if (Array.isArray(data)) {
-                allEntries = data;
-                DATA_CACHE.entries = data;
-                DATA_CACHE.lastFetch['entries'] = now;
-            }
-           } catch (e) {
-             console.warn("Using mock entries due to fetch failure");
-             // If fetch fails, keep old cache if available
-             allEntries = DATA_CACHE.entries || [...MOCK_ENTRIES];
-           }
-        } else {
-            allEntries = [...MOCK_ENTRIES];
-        }
-    }
-
-    // --- DEDUPLICATION LOGIC ---
-    const indicesToRemove: number[] = [];
-    
-    LOCAL_NEW_ENTRIES.forEach((local, index) => {
-        const isSynced = allEntries.some(server => 
-            server.clientName === local.clientName &&
-            server.date === local.date &&
-            server.serviceType === local.serviceType &&
-            String(server.contactNo).replace(/\D/g,'') === String(local.contactNo).replace(/\D/g,'') &&
-            Number(server.amount) === Number(local.amount)
-        );
-        
-        if (isSynced) {
-            indicesToRemove.push(index);
-        }
-    });
-
-    // Remove synced items from local cache
-    for (let i = indicesToRemove.length - 1; i >= 0; i--) {
-        LOCAL_NEW_ENTRIES.splice(indicesToRemove[i], 1);
-    }
-    
-    return [...LOCAL_NEW_ENTRIES, ...allEntries];
+            if (Array.isArray(data)) { allEntries = data; DATA_CACHE.entries = data; DATA_CACHE.lastFetch['entries'] = now; }
+        } catch (e) { allEntries = DATA_CACHE.entries || [...MOCK_ENTRIES]; }
+    } else { allEntries = [...MOCK_ENTRIES]; }
+    const serverIds = new Set(allEntries.map(e => e.id));
+    const uniqueLocal = LOCAL_NEW_ENTRIES.filter(e => !serverIds.has(e.id));
+    return [...uniqueLocal, ...allEntries];
   },
 
-  updateEntryStatus: async (id: string, status: string) => {
-    // 1. Update Local Cache
-    const localEntry = LOCAL_NEW_ENTRIES.find(e => e.id === id);
-    if(localEntry) localEntry.workStatus = status as any;
-
-    if(DATA_CACHE.entries) {
-        const cacheEntry = DATA_CACHE.entries.find(e => e.id === id);
-        if(cacheEntry) cacheEntry.workStatus = status as any;
-    }
-
-    // 2. Mock Data Update
-    const mockEntry = MOCK_ENTRIES.find(e => e.id === id);
-    if(mockEntry) mockEntry.workStatus = status as any;
-
-    // 3. Live Update (Fire & Forget)
-    if (isLive) {
-        fetch(GOOGLE_SCRIPT_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-            body: JSON.stringify({ action: 'updateEntryStatus', id, status })
-        }).catch(e => console.error("BG Update Fail", e));
-    }
-    return true;
-  },
-  
   updateEntry: async (entry: Entry) => {
-    // 1. Update Local Cache
-    const localEntry = LOCAL_NEW_ENTRIES.find(e => e.id === entry.id);
-    if(localEntry) Object.assign(localEntry, entry);
-
-    if(DATA_CACHE.entries) {
-        const cacheEntry = DATA_CACHE.entries.find(e => e.id === entry.id);
-        if(cacheEntry) Object.assign(cacheEntry, entry);
-    }
-
-    // 2. Mock Data Update
-    const mockEntry = MOCK_ENTRIES.find(e => e.id === entry.id);
-    if(mockEntry) Object.assign(mockEntry, entry);
-
-    // 3. Live Update
     if (isLive) {
-        try {
-            await fetch(GOOGLE_SCRIPT_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                body: JSON.stringify({ action: 'editEntry', ...entry })
-            });
-        } catch(e) {
-            console.error("Failed to update entry", e);
-            throw e;
-        }
+        try { await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'editEntry', ...entry }) }); }
+        catch(e) { console.error("Update Fail", e); throw e; }
     }
+    [LOCAL_NEW_ENTRIES, DATA_CACHE.entries || []].forEach(arr => {
+        const item = arr.find(e => e.id === entry.id);
+        if (item) Object.assign(item, entry);
+    });
     return true;
   },
 
-  // NEW: Update Payment Follow Up (With Image)
-  updatePaymentFollowUp: async (payload: {
-      id: string,
-      clientName: string,
-      contactNo?: string,
-      address?: string,
-      paymentMethod?: string,
-      pendingAmount?: number,
-      paidAmount?: number,
-      nextCallDate?: string,
-      remark?: string,
-      screenshotBase64?: string,
-      existingScreenshotUrl?: string
-  }) => {
+  updatePaymentFollowUp: async (payload: { id: string, clientName: string, contactNo?: string, address?: string, paymentMethod?: string, pendingAmount?: number, nextCallDate?: string, remark?: string, screenshotBase64?: string, existingScreenshotUrl?: string, paidAmount?: number }) => {
       if (isLive) {
           try {
-              // We return the response to get the generated screenshot URL
-              const res = await fetch(GOOGLE_SCRIPT_URL, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                  body: JSON.stringify({ action: 'updatePaymentFollowUp', ...payload })
-              });
+              const res = await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'updatePaymentFollowUp', ...payload }) });
               const data = await res.json();
-              
-              // Also update cache if possible
               if(DATA_CACHE.entries) {
                 const entry = DATA_CACHE.entries.find(e => e.id === payload.id);
                 if(entry) {
                     if(payload.paymentMethod) entry.paymentMethod = payload.paymentMethod as any;
                     if(payload.pendingAmount !== undefined) entry.pendingAmount = payload.pendingAmount;
-                    if(payload.paidAmount) entry.amount = (Number(entry.amount) || 0) + payload.paidAmount;
                     if(payload.nextCallDate) entry.nextCallDate = payload.nextCallDate;
                     if(payload.remark) entry.remark = payload.remark;
                     if(data.screenshotUrl) entry.paymentScreenshotUrl = data.screenshotUrl;
                 }
               }
-
               return data;
-          } catch(e) {
-              console.error("Failed to update follow up", e);
-              throw e;
-          }
+          } catch(e) { throw e; }
       }
       return { status: "success" };
   },
 
-  // --- APPOINTMENTS ---
   getAppointments: async (forceRefresh = false) => {
     let allAppts: Appointment[] = [];
     const now = Date.now();
-
     if (!forceRefresh && DATA_CACHE.appointments && (now - (DATA_CACHE.lastFetch['appointments'] || 0) < CACHE_DURATION)) {
         allAppts = DATA_CACHE.appointments;
-    } else {
-        if (isLive) {
-           try {
+    } else if (isLive) {
+        try {
             const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getAppointments`);
             const data = await response.json();
-            if (Array.isArray(data)) {
-                // Apply formatting to time immediately
-                allAppts = data.map((a: Appointment) => ({
-                    ...a,
-                    time: formatTimeSafe(a.time)
-                }));
-                DATA_CACHE.appointments = allAppts;
-                DATA_CACHE.lastFetch['appointments'] = now;
-            }
-           } catch (e) {
-             // Fallback
-             allAppts = DATA_CACHE.appointments || [...MOCK_APPOINTMENTS];
-           }
-        } else {
-             allAppts = [...MOCK_APPOINTMENTS];
-        }
-    }
-
-    // --- DEDUPLICATION LOGIC FOR APPOINTMENTS ---
-    // Remove local appointments that have been confirmed synced to the server.
-    const indicesToRemove: number[] = [];
-    
-    LOCAL_NEW_APPOINTMENTS.forEach((local, index) => {
-        const isSynced = allAppts.some(server => 
-            server.clientName === local.clientName &&
-            server.date === local.date &&
-            // Loose comparison for contact
-            String(server.contact || '').replace(/\D/g,'') === String(local.contact || '').replace(/\D/g,'')
-        );
-        
-        if (isSynced) {
-            indicesToRemove.push(index);
-        }
-    });
-
-    // Remove synced items
-    for (let i = indicesToRemove.length - 1; i >= 0; i--) {
-        LOCAL_NEW_APPOINTMENTS.splice(indicesToRemove[i], 1);
-    }
-    
-    return [...LOCAL_NEW_APPOINTMENTS, ...allAppts];
+            if (Array.isArray(data)) { allAppts = data; DATA_CACHE.appointments = data; DATA_CACHE.lastFetch['appointments'] = now; }
+        } catch (e) { allAppts = DATA_CACHE.appointments || [...MOCK_APPOINTMENTS]; }
+    } else { allAppts = [...MOCK_APPOINTMENTS]; }
+    const serverIds = new Set(allAppts.map(a => a.id));
+    const uniqueLocal = LOCAL_NEW_APPOINTMENTS.filter(a => !serverIds.has(a.id));
+    return [...uniqueLocal, ...allAppts];
   },
 
   addAppointment: async (appt: Omit<Appointment, 'id'>) => {
-    const newAppt = { ...appt, id: 'temp_' + Date.now() + Math.random().toString(36).substr(2, 5) };
-    
-    // Add to local cache immediately so it shows in UI
+    const newAppt = { ...appt, id: 'temp_' + Date.now() };
     LOCAL_NEW_APPOINTMENTS.push(newAppt as Appointment);
-    
-    if (isLive) {
-        // Fire & Forget
-        fetch(GOOGLE_SCRIPT_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({ action: 'addAppointment', ...appt })
-        }).catch(e => console.error("BG Appt Error", e));
-    } else {
-        MOCK_APPOINTMENTS.push(newAppt as Appointment);
-    }
-    
+    if (isLive) fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'addAppointment', ...appt }) }).catch(e => console.error(e));
+    else MOCK_APPOINTMENTS.push(newAppt as Appointment);
     return newAppt;
   },
   
   updateAppointmentStatus: async (id: string, status: Appointment['status']) => {
-    // Update local caches immediately
-    const localEntry = LOCAL_NEW_APPOINTMENTS.find(a => a.id === id);
-    if(localEntry) localEntry.status = status;
-
-    if(DATA_CACHE.appointments) {
-        const cacheEntry = DATA_CACHE.appointments.find(a => a.id === id);
-        if(cacheEntry) cacheEntry.status = status;
-    }
-
-    if (isLive) {
-        // Fire & Forget
-        fetch(GOOGLE_SCRIPT_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({ action: 'updateAppointmentStatus', id, status })
-        }).catch(e => console.error("BG Appt Update Error", e));
-    } else {
-        const appt = MOCK_APPOINTMENTS.find(a => a.id === id);
-        if (appt) appt.status = status;
-    }
-    return { id, status };
+    [LOCAL_NEW_APPOINTMENTS, DATA_CACHE.appointments || []].forEach(arr => {
+        const item = arr.find(a => a.id === id);
+        if (item) item.status = status;
+    });
+    if (isLive) fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'updateAppointmentStatus', id, status }) });
+    return true;
   },
 
-  // --- PACKAGE METHODS ---
   getPackages: async (forceRefresh = false) => {
       const now = Date.now();
-      if (!forceRefresh && DATA_CACHE.packages && (now - (DATA_CACHE.lastFetch['packages'] || 0) < CACHE_DURATION)) {
-          return DATA_CACHE.packages;
-      }
-
+      if (!forceRefresh && DATA_CACHE.packages && (now - (DATA_CACHE.lastFetch['packages'] || 0) < CACHE_DURATION)) return DATA_CACHE.packages;
       if (isLive) {
           try {
-              // Add timestamp to bypass browser caching of GET requests
               const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getPackages&t=${now}`);
               const data = await response.json();
               if (Array.isArray(data)) {
-                  // Ensure status defaults to PENDING if coming back as undefined/empty string
-                  const formattedData = data.map((pkg: any) => ({
-                      ...pkg,
-                      status: pkg.status ? pkg.status : 'PENDING'
-                  }));
-                  
+                  const formattedData = data.map((pkg: any) => ({ ...pkg, status: pkg.status ? pkg.status : 'PENDING' }));
                   DATA_CACHE.packages = formattedData;
                   DATA_CACHE.lastFetch['packages'] = now;
                   return formattedData;
               }
-          } catch (e) {
-              console.warn("Failed to fetch packages", e);
-          }
+          } catch (e) { console.warn(e); }
       }
       return [...MOCK_PACKAGES];
   },
 
   addPackage: async (pkg: Omit<ServicePackage, 'id'>) => {
-      DATA_CACHE.packages = null; // Invalidate cache immediately
-      
-      const pkgPayload = { ...pkg, status: 'PENDING' }; // Always default to PENDING
-      
-      if (isLive) {
-        // Critical: Do NOT return a fake object here.
-        await fetch(GOOGLE_SCRIPT_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-            body: JSON.stringify({ action: 'addPackage', ...pkgPayload })
-        });
-        return true; 
-      }
-      
-      // Mock mode only
-      const newPkg = { ...pkgPayload, id: 'pkg_' + MOCK_PACKAGES.length };
-      MOCK_PACKAGES.push(newPkg as ServicePackage);
-      return newPkg;
+      DATA_CACHE.packages = null;
+      if (isLive) await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'addPackage', ...pkg, status: 'PENDING' }) });
+      return true;
   },
 
   updatePackageStatus: async (id: string, status: ServicePackage['status']) => {
-      DATA_CACHE.packages = null; // Invalidate cache
-
-      if (isLive) {
-          await fetch(GOOGLE_SCRIPT_URL, {
-              method: 'POST',
-              headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-              body: JSON.stringify({ action: 'updatePackageStatus', id, status })
-          });
-      } else {
-          const pkg = MOCK_PACKAGES.find(p => p.id === id);
-          if (pkg) pkg.status = status;
-      }
+      DATA_CACHE.packages = null;
+      if (isLive) await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'updatePackageStatus', id, status }) });
       return true;
   },
   
   deletePackage: async (id: string) => {
-      DATA_CACHE.packages = null; // Invalidate cache
-      
-      if (isLive) {
-          await fetch(GOOGLE_SCRIPT_URL, {
-              method: 'POST',
-              headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-              body: JSON.stringify({ action: 'deletePackage', id })
-          });
-      } else {
-          const index = MOCK_PACKAGES.findIndex(p => p.id === id);
-          if (index !== -1) {
-              MOCK_PACKAGES.splice(index, 1);
-          }
-      }
+      DATA_CACHE.packages = null;
+      if (isLive) await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'deletePackage', id }) });
       return true;
   },
 
   editPackage: async (pkg: ServicePackage) => {
-      DATA_CACHE.packages = null; // Invalidate cache
-
-      if (isLive) {
-          await fetch(GOOGLE_SCRIPT_URL, {
-              method: 'POST',
-              headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-              body: JSON.stringify({ action: 'editPackage', ...pkg })
-          });
-      } else {
-          const index = MOCK_PACKAGES.findIndex(p => p.id === pkg.id);
-          if (index !== -1) {
-              MOCK_PACKAGES[index] = { ...MOCK_PACKAGES[index], ...pkg };
-          }
-      }
+      DATA_CACHE.packages = null;
+      if (isLive) await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'editPackage', ...pkg }) });
       return true;
   },
 
   checkClientPackage: async (clientName: string, contact?: string) => {
       if (!clientName) return null;
       const normalizedName = clientName.trim().toLowerCase();
-
-      // 1. Fetch latest packages (Use Cache!)
       const packages = await api.getPackages();
-      
-      // 2. Find active package
-      const pkg = packages.find((p: any) => p.clientName.trim().toLowerCase() === normalizedName && (p.status === 'ACTIVE' || p.status === 'APPROVED'));
-      
+      const pkg = packages.find((p: any) => {
+          const matchName = p.clientName.trim().toLowerCase() === normalizedName;
+          const matchContact = contact ? String(p.contact || '').includes(contact) : true;
+          return matchName && matchContact && (p.status === 'ACTIVE' || p.status === 'APPROVED');
+      });
       if (!pkg) return null;
-
-      // 3. Count entries
       const entries = await api.getEntries();
-      
-      const pkgStartDate = new Date(pkg.startDate);
-      pkgStartDate.setHours(0,0,0,0);
-
+      const pkgStartDate = new Date(pkg.startDate); pkgStartDate.setHours(0,0,0,0);
       const usedCount = entries.filter((e: any) => {
-          const entryDate = new Date(e.date);
-          entryDate.setHours(0,0,0,0);
-          
-          return (
-             e.clientName.trim().toLowerCase() === normalizedName && 
-             entryDate >= pkgStartDate &&
-             (e.serviceType === 'SERVICE') && 
-             (e.workStatus === 'DONE' || e.workStatus === 'PENDING_APPROVAL')
-          );
+          const entryDate = new Date(e.date); entryDate.setHours(0,0,0,0);
+          return (e.clientName.trim().toLowerCase() === normalizedName && entryDate >= pkgStartDate && (e.serviceType === 'SERVICE') && (e.workStatus === 'DONE' || e.workStatus === 'PENDING_APPROVAL'));
       }).length;
-
-      // 4. Return status
-      const currentServiceNumber = usedCount + 1;
-      const isExpired = currentServiceNumber > pkg.totalServices;
-
-      return {
-          package: pkg,
-          usedCount,
-          currentServiceNumber,
-          isExpired,
-          remaining: Math.max(0, pkg.totalServices - usedCount)
-      };
+      return { package: pkg, usedCount, currentServiceNumber: usedCount + 1, isExpired: usedCount + 1 > pkg.totalServices, remaining: Math.max(0, pkg.totalServices - usedCount) };
   },
 
-  // --- USER MANAGEMENT ---
   getUsers: async () => {
       if (isLive) {
           try {
               const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getUsers`);
               const data = await response.json();
-              if (Array.isArray(data)) {
-                  return data.map((u: any) => ({
-                      ...u,
-                      permissions: u.permissions ? u.permissions.split(',') : []
-                  }));
-              }
-          } catch (e) {
-              console.warn("Failed to fetch users", e);
-          }
+              if (Array.isArray(data)) return data.map((u: any) => ({ ...u, permissions: u.permissions ? u.permissions.split(',') : [] }));
+          } catch (e) { console.warn(e); }
       }
       return [];
   },
 
   addUser: async (user: User & { password: string }) => {
-      const payload = {
-          ...user,
-          permissions: user.permissions ? user.permissions.join(',') : ''
-      };
-
-      if (isLive) {
-          try {
-             await fetch(GOOGLE_SCRIPT_URL, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                  body: JSON.stringify({ action: 'addUser', ...payload })
-             });
-             return true;
-          } catch (e) {
-              console.error("Failed to add user", e);
-              return false;
-          }
-      }
-      return true; 
+      if (isLive) await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'addUser', ...user, permissions: user.permissions ? user.permissions.join(',') : '' }) });
+      return true;
   },
   
   deleteUser: async (username: string) => {
-       if (isLive) {
-          try {
-             await fetch(GOOGLE_SCRIPT_URL, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                  body: JSON.stringify({ action: 'deleteUser', username })
-             });
-             return true;
-          } catch (e) {
-              console.error("Failed to delete user", e);
-              return false;
-          }
-      }
-      return true; 
+       if (isLive) await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'deleteUser', username }) });
+       return true;
   },
 
-  updateUserProfile: async (userData: Partial<User>) => {
+  updateUserProfile: async (payload: { username: string, dpUrl?: string, gender?: string, dob?: string, address?: string }) => {
       if (isLive) {
           try {
-             await fetch(GOOGLE_SCRIPT_URL, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                  body: JSON.stringify({ action: 'updateUser', ...userData })
-             });
-             return true;
-          } catch (e) { return false; }
+              const res = await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'updateUserProfile', ...payload }) });
+              return await res.json();
+          } catch (e) { console.error("Failed to update profile", e); throw e; }
       }
-      return true;
+      return { status: "success" };
   },
 
   getDashboardStats: async (): Promise<DashboardStats> => {
-    const entries = await api.getEntries();
+    // FIX: Force fetching both entries and options to ensure we get real data from both sheets
+    const [entries, options] = await Promise.all([
+        api.getEntries(true),
+        api.getOptions(true)
+    ]);
     
-    const totalClients = new Set(entries.map((e: any) => e.clientName)).size;
+    // FIX: Total Clients comes from CLIENT MASTER sheet
+    const totalClients = options.clients ? options.clients.length : 0;
+    
+    // Total Revenue from DATA BASE sheet (Column J / Amount)
     const totalAmount = entries.reduce((sum: number, e: any) => sum + Number(e.amount || 0), 0);
+    
     const today = new Date().toISOString().split('T')[0];
     const newClientsToday = entries.filter((e: any) => e.date === today && e.serviceType === 'NEW').length;
     const serviceCount = entries.length;
 
-    // Calculate Total Outstanding
-    const totalOutstanding = entries.reduce((sum: number, e: any) => {
-        const due = e.paymentMethod === 'PENDING' ? Number(e.amount || 0) : Number(e.pendingAmount || 0);
-        return sum + due;
-    }, 0);
+    // FIX: Total Outstanding from DATA BASE sheet (Column P / Pending Amount sum)
+    const totalOutstanding = entries.reduce((sum: number, e: any) => sum + Number(e.pendingAmount || 0), 0);
 
-    return {
-      totalClients,
-      totalAmount,
-      newClientsToday,
-      serviceCount,
-      totalOutstanding
-    };
+    return { totalClients, totalAmount, newClientsToday, serviceCount, totalOutstanding };
   }
 };
