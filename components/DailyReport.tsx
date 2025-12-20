@@ -40,16 +40,24 @@ const DailyReport: React.FC = () => {
   });
 
   const dailyEntries = entries.filter(e => e.date === selectedDate);
-  const totalDailyRevenue = dailyEntries.reduce((sum, e) => sum + Number(e.amount), 0);
+  const totalDailyRevenue = dailyEntries.reduce((sum, e) => sum + Number(e.amount || 0), 0);
   const newClientsCount = dailyEntries.filter(e => e.serviceType === 'NEW').length;
   const serviceCount = dailyEntries.filter(e => e.serviceType === 'SERVICE').length;
   const totalTxns = dailyEntries.length;
 
+  // FIX: Calculate actual received amounts and correct pending total
   const paymentStats = {
-    CASH: dailyEntries.filter(e => e.paymentMethod === 'CASH').reduce((s, e) => s + Number(e.amount), 0),
-    UPI: dailyEntries.filter(e => e.paymentMethod === 'UPI').reduce((s, e) => s + Number(e.amount), 0),
-    CARD: dailyEntries.filter(e => e.paymentMethod === 'CARD').reduce((s, e) => s + Number(e.amount), 0),
-    PENDING: dailyEntries.filter(e => e.paymentMethod === 'PENDING').reduce((s, e) => s + Number(e.amount), 0),
+    CASH: dailyEntries
+      .filter(e => e.paymentMethod === 'CASH')
+      .reduce((s, e) => s + (Number(e.amount || 0) - Number(e.pendingAmount || 0)), 0),
+    UPI: dailyEntries
+      .filter(e => e.paymentMethod === 'UPI')
+      .reduce((s, e) => s + (Number(e.amount || 0) - Number(e.pendingAmount || 0)), 0),
+    CARD: dailyEntries
+      .filter(e => e.paymentMethod === 'CARD')
+      .reduce((s, e) => s + (Number(e.amount || 0) - Number(e.pendingAmount || 0)), 0),
+    // Pending card now correctly sums Column P (Pending Amount) across all entries
+    PENDING: dailyEntries.reduce((s, e) => s + Number(e.pendingAmount || 0), 0),
   };
 
   // Base 3D Card Style
