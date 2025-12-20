@@ -4,6 +4,7 @@ import { MOCK_CLIENTS, MOCK_ENTRIES, MOCK_APPOINTMENTS, MOCK_ITEMS, MOCK_TECHNIC
 
 const isLive = GOOGLE_SCRIPT_URL && GOOGLE_SCRIPT_URL.startsWith('http');
 
+// Use 'let' so we can clear these arrays when server data arrives
 let LOCAL_NEW_ENTRIES: Entry[] = [];
 let LOCAL_NEW_APPOINTMENTS: Appointment[] = [];
 
@@ -71,12 +72,16 @@ export const api = {
                 allEntries = data; 
                 DATA_CACHE.entries = data; 
                 DATA_CACHE.lastFetch['entries'] = now;
-                // Fix: Clear local optimistic items once server has updated
+                // CRITICAL FIX: Clear local temporary items once server data is successfully fetched
                 LOCAL_NEW_ENTRIES = [];
             }
         } catch (e) { allEntries = DATA_CACHE.entries || [...MOCK_ENTRIES]; }
     } else { allEntries = [...MOCK_ENTRIES]; }
-    return allEntries;
+    
+    // If we still have local entries (e.g. offline or just added), merge them safely
+    const serverIds = new Set(allEntries.map(e => e.id));
+    const uniqueLocal = LOCAL_NEW_ENTRIES.filter(e => !serverIds.has(e.id));
+    return [...uniqueLocal, ...allEntries];
   },
 
   updateEntry: async (entry: Entry) => {
@@ -125,12 +130,15 @@ export const api = {
                 allAppts = data; 
                 DATA_CACHE.appointments = data; 
                 DATA_CACHE.lastFetch['appointments'] = now; 
-                // Fix: Clear local optimistic items once server has updated
+                // CRITICAL FIX: Clear local temporary items once server data is successfully fetched
                 LOCAL_NEW_APPOINTMENTS = [];
             }
         } catch (e) { allAppts = DATA_CACHE.appointments || [...MOCK_APPOINTMENTS]; }
     } else { allAppts = [...MOCK_APPOINTMENTS]; }
-    return allAppts;
+    
+    const serverIds = new Set(allAppts.map(a => a.id));
+    const uniqueLocal = LOCAL_NEW_APPOINTMENTS.filter(a => !serverIds.has(a.id));
+    return [...uniqueLocal, ...allAppts];
   },
 
   addAppointment: async (appt: Omit<Appointment, 'id'>) => {
