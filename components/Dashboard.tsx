@@ -16,14 +16,24 @@ const MONTHS = [
 
 const Dashboard: React.FC = () => {
   const [entries, setEntries] = useState<Entry[]>([]);
+  const [totalRegisteredClients, setTotalRegisteredClients] = useState(0);
   const [loading, setLoading] = useState(true);
   const [selectedMonth, setSelectedMonth] = useState('All Time');
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const entriesData = await api.getEntries();
+        // Fetch both transactions and client master options
+        const [entriesData, optionsData] = await Promise.all([
+          api.getEntries(),
+          api.getOptions()
+        ]);
+        
         setEntries(entriesData);
+        // FIX: Count only from CLIENT MASTER list
+        if (optionsData && optionsData.clients) {
+            setTotalRegisteredClients(optionsData.clients.length);
+        }
       } catch (error) {
         console.error("Failed to fetch dashboard data", error);
       } finally {
@@ -53,11 +63,9 @@ const Dashboard: React.FC = () => {
   // KPI Calculations based on filtered data
   const totalRevenue = filteredEntries.reduce((sum, e) => sum + Number(e.amount || 0), 0);
   const totalOutstanding = filteredEntries.reduce((sum, e) => sum + Number(e.pendingAmount || 0), 0);
-  const newClientsToday = filteredEntries.filter(e => {
-    const today = new Date().toISOString().split('T')[0];
-    return e.date === today && e.serviceType === 'NEW';
-  }).length;
-  const totalClients = new Set(filteredEntries.map(e => e.clientName)).size;
+  
+  // Logic for "Active Clients" in the specific period
+  const activeInPeriod = new Set(filteredEntries.map(e => e.clientName)).size;
 
   // Process data for charts
   const serviceTypeData = filteredEntries.reduce((acc: any[], curr) => {
@@ -84,7 +92,7 @@ const Dashboard: React.FC = () => {
 
   const chartData = salesData.slice(-15);
 
-  // TECHNICIAN PERFORMANCE PROCESSING (Updated with NEW Patch counting)
+  // TECHNICIAN PERFORMANCE PROCESSING
   const technicianPerformance = filteredEntries.reduce((acc: any[], curr) => {
     const found = acc.find(item => item.name === curr.technician);
     const amount = Number(curr.amount || 0);
@@ -130,7 +138,6 @@ const Dashboard: React.FC = () => {
         </div>
         
         <div className="flex items-center gap-3">
-          {/* Month Filter Dropdown */}
           <div className="relative group">
             <div className="absolute left-4 top-1/2 -translate-y-1/2 text-indigo-500 z-10">
               <Calendar className="w-4 h-4" />
@@ -156,11 +163,12 @@ const Dashboard: React.FC = () => {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {/* Total Registered Clients Card (FROM CLIENT MASTER) */}
         <div className="relative bg-white rounded-3xl p-6 border-b-4 border-b-blue-500 shadow-[0_15px_30px_-5px_rgba(59,130,246,0.15)] transition-transform hover:-translate-y-2 group overflow-hidden border-x border-t border-slate-100">
           <div className="relative z-10 flex justify-between items-start">
               <div>
                   <p className="text-slate-500 text-xs font-black uppercase tracking-widest mb-2">Total Clients</p>
-                  <h3 className="text-4xl font-black text-slate-800">{totalClients}</h3>
+                  <h3 className="text-4xl font-black text-slate-800">{totalRegisteredClients}</h3>
               </div>
               <div className="p-3 bg-blue-100 text-blue-600 rounded-xl shadow-inner border border-blue-200">
                   <Users className="w-7 h-7" />
@@ -168,9 +176,9 @@ const Dashboard: React.FC = () => {
           </div>
           <div className="mt-4 flex items-center text-xs font-bold text-slate-400">
               <span className="text-blue-600 bg-blue-50 px-2 py-1 rounded-md mr-2 flex items-center">
-                  <ArrowUpRight className="w-3 h-3 mr-1" /> Active
+                   Verified
               </span>
-              <span>In {selectedMonth}</span>
+              <span>In Master List</span>
           </div>
         </div>
 
@@ -186,9 +194,9 @@ const Dashboard: React.FC = () => {
           </div>
            <div className="mt-4 flex items-center text-xs font-bold text-slate-400">
               <span className="text-emerald-300 bg-emerald-500/20 border border-emerald-500/30 px-2 py-1 rounded-md mr-2 flex items-center">
-                  <ArrowUpRight className="w-3 h-3 mr-1" /> Verified
+                  <ArrowUpRight className="w-3 h-3 mr-1" /> Active
               </span>
-              <span>Total Earnings</span>
+              <span>{selectedMonth} Earnings</span>
           </div>
         </div>
 
@@ -204,9 +212,9 @@ const Dashboard: React.FC = () => {
           </div>
           <div className="mt-4 flex items-center text-xs font-bold text-slate-400">
               <span className="text-red-600 bg-red-50 px-2 py-1 rounded-md mr-2 flex items-center border border-red-100">
-                  <ArrowUpRight className="w-3 h-3 mr-1" /> Pending
+                  Pending
               </span>
-              <span>Unpaid Amount</span>
+              <span>Unpaid amount</span>
           </div>
         </div>
 
@@ -222,7 +230,7 @@ const Dashboard: React.FC = () => {
           </div>
           <div className="mt-4 flex items-center text-xs font-bold text-slate-400">
               <span className="text-orange-600 bg-orange-50 px-2 py-1 rounded-md mr-2 flex items-center">
-                  <ArrowUpRight className="w-3 h-3 mr-1" /> Volume
+                  Volume
               </span>
               <span>Services Done</span>
           </div>

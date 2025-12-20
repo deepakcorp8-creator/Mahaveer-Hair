@@ -241,20 +241,20 @@ export const api = {
         api.getOptions(true)
     ]);
     
-    // 1. Total Clients comes from CLIENT MASTER sheet (Options.clients)
+    // FIX: Total Clients comes from CLIENT MASTER sheet (Options.clients)
     const totalClients = options.clients ? options.clients.length : 0;
     
-    // 2. Total Revenue from DATA BASE sheet (Column J / Amount)
+    // Total Revenue from DATA BASE sheet (Column J / Amount)
     const totalAmount = entries.reduce((sum: number, e: any) => sum + Number(e.amount || 0), 0);
     
-    // 3. New Clients Today (Count 'NEW' entries with today's date)
+    // New Clients Today (Count 'NEW' entries with today's date)
     const today = new Date().toISOString().split('T')[0];
     const newClientsToday = entries.filter((e: any) => e.date === today && e.serviceType === 'NEW').length;
     
-    // 4. Total Services Done
+    // Total Services Done
     const serviceCount = entries.length;
 
-    // 5. Total Outstanding (Sum of Pending Amount Column P)
+    // Total Outstanding (Sum of Pending Amount Column P)
     const totalOutstanding = entries.reduce((sum: number, e: any) => sum + Number(e.pendingAmount || 0), 0);
 
     return { totalClients, totalAmount, newClientsToday, serviceCount, totalOutstanding };
