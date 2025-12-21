@@ -74,10 +74,20 @@ export const api = {
     return formattedClient;
   },
 
+  updateClient: async (client: Client, originalName: string) => {
+      DATA_CACHE.options = null;
+      const formattedClient = { ...client, dob: toDDMMYYYY(client.dob) };
+      if (isLive) {
+          const res = await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'editClient', originalName, ...formattedClient }) });
+          return await res.json();
+      }
+      const idx = MOCK_CLIENTS.findIndex(c => c.name === originalName);
+      if (idx !== -1) MOCK_CLIENTS[idx] = formattedClient;
+      return { status: "success" };
+  },
+
   addEntry: async (entry: Omit<Entry, 'id'>) => {
     const entryWithFormattedDate = { ...entry, date: toDDMMYYYY(entry.date) };
-    const tempId = 'temp_' + Date.now();
-    
     if (isLive) {
       try {
         const res = await fetch(GOOGLE_SCRIPT_URL, {
@@ -89,12 +99,9 @@ export const api = {
         const savedEntry = { ...entry, id: data.id, invoiceUrl: data.invoiceUrl } as Entry;
         LOCAL_NEW_ENTRIES.push(savedEntry);
         return savedEntry;
-      } catch (e) {
-        console.error("Sync Error", e);
-        throw e;
-      }
+      } catch (e) { console.error("Sync Error", e); throw e; }
     } else {
-        const mockEntry = { ...entry, id: tempId } as Entry;
+        const mockEntry = { ...entry, id: 'temp_' + Date.now() } as Entry;
         MOCK_ENTRIES.push(mockEntry);
         return mockEntry;
     }
@@ -117,10 +124,8 @@ export const api = {
             }
         } catch (e) { allEntries = DATA_CACHE.entries || [...MOCK_ENTRIES]; }
     } else { allEntries = [...MOCK_ENTRIES]; }
-    
     const serverCheck = new Set(allEntries.map(e => e.id));
     const uniqueLocal = LOCAL_NEW_ENTRIES.filter(e => !serverCheck.has(e.id));
-    
     return [...uniqueLocal, ...allEntries];
   },
 

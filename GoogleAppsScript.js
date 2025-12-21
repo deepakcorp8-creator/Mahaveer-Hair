@@ -1,6 +1,6 @@
 
 // =====================================================================================
-// ⚠️ MAHAVEER WEB APP - BACKEND SCRIPT (V25 - PDF INVOICE GENERATION)
+// ⚠️ MAHAVEER WEB APP - BACKEND SCRIPT (V26 - CLIENT EDIT CAPABILITY)
 // =====================================================================================
 
 function doGet(e) {
@@ -28,9 +28,6 @@ function getSafeLastRow(sheet, colIndex) {
   return 1;
 }
 
-/**
- * Generates a PDF Invoice and saves it to Google Drive
- */
 function createInvoice(data) {
   try {
     const folderName = "MAHAVEER_INVOICES";
@@ -93,40 +90,43 @@ function doPost(e) {
   if (action == 'addEntry') {
     const dbSheet = getSheet(ss, "DATA BASE");
     var invoiceUrl = "";
-    
-    // Generate Invoice URL
-    if (Number(data.amount) >= 0) {
-      invoiceUrl = createInvoice(data);
-    }
-
-    const newRow = [
-      toSheetDate(data.date), 
-      data.clientName, 
-      data.contactNo, 
-      data.address, 
-      data.branch, 
-      data.serviceType, 
-      data.patchMethod, 
-      data.technician, 
-      data.workStatus, 
-      data.amount, 
-      data.paymentMethod, 
-      String(data.remark || ""), 
-      data.numberOfService, 
-      invoiceUrl, 
-      data.patchSize || '', 
-      data.pendingAmount || 0
-    ];
-
+    if (Number(data.amount) >= 0) invoiceUrl = createInvoice(data);
+    const newRow = [toSheetDate(data.date), data.clientName, data.contactNo, data.address, data.branch, data.serviceType, data.patchMethod, data.technician, data.workStatus, data.amount, data.paymentMethod, String(data.remark || ""), data.numberOfService, invoiceUrl, data.patchSize || '', data.pendingAmount || 0];
     const nextRow = getSafeLastRow(dbSheet, 2) + 1;
     dbSheet.getRange(nextRow, 1, 1, newRow.length).setValues([newRow]);
     dbSheet.getRange(nextRow, 1).setNumberFormat("dd/mm/yyyy");
-    
-    // Return the generated invoiceUrl so the frontend can use it
     return response({status: "success", invoiceUrl: invoiceUrl, id: 'row_' + nextRow});
   }
 
-  // ... (rest of updatePaymentFollowUp, addPackage, etc remains the same but use getSafeLastRow)
+  if (action == 'addClient') {
+    const clientSheet = getSheet(ss, "CLIENT MASTER");
+    const clientRow = [data.name, data.contact, data.address, data.gender, data.email, toSheetDate(data.dob)];
+    const nextCl = getSafeLastRow(clientSheet, 1) + 1;
+    clientSheet.getRange(nextCl, 1, 1, clientRow.length).setValues([clientRow]);
+    clientSheet.getRange(nextCl, 6).setNumberFormat("dd/mm/yyyy");
+    return response({status: "success"});
+  }
+
+  // NEW ACTION: EDIT CLIENT
+  if (action == 'editClient') {
+      const clientSheet = getSheet(ss, "CLIENT MASTER");
+      const clients = clientSheet.getDataRange().getValues();
+      let rowIndex = -1;
+      for (let i = 1; i < clients.length; i++) {
+          if (clients[i][0] == data.originalName) {
+              rowIndex = i + 1;
+              break;
+          }
+      }
+      if (rowIndex !== -1) {
+          const updatedRow = [data.name, data.contact, data.address, data.gender, data.email, toSheetDate(data.dob)];
+          clientSheet.getRange(rowIndex, 1, 1, 6).setValues([updatedRow]);
+          clientSheet.getRange(rowIndex, 6).setNumberFormat("dd/mm/yyyy");
+          return response({status: "success"});
+      }
+      return response({error: "Client not found"});
+  }
+
   if (action == 'updatePaymentFollowUp') {
       const dbSheet = getSheet(ss, "DATA BASE");
       const collectionSheet = getSheet(ss, "PAYMENT COLLECTION");
