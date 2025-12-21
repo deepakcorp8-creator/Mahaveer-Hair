@@ -40,6 +40,7 @@ interface LayoutProps {
 const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
   const [pendingCount, setPendingCount] = useState(0);
+  const [todayApptCount, setTodayApptCount] = useState(0);
   
   // Profile Modal State
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
@@ -75,20 +76,31 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
   }, [isProfileModalOpen, user]);
 
   useEffect(() => {
-    // Check for pending packages if user is Admin
-    if (user?.role === Role.ADMIN) {
-        const checkPending = async () => {
-            try {
+    // Check for pending packages and today's appointments
+    const checkNotifications = async () => {
+        try {
+            const todayStr = new Date().toISOString().split('T')[0];
+            
+            // 1. Check Packages (for Admin)
+            if (user?.role === Role.ADMIN) {
                 const pkgs = await api.getPackages(); 
-                const count = pkgs.filter(p => p.status === 'PENDING' || !p.status).length;
-                setPendingCount(count);
-            } catch (e) {
-                console.error("Failed to check pending packages", e);
+                const pCount = pkgs.filter(p => p.status === 'PENDING' || !p.status).length;
+                setPendingCount(pCount);
             }
-        };
-        
-        checkPending();
-        const interval = setInterval(checkPending, 60000);
+
+            // 2. Check Today's Pending Appointments (for All users with access)
+            const appts = await api.getAppointments();
+            const aCount = appts.filter(a => a.date === todayStr && a.status === 'PENDING').length;
+            setTodayApptCount(aCount);
+
+        } catch (e) {
+            console.error("Failed to check notifications", e);
+        }
+    };
+    
+    if (user) {
+        checkNotifications();
+        const interval = setInterval(checkNotifications, 60000); // Refresh every minute
         return () => clearInterval(interval);
     }
   }, [user]);
@@ -206,7 +218,11 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
               <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 mb-3 px-3 pt-2 flex items-center gap-2">Navigation <div className="h-px bg-slate-800 flex-1"></div></div>
               {menuItems.map((item) => {
                 const active = isActive(item.path);
-                const showBadge = item.path === '/packages' && user.role === Role.ADMIN && pendingCount > 0;
+                
+                // Logic for badges
+                const showPkgBadge = item.path === '/packages' && user.role === Role.ADMIN && pendingCount > 0;
+                const showApptBadge = item.path === '/appointments' && todayApptCount > 0;
+
                 return (
                   <Link
                     key={item.path}
@@ -218,7 +234,18 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
                   >
                     <item.icon className={`w-5 h-5 mr-3 ${active ? 'text-white' : 'text-slate-500 group-hover:text-indigo-400'}`} />
                     <span className="font-bold text-[13px] tracking-wide">{item.label}</span>
-                    {showBadge && <span className="absolute right-3 bg-red-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full border border-red-400">{pendingCount}</span>}
+                    
+                    {showPkgBadge && (
+                        <span className="absolute right-3 bg-red-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full border border-red-400 animate-pulse shadow-sm">
+                            {pendingCount}
+                        </span>
+                    )}
+
+                    {showApptBadge && (
+                        <span className="absolute right-3 bg-indigo-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full border border-indigo-400 shadow-sm">
+                            {todayApptCount}
+                        </span>
+                    )}
                   </Link>
                 );
               })}
@@ -287,7 +314,10 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
         
         <header className="hidden lg:flex items-center justify-between px-8 py-3 bg-white/80 backdrop-blur-md border-b border-slate-200/50 sticky top-0 z-40 shrink-0 h-16 shadow-sm">
              <div className="flex items-center text-slate-400 text-xs font-black uppercase bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200 shadow-inner"><Calendar className="w-3.5 h-3.5 mr-2 text-indigo-500" />{todayDate}</div>
-             <div className="flex items-center gap-4">{user.role === Role.ADMIN && pendingCount > 0 && <Link to="/packages" className="p-2.5 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-100 animate-pulse"><Bell className="w-5 h-5" /></Link>}</div>
+             <div className="flex items-center gap-4">
+                {todayApptCount > 0 && <Link to="/appointments" className="p-2.5 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-100 animate-pulse" title="Appointments Today"><Calendar className="w-5 h-5" /></Link>}
+                {user.role === Role.ADMIN && pendingCount > 0 && <Link to="/packages" className="p-2.5 rounded-full bg-red-50 text-red-600 border border-red-100 animate-pulse"><Bell className="w-5 h-5" /></Link>}
+             </div>
         </header>
 
         <header className="bg-white/90 shadow-md lg:hidden flex items-center justify-between p-4 z-40 sticky top-0 border-b border-slate-100">
@@ -296,7 +326,8 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
                <span className="font-black text-slate-800 text-lg tracking-tight">Mahaveer</span>
           </div>
           <div className="flex items-center gap-3">
-             {user.role === Role.ADMIN && pendingCount > 0 && <Link to="/packages" className="p-2 text-indigo-600 bg-indigo-50 rounded-full border border-indigo-100"><Bell className="w-5 h-5" /></Link>}
+             {todayApptCount > 0 && <Link to="/appointments" className="p-2 text-indigo-600 bg-indigo-50 rounded-full border border-indigo-100 animate-pulse"><Calendar className="w-5 h-5" /></Link>}
+             {user.role === Role.ADMIN && pendingCount > 0 && <Link to="/packages" className="p-2 text-red-600 bg-red-50 rounded-full border border-red-100"><Bell className="w-5 h-5" /></Link>}
              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 p-[2px] shadow-md"><div className="w-full h-full rounded-full bg-white flex items-center justify-center text-indigo-700 font-black text-sm overflow-hidden">{user.dpUrl ? <img src={user.dpUrl} className="w-full h-full object-cover" /> : user.username.charAt(0)}</div></div>
           </div>
         </header>

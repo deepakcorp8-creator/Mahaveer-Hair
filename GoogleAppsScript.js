@@ -1,6 +1,6 @@
 
 // =====================================================================================
-// ⚠️ MAHAVEER WEB APP - BACKEND SCRIPT (V26 - CLIENT EDIT CAPABILITY)
+// ⚠️ MAHAVEER WEB APP - BACKEND SCRIPT (V27 - APPOINTMENT SYNC FIX)
 // =====================================================================================
 
 function doGet(e) {
@@ -98,6 +98,18 @@ function doPost(e) {
     return response({status: "success", invoiceUrl: invoiceUrl, id: 'row_' + nextRow});
   }
 
+  if (action == 'updateEntry') {
+      const dbSheet = getSheet(ss, "DATA BASE");
+      const rowId = parseInt(data.id.split('_')[1]);
+      if (rowId > 0 && rowId <= dbSheet.getMaxRows()) {
+          const updatedRow = [toSheetDate(data.date), data.clientName, data.contactNo, data.address, data.branch, data.serviceType, data.patchMethod, data.technician, data.workStatus, data.amount, data.paymentMethod, String(data.remark || ""), data.numberOfService, data.invoiceUrl, data.patchSize || '', data.pendingAmount || 0];
+          dbSheet.getRange(rowId, 1, 1, updatedRow.length).setValues([updatedRow]);
+          dbSheet.getRange(rowId, 1).setNumberFormat("dd/mm/yyyy");
+          return response({status: "success"});
+      }
+      return response({error: "Entry not found"});
+  }
+
   if (action == 'addClient') {
     const clientSheet = getSheet(ss, "CLIENT MASTER");
     const clientRow = [data.name, data.contact, data.address, data.gender, data.email, toSheetDate(data.dob)];
@@ -107,7 +119,6 @@ function doPost(e) {
     return response({status: "success"});
   }
 
-  // NEW ACTION: EDIT CLIENT
   if (action == 'editClient') {
       const clientSheet = getSheet(ss, "CLIENT MASTER");
       const clients = clientSheet.getDataRange().getValues();
@@ -125,6 +136,29 @@ function doPost(e) {
           return response({status: "success"});
       }
       return response({error: "Client not found"});
+  }
+
+  if (action == 'addAppointment') {
+      const sheet = getSheet(ss, "APPOINTMENT");
+      const id = "APT_" + new Date().getTime();
+      const newRow = [id, toSheetDate(data.date), data.clientName, data.contact, data.address, data.note, data.status || 'PENDING', data.branch || '', data.time || ''];
+      const nextRow = getSafeLastRow(sheet, 2) + 1;
+      sheet.getRange(nextRow, 1, 1, newRow.length).setValues([newRow]);
+      sheet.getRange(nextRow, 2).setNumberFormat("dd/mm/yyyy");
+      return response({status: "success", id: id});
+  }
+
+  if (action == 'updateAppointmentStatus') {
+      const sheet = getSheet(ss, "APPOINTMENT");
+      const range = sheet.getDataRange();
+      const values = range.getValues();
+      for (let i = 1; i < values.length; i++) {
+          if (values[i][0] == data.id) {
+              sheet.getRange(i + 1, 7).setValue(data.status);
+              return response({status: "success"});
+          }
+      }
+      return response({error: "Appointment not found"});
   }
 
   if (action == 'updatePaymentFollowUp') {
@@ -155,6 +189,46 @@ function doPost(e) {
               return response({status: "success", screenshotUrl: screenshotUrl});
           }
       } catch(e) { return response({error: e.message}); }
+  }
+
+  if (action == 'updateUser') {
+      const loginSheet = getSheet(ss, "LOGIN");
+      const users = loginSheet.getDataRange().getValues();
+      let rowIndex = -1;
+      for (let i = 1; i < users.length; i++) {
+          if (users[i][0].toString().toLowerCase() === data.username.toLowerCase()) {
+              rowIndex = i + 1;
+              break;
+          }
+      }
+      if (rowIndex !== -1) {
+          if (data.password) loginSheet.getRange(rowIndex, 2).setValue(data.password);
+          loginSheet.getRange(rowIndex, 3).setValue(data.role);
+          loginSheet.getRange(rowIndex, 4).setValue(data.department);
+          loginSheet.getRange(rowIndex, 5).setValue(data.permissions);
+          return response({status: "success"});
+      }
+      return response({error: "User not found"});
+  }
+
+  if (action == 'updateUserProfile') {
+      const loginSheet = getSheet(ss, "LOGIN");
+      const users = loginSheet.getDataRange().getValues();
+      let rowIndex = -1;
+      for (let i = 1; i < users.length; i++) {
+          if (users[i][0].toString().toLowerCase() === data.username.toLowerCase()) {
+              rowIndex = i + 1;
+              break;
+          }
+      }
+      if (rowIndex !== -1) {
+          if (data.dpUrl) loginSheet.getRange(rowIndex, 6).setValue(data.dpUrl);
+          if (data.gender) loginSheet.getRange(rowIndex, 7).setValue(data.gender);
+          if (data.dob) loginSheet.getRange(rowIndex, 8).setValue(toSheetDate(data.dob));
+          if (data.address) loginSheet.getRange(rowIndex, 9).setValue(data.address);
+          return response({status: "success"});
+      }
+      return response({error: "User not found"});
   }
 
   return response({error: "Action processed"});
@@ -204,6 +278,7 @@ function getSheet(ss, name) {
     if (!sheet) {
         sheet = ss.insertSheet(name);
         if (name === "DATA BASE") sheet.appendRow(["DATE","CLIENT NAME","CONTACT","ADDRESS","BRANCH","SERVICE","METHOD","TECH","STATUS","TOTAL BILL","MODE","REMARK","SRV_NO","INVOICE","SIZE","PENDING"]);
+        if (name === "APPOINTMENT") sheet.appendRow(["ID", "DATE", "CLIENT", "CONTACT", "ADDRESS", "NOTE", "STATUS", "BRANCH", "TIME"]);
     }
     return sheet;
 }
