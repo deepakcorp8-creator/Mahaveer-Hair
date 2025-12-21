@@ -32,7 +32,7 @@ export interface Entry {
   contactNo: string;
   address: string;
   branch: 'RPR' | 'JDP';
-  serviceType: 'SERVICE' | 'NEW' | 'DEMO' | 'MUNDAN';
+  serviceType: 'SERVICE' | 'NEW' | 'DEMO' | 'MUNDAN' | 'WASHING';
   patchMethod: 'TAPING' | 'BONDING' | 'CLIPPING' | '';
   technician: string;
   workStatus: 'PENDING' | 'DONE' | 'FOLLOWUP' | 'PENDING_APPROVAL' | 'REJECTED';

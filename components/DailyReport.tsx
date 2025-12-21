@@ -99,7 +99,7 @@ const DailyReport: React.FC = () => {
   const dailyEntries = entries.filter(e => e.date === selectedDate);
   const totalDailyRevenue = dailyEntries.reduce((sum, e) => sum + Number(e.amount || 0), 0);
   const newClientsCount = dailyEntries.filter(e => e.serviceType === 'NEW').length;
-  const serviceCount = dailyEntries.filter(e => e.serviceType === 'SERVICE').length;
+  const serviceCount = dailyEntries.filter(e => e.serviceType === 'SERVICE' || e.serviceType === 'WASHING').length;
   const totalTxns = dailyEntries.length;
 
   const paymentStats = {
@@ -251,6 +251,7 @@ const DailyReport: React.FC = () => {
                   <option value="ALL">All Services</option>
                   <option value="NEW">New Patch</option>
                   <option value="SERVICE">Service</option>
+                  <option value="WASHING">Washing</option>
                   <option value="DEMO">Demo</option>
                   <option value="MUNDAN">Mundan</option>
               </select>
@@ -304,6 +305,7 @@ const DailyReport: React.FC = () => {
                                         ${entry.serviceType === 'NEW' ? 'bg-blue-50 text-blue-700 border-blue-200' : 
                                           entry.serviceType === 'SERVICE' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 
                                           entry.serviceType === 'DEMO' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                                          entry.serviceType === 'WASHING' ? 'bg-indigo-50 text-indigo-700 border-indigo-200' :
                                           'bg-slate-50 text-slate-700 border-slate-200'}`}>
                                             {entry.serviceType === 'NEW' && <Sparkles className="w-3 h-3" />}
                                             {entry.serviceType === 'SERVICE' && <Scissors className="w-3 h-3" />}
@@ -419,6 +421,7 @@ const DailyReport: React.FC = () => {
                                   >
                                       <option value="SERVICE">SERVICE</option>
                                       <option value="NEW">NEW</option>
+                                      <option value="WASHING">WASHING</option>
                                       <option value="DEMO">DEMO</option>
                                       <option value="MUNDAN">MUNDAN</option>
                                   </select>

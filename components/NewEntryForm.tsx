@@ -11,7 +11,7 @@ const NewEntryForm: React.FC = () => {
   const [checkingPackage, setCheckingPackage] = useState(false);
   const [clients, setClients] = useState<Client[]>([]);
   const [technicians, setTechnicians] = useState<Technician[]>([]);
-  const [items, setItems] = useState<Item[]>([]);
+  const [items, setLoadingItems] = useState<Item[]>([]);
   const [todayEntries, setTodayEntries] = useState<Entry[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   
@@ -49,7 +49,7 @@ const NewEntryForm: React.FC = () => {
     date: new Date().toISOString().split('T')[0],
     branch: 'RPR',
     serviceType: 'SERVICE',
-    patchMethod: 'TAPING',
+    patchMethod: 'BONDING', // UPDATED: Default changed to BONDING
     paymentMethod: 'CASH',
     workStatus: 'DONE',
     numberOfService: 1,
@@ -87,7 +87,7 @@ const NewEntryForm: React.FC = () => {
     ]);
     setClients(options.clients);
     setTechnicians(options.technicians);
-    setItems(options.items);
+    setLoadingItems(options.items);
     const activeNames = new Set(packages.filter(p => p.status === 'ACTIVE' || p.status === 'APPROVED').map(p => p.clientName.trim().toLowerCase()));
     setActivePackageClients(activeNames);
     loadTodayEntries();
@@ -151,7 +151,7 @@ const NewEntryForm: React.FC = () => {
      if (!name) return;
      setCheckingPackage(true);
      try {
-        const pkgStatus = await api.checkClientPackage(name, contact);
+        const pkgStatus = await api.checkClientPackage(name);
         if (pkgStatus && !pkgStatus.isExpired) {
             setActivePackage(pkgStatus);
             setFormData(prev => ({ ...prev, numberOfService: pkgStatus.currentServiceNumber, workStatus: 'DONE' }));
@@ -202,7 +202,7 @@ const NewEntryForm: React.FC = () => {
   const openPaymentModal = (entry: Entry) => {
       setEditingEntry(entry);
       setEditTotalAmount(entry.amount);
-      const hasPending = entry.pendingAmount && entry.pendingAmount > 0;
+      const hasPending = (entry.pendingAmount || 0) > 0;
       setIsPartPayment(!!hasPending);
       setEditReceivedAmount(hasPending ? entry.amount - (entry.pendingAmount || 0) : entry.amount);
       setIsPaymentModalOpen(true);
@@ -299,7 +299,7 @@ const NewEntryForm: React.FC = () => {
                               options={clients.map(c => ({ label: c.name, value: c.name, subtext: c.contact, isHighlight: activePackageClients.has(c.name.trim().toLowerCase()) }))} 
                               value={formData.clientName || ''} 
                               onChange={handleClientChange} 
-                              onCreateNew={handleTriggerNewClient} // HOOKED UP HERE
+                              onCreateNew={handleTriggerNewClient} 
                               placeholder="Search Client..." 
                               required 
                             />
@@ -326,7 +326,7 @@ const NewEntryForm: React.FC = () => {
                         <div><label className={labelClass}>Branch</label><div className="flex gap-4 p-1 bg-slate-100/50 rounded-2xl border border-slate-200">{['RPR', 'JDP'].map((b) => (<button type="button" key={b} onClick={() => setFormData(prev => ({ ...prev, branch: b as any }))} className={`flex-1 py-3 rounded-xl font-bold text-sm transition-all duration-200 border ${formData.branch === b ? 'bg-violet-600 text-white shadow-lg shadow-violet-500/30 transform scale-105 border-violet-700' : 'text-slate-500 hover:bg-white hover:text-slate-700 border-transparent hover:border-slate-200'}`}>{b}</button>))}</div></div>
                         <div><label className={labelClass}>Transaction Date</label><input type="date" name="date" value={formData.date} onChange={handleChange} className={inputClass} required /></div>
                         <div className="md:col-span-2 h-px bg-slate-200 my-2"></div>
-                        <div><label className={labelClass}>Service Type</label><div className="relative"><select name="serviceType" value={formData.serviceType} onChange={handleChange} className={`${inputClass} appearance-none cursor-pointer`}><option value="SERVICE">SERVICE</option><option value="NEW">NEW</option><option value="DEMO">DEMO</option><option value="MUNDAN">MUNDAN</option></select><div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">▼</div></div></div>
+                        <div><label className={labelClass}>Service Type</label><div className="relative"><select name="serviceType" value={formData.serviceType} onChange={handleChange} className={`${inputClass} appearance-none cursor-pointer`}><option value="SERVICE">SERVICE</option><option value="NEW">NEW</option><option value="WASHING">WASHING</option><option value="DEMO">DEMO</option><option value="MUNDAN">MUNDAN</option></select><div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">▼</div></div></div>
                         {formData.serviceType === 'NEW' && (<div className="animate-in fade-in slide-in-from-top-2 duration-300"><SearchableSelect label="Patch Size" options={items.map(i => ({ label: i.name, value: i.name, subtext: i.category }))} value={formData.patchSize || ''} onChange={(val) => setFormData(prev => ({ ...prev, patchSize: val }))} placeholder="Select Patch Size..." /></div>)}
                         <div><label className={labelClass}>Patch Method</label><div className="relative"><select name="patchMethod" value={formData.patchMethod} onChange={handleChange} className={`${inputClass} appearance-none cursor-pointer`}><option value="TAPING">TAPING</option><option value="BONDING">BONDING</option><option value="CLIPPING">CLIPPING</option></select><div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">▼</div></div></div>
                         <div className="md:col-span-2"><SearchableSelect label="Technician Assigned" options={technicians.map(t => ({ label: t.name, value: t.name }))} value={formData.technician || ''} onChange={(val) => setFormData(prev => ({ ...prev, technician: val }))} placeholder="Select Technician..." required /></div>
@@ -450,7 +450,7 @@ const NewEntryForm: React.FC = () => {
       {isPaymentModalOpen && editingEntry && (
           <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
               <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-lg overflow-hidden border border-white/20">
-                  <div className="bg-slate-900 px-8 py-6 flex justify-between items-center text-white"><div><h3 className="font-black text-lg tracking-tight">Complete Payment</h3><p className="text-slate-400 text-xs font-bold">{editingEntry.clientName}</p></div><button onClick={() => setIsPaymentModalOpen(false)} className="hover:bg-slate-800 p-2 rounded-full"><X className="w-5 h-5" /></button></div>
+                  <div className="bg-slate-900 px-8 py-6 flex justify-between items-center text-white"><div><h3 className="font-black text-xl tracking-tight">Complete Payment</h3><p className="text-slate-400 text-xs font-bold">Due: ₹{(editingEntry.pendingAmount || editingEntry.amount)}</p></div><button onClick={() => setIsPaymentModalOpen(false)} className="hover:bg-slate-800 p-2 rounded-full"><X className="w-5 h-5" /></button></div>
                   <form onSubmit={handlePaymentSubmit} className="p-8 space-y-6"><div className="grid grid-cols-2 gap-6"><div><label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Total Bill</label><input type="number" value={editTotalAmount} onChange={e => setEditTotalAmount(e.target.value)} className="w-full rounded-xl border-slate-200 border bg-slate-50 px-4 py-4 text-xl font-black text-slate-700 focus:ring-2 focus:ring-indigo-500" /></div><div className="flex flex-col justify-center"><div className="flex items-center justify-between bg-slate-50 px-3 py-2 rounded-xl border border-slate-200 h-full"><span className="text-[10px] font-bold text-slate-500 uppercase">Part Pay?</span><button type="button" onClick={() => setIsPartPayment(!isPartPayment)} className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${isPartPayment ? 'bg-indigo-600' : 'bg-slate-300'}`}><span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${isPartPayment ? 'translate-x-5' : 'translate-x-1'}`} /></button></div></div></div>{isPartPayment && (<div className="grid grid-cols-2 gap-6 animate-in fade-in"><div><label className="block text-[10px] font-black uppercase tracking-widest text-emerald-600 mb-2">Received</label><input type="number" value={editReceivedAmount} onChange={e => setEditReceivedAmount(e.target.value)} className="w-full rounded-xl border-emerald-200 border bg-emerald-50 px-4 py-4 text-xl font-black text-emerald-700" /></div><div><label className="block text-[10px] font-black uppercase tracking-widest text-red-500 mb-2">Pending</label><div className="w-full rounded-xl border-red-100 border bg-red-50 px-4 py-4 text-xl font-black text-red-600 flex items-center h-[62px]">₹{editPendingCalc}</div></div></div>)}<div><label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Payment Method</label><div className="grid grid-cols-4 gap-2">{['CASH', 'UPI', 'CARD', 'PENDING'].map(m => (<button type="button" key={m} onClick={() => setEditingEntry({...editingEntry, paymentMethod: m as any})} className={`py-2 rounded-lg text-xs font-black border transition-colors ${editingEntry.paymentMethod === m ? 'bg-slate-800 text-white border-slate-900' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`}>{m}</button>))}</div></div><button type="submit" disabled={loading} className="w-full py-4 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 shadow-lg border border-indigo-700 text-lg">{loading ? <RefreshCw className="w-5 h-5 animate-spin" /> : 'Confirm Payment'}</button></form>
               </div>
           </div>
@@ -460,7 +460,7 @@ const NewEntryForm: React.FC = () => {
           <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
               <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-lg overflow-hidden border border-white/20">
                   <div className="bg-slate-900 px-8 py-6 flex justify-between items-center text-white"><div><h3 className="font-black text-lg flex items-center tracking-tight">Edit Entry Details</h3><p className="text-slate-400 text-xs font-bold">{editingEntry.clientName}</p></div><button onClick={() => setIsDetailsModalOpen(false)} className="hover:bg-slate-800 p-2 rounded-full"><X className="w-5 h-5" /></button></div>
-                  <form onSubmit={handleDetailsSubmit} className="p-8 space-y-6"><div className="grid grid-cols-1 gap-6"><div><label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Technician</label><select value={detailForm.technician || ''} onChange={e => setDetailForm({...detailForm, technician: e.target.value})} className="w-full rounded-xl border-slate-200 border bg-slate-50 px-4 py-3 font-bold focus:ring-2 focus:ring-indigo-500 outline-none">{technicians.map(t => (<option key={t.name} value={t.name}>{t.name}</option>))}</select></div><div className="grid grid-cols-2 gap-4"><div><label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Service Type</label><select value={detailForm.serviceType || ''} onChange={e => setDetailForm({...detailForm, serviceType: e.target.value as any})} className="w-full rounded-xl border-slate-200 border bg-slate-50 px-4 py-3 font-bold focus:ring-2 focus:ring-indigo-500 outline-none"><option value="SERVICE">SERVICE</option><option value="NEW">NEW</option><option value="DEMO">DEMO</option><option value="MUNDAN">MUNDAN</option></select></div><div><label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Method</label><select value={detailForm.patchMethod || ''} onChange={e => setDetailForm({...detailForm, patchMethod: e.target.value as any})} className="w-full rounded-xl border-slate-200 border bg-slate-50 px-4 py-3 font-bold focus:ring-2 focus:ring-indigo-500 outline-none"><option value="TAPING">TAPING</option><option value="BONDING">BONDING</option><option value="CLIPPING">CLIPPING</option></select></div></div><div><label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Remarks</label><textarea value={detailForm.remark || ''} onChange={e => setDetailForm({...detailForm, remark: e.target.value})} rows={2} className="w-full rounded-xl border-slate-200 border bg-slate-50 px-4 py-3 font-bold focus:ring-2 focus:ring-indigo-500" /></div></div><button type="submit" disabled={loading} className="w-full py-4 bg-slate-800 text-white font-bold rounded-xl hover:bg-slate-900 border border-slate-900 text-lg">{loading ? <RefreshCw className="w-5 h-5 animate-spin" /> : 'Save Details'}</button></form>
+                  <form onSubmit={handleDetailsSubmit} className="p-8 space-y-6"><div className="grid grid-cols-1 gap-6"><div><label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Technician</label><select value={detailForm.technician || ''} onChange={e => setDetailForm({...detailForm, technician: e.target.value})} className="w-full rounded-xl border-slate-200 border bg-slate-50 px-4 py-3 font-bold focus:ring-2 focus:ring-indigo-500 outline-none">{technicians.map(t => (<option key={t.name} value={t.name}>{t.name}</option>))}</select></div><div className="grid grid-cols-2 gap-4"><div><label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Service Type</label><select value={detailForm.serviceType || ''} onChange={e => setDetailForm({...detailForm, serviceType: e.target.value as any})} className="w-full rounded-xl border-slate-200 border bg-slate-50 px-4 py-3 font-bold focus:ring-2 focus:ring-indigo-500 outline-none"><option value="SERVICE">SERVICE</option><option value="NEW">NEW</option><option value="WASHING">WASHING</option><option value="DEMO">DEMO</option><option value="MUNDAN">MUNDAN</option></select></div><div><label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Method</label><select value={detailForm.patchMethod || ''} onChange={e => setDetailForm({...detailForm, patchMethod: e.target.value as any})} className="w-full rounded-xl border-slate-200 border bg-slate-50 px-4 py-3 font-bold focus:ring-2 focus:ring-indigo-500 outline-none"><option value="TAPING">TAPING</option><option value="BONDING">BONDING</option><option value="CLIPPING">CLIPPING</option></select></div></div><div><label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Remarks</label><textarea value={detailForm.remark || ''} onChange={e => setDetailForm({...detailForm, remark: e.target.value})} rows={2} className="w-full rounded-xl border-slate-200 border bg-slate-50 px-4 py-3 font-bold focus:ring-2 focus:ring-indigo-500" /></div></div><button type="submit" disabled={loading} className="w-full py-4 bg-slate-800 text-white font-bold rounded-xl hover:bg-slate-900 border border-slate-900 text-lg">{loading ? <RefreshCw className="w-5 h-5 animate-spin" /> : 'Save Details'}</button></form>
               </div>
           </div>
       )}
