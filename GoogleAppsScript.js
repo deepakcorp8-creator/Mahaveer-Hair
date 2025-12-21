@@ -1,6 +1,6 @@
 
 // =====================================================================================
-// ⚠️ MAHAVEER WEB APP - BACKEND SCRIPT (V28 - DATE & TIME FORMAT FIX)
+// ⚠️ MAHAVEER WEB APP - BACKEND SCRIPT (V29 - GLOBAL DD/MM/YYYY STANDARDIZATION)
 // =====================================================================================
 
 function doGet(e) {
@@ -34,7 +34,8 @@ function createInvoice(data) {
     let folders = DriveApp.getFoldersByName(folderName);
     let folder = folders.hasNext() ? folders.next() : DriveApp.createFolder(folderName);
     
-    const date = data.date || new Date().toLocaleDateString();
+    // Use DD/MM/YYYY for invoice display
+    const date = toSheetDate(data.date) || new Date().toLocaleDateString('en-GB');
     const html = `
       <div style="font-family: Arial, sans-serif; padding: 40px; border: 1px solid #eee;">
         <h1 style="color: #B51A2B; text-align: center;">MAHAVEER HAIR SOLUTION</h1>
@@ -186,6 +187,8 @@ function doPost(e) {
 
               const nextC = getSafeLastRow(collectionSheet, 3) + 1;
               collectionSheet.getRange(nextC, 1, 1, collectionRow.length).setValues([collectionRow]);
+              collectionSheet.getRange(nextC, 2).setNumberFormat("dd/mm/yyyy");
+              collectionSheet.getRange(nextC, 10).setNumberFormat("dd/mm/yyyy");
               return response({status: "success", screenshotUrl: screenshotUrl});
           }
       } catch(e) { return response({error: e.message}); }
@@ -234,16 +237,29 @@ function doPost(e) {
   return response({error: "Action processed"});
 }
 
+/**
+ * Ensures date is ALWAYS recorded as DD/MM/YYYY in the sheet
+ * even if it comes as YYYY-MM-DD from an input field.
+ */
 function toSheetDate(dateStr) {
   if (!dateStr || typeof dateStr !== 'string' || dateStr === "") return "";
+  
+  // If already DD/MM/YYYY, return as is
   if (dateStr.includes('/') && dateStr.split('/').length === 3) return dateStr;
+  
+  // If YYYY-MM-DD from HTML date picker
   if (dateStr.includes('-')) {
     const parts = dateStr.split('-'); 
-    if (parts.length === 3 && parts[0].length === 4) return parts[2] + "/" + parts[1] + "/" + parts[0];
+    if (parts.length === 3 && parts[0].length === 4) {
+        return parts[2] + "/" + parts[1] + "/" + parts[0];
+    }
   }
   return dateStr;
 }
 
+/**
+ * Ensures reading from sheet always results in DD/MM/YYYY string
+ */
 function fromSheetDate(val) {
   if (!val) return "";
   if (Object.prototype.toString.call(val) === '[object Date]') {
@@ -253,19 +269,30 @@ function fromSheetDate(val) {
   return String(val).trim();
 }
 
+/**
+ * Safely parses time, preventing the "Dec 30 1899" string from showing up in frontend
+ */
 function fromSheetTime(val) {
   if (!val) return "";
+  
+  let hours, minutes;
+
   if (Object.prototype.toString.call(val) === '[object Date]') {
      const d = new Date(val);
-     var hours = d.getHours();
-     var minutes = d.getMinutes();
-     var ampm = hours >= 12 ? 'PM' : 'AM';
-     hours = hours % 12;
-     hours = hours ? hours : 12; // 0 is 12
-     minutes = minutes < 10 ? '0' + minutes : minutes;
-     return hours + ':' + minutes + ' ' + ampm;
+     hours = d.getHours();
+     minutes = d.getMinutes();
+  } else {
+     // If it's a string, try to return it directly if it looks like time
+     const timeStr = String(val).trim();
+     if (timeStr.includes(':')) return timeStr;
+     return timeStr;
   }
-  return String(val).trim();
+
+  var ampm = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12;
+  hours = hours ? hours : 12; 
+  minutes = minutes < 10 ? '0' + minutes : minutes;
+  return hours + ':' + minutes + ' ' + ampm;
 }
 
 function getTodayInSheetFormat() {

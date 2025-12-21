@@ -10,11 +10,9 @@ const AppointmentBooking: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   
-  // Tabs: 'SCHEDULE' (Pending), 'LEADS' (Followup), 'HISTORY' (Closed)
   const [activeTab, setActiveTab] = useState<'SCHEDULE' | 'LEADS' | 'HISTORY'>('SCHEDULE');
   const [searchFilter, setSearchFilter] = useState('');
   
-  // Time Parts State for 12H Format
   const [timeParts, setTimeParts] = useState({
       hour: '10',
       minute: '00',
@@ -22,17 +20,16 @@ const AppointmentBooking: React.FC = () => {
   });
 
   const [newAppt, setNewAppt] = useState<Partial<Appointment>>({
-    date: new Date().toISOString().split('T')[0],
+    date: new Date().toISOString().split('T')[0], // HTML input needs YYYY-MM-DD
     clientName: '',
     contact: '',
     address: '',
     note: '',
     status: 'PENDING',
-    branch: 'RPR', // Default
+    branch: 'RPR',
     time: '10:00 AM'
   });
 
-  // Use DD/MM/YYYY for comparison consistency with sidebar
   const now = new Date();
   const todayStr = ("0" + now.getDate()).slice(-2) + "/" + ("0" + (now.getMonth() + 1)).slice(-2) + "/" + now.getFullYear();
 
@@ -40,7 +37,6 @@ const AppointmentBooking: React.FC = () => {
     loadData();
   }, []);
 
-  // Update newAppt.time whenever parts change
   useEffect(() => {
       setNewAppt(prev => ({
           ...prev,
@@ -50,11 +46,13 @@ const AppointmentBooking: React.FC = () => {
 
   const parseSafeDate = (dateStr: string) => {
     if (!dateStr) return new Date();
+    // Support DD/MM/YYYY
     if (dateStr.includes('/')) {
         const [d, m, y] = dateStr.split('/');
-        return new Date(parseInt(y), parseInt(m) - 1, parseInt(d));
+        const dateObj = new Date(parseInt(y), parseInt(m) - 1, parseInt(d));
+        return isNaN(dateObj.getTime()) ? new Date() : dateObj;
     }
-    // Handle standard date strings
+    // Support YYYY-MM-DD
     const d = new Date(dateStr);
     return isNaN(d.getTime()) ? new Date() : d;
   };
@@ -65,7 +63,6 @@ const AppointmentBooking: React.FC = () => {
       api.getOptions()
     ]);
     
-    // Sort: Today first, then Pending, then Future date
     const sorted = apptData.sort((a, b) => {
         if (a.date === todayStr && b.date !== todayStr) return -1;
         if (a.date !== todayStr && b.date === todayStr) return 1;
@@ -79,10 +76,11 @@ const AppointmentBooking: React.FC = () => {
   };
 
   const handleRecall = (appt: Appointment) => {
-      // Input date picker needs YYYY-MM-DD
-      const dateToSet = parseSafeDate(appt.date).toISOString().split('T')[0];
+      const d = parseSafeDate(appt.date);
+      const isoDate = d.getFullYear() + "-" + ("0" + (d.getMonth() + 1)).slice(-2) + "-" + ("0" + d.getDate()).slice(-2);
+      
       setNewAppt({
-          date: dateToSet,
+          date: isoDate,
           clientName: appt.clientName,
           contact: appt.contact,
           address: appt.address,
@@ -104,11 +102,9 @@ const AppointmentBooking: React.FC = () => {
       if (newAppt.clientName && newAppt.date) {
         await api.addAppointment(newAppt as Appointment);
         
-        // Show success popup
         setShowSuccess(true);
         setTimeout(() => setShowSuccess(false), 3000);
 
-        // Reset form
         setNewAppt({ 
             ...newAppt, 
             clientName: '', 
@@ -119,7 +115,6 @@ const AppointmentBooking: React.FC = () => {
         }); 
         setTimeParts({ hour: '10', minute: '00', period: 'AM' });
         
-        // Force reload data to show immediately
         await loadData(true);
         document.querySelector('main')?.scrollTo({ top: 0, behavior: 'smooth' });
       }
@@ -135,7 +130,6 @@ const AppointmentBooking: React.FC = () => {
     loadData(true);
   };
 
-  // Filter Logic
   const filteredAppointments = appointments.filter(a => {
       const searchSafe = (a.clientName || '').toLowerCase();
       const contactSafe = String(a.contact || '');
@@ -303,7 +297,6 @@ const AppointmentBooking: React.FC = () => {
   return (
     <div className="flex flex-col gap-8 animate-in fade-in duration-500 pb-20 relative">
         
-        {/* SUCCESS FEEDBACK POPUP */}
         {showSuccess && (
             <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[100] animate-in slide-in-from-top-4 duration-300">
                 <div className="bg-indigo-600 text-white px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border border-indigo-400">

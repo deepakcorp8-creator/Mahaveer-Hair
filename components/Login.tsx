@@ -160,18 +160,18 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
 
                     <form onSubmit={handleSubmit} className="space-y-8 relative z-30">
                         <div className="space-y-3 group/input">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-5">Protocol Identity</label>
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-5">User Name</label>
                             <div className="relative">
                                 <div className="absolute inset-y-0 left-0 pl-6 flex items-center pointer-events-none text-slate-500 group-focus-within/input:text-[#B51A2B] transition-colors"><Mail className="h-5.5 w-5.5" /></div>
-                                <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} className="w-full pl-16 pr-6 py-5 bg-[#0B0F1A]/80 border-2 border-slate-800/50 rounded-[2rem] text-white font-bold placeholder:text-slate-700 focus:outline-none focus:ring-8 focus:ring-[#B51A2B]/5 focus:border-[#B51A2B] transition-all text-lg" placeholder="Enter ID" required />
+                                <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} className="w-full pl-16 pr-6 py-5 bg-[#0B0F1A]/80 border-2 border-slate-800/50 rounded-[2rem] text-white font-bold placeholder:text-slate-700 focus:outline-none focus:ring-8 focus:ring-[#B51A2B]/5 focus:border-[#B51A2B] transition-all text-lg" placeholder="Enter username" required />
                             </div>
                         </div>
 
                         <div className="space-y-3 group/input">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-5">Security Cipher</label>
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-5">Password</label>
                             <div className="relative">
                                 <div className="absolute inset-y-0 left-0 pl-6 flex items-center pointer-events-none text-slate-500 group-focus-within/input:text-[#B51A2B] transition-colors"><Lock className="h-5.5 w-5.5" /></div>
-                                <input type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} className="w-full pl-16 pr-16 py-5 bg-[#0B0F1A]/80 border-2 border-slate-800/50 rounded-[2rem] text-white font-bold placeholder:text-slate-700 focus:outline-none focus:ring-8 focus:ring-[#B51A2B]/5 focus:border-[#B51A2B] transition-all text-lg" placeholder="••••••••" required />
+                                <input type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} className="w-full pl-16 pr-16 py-5 bg-[#0B0F1A]/80 border-2 border-slate-800/50 rounded-[2rem] text-white font-bold placeholder:text-slate-700 focus:outline-none focus:ring-8 focus:ring-[#B51A2B]/5 focus:border-[#B51A2B] transition-all text-lg" placeholder="Enter password" required />
                                 <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-0 pr-6 text-slate-500 hover:text-white transition-colors">{showPassword ? <EyeOff className="w-6 h-6" /> : <Eye className="w-6 h-6" />}</button>
                             </div>
                         </div>
@@ -181,7 +181,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                         )}
 
                         <button type="submit" disabled={loading} className="w-full group py-5.5 bg-gradient-to-r from-[#B51A2B] to-[#851A2B] hover:shadow-[0_20px_45px_-10px_rgba(181,26,43,0.5)] text-white font-black text-xl rounded-[2rem] transition-all active:scale-[0.97] flex items-center justify-center uppercase tracking-[0.4em] border-t border-white/20 shadow-2xl">
-                            {loading ? <RefreshCw className="w-7 h-7 animate-spin" /> : <span className="flex items-center gap-5">INITIALIZE <ArrowRight className="w-6 h-6 group-hover:translate-x-2 transition-transform" /></span>}
+                            {loading ? <RefreshCw className="w-7 h-7 animate-spin" /> : <span className="flex items-center gap-5">SIGN IN <ArrowRight className="w-6 h-6 group-hover:translate-x-2 transition-transform" /></span>}
                         </button>
                     </form>
                     
