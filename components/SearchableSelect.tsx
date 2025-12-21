@@ -1,18 +1,19 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { ChevronDown, Check, X, Search, Crown } from 'lucide-react';
+import { ChevronDown, Check, X, Search, Crown, UserPlus } from 'lucide-react';
 
 interface Option {
   label: string;
   value: string;
   subtext?: string;
-  isHighlight?: boolean; // NEW PROP
+  isHighlight?: boolean;
 }
 
 interface SearchableSelectProps {
   options: Option[];
   value: string;
   onChange: (value: string) => void;
+  onCreateNew?: (value: string) => void; // NEW PROP
   placeholder?: string;
   label?: string;
   required?: boolean;
@@ -22,6 +23,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
   options = [],
   value,
   onChange,
+  onCreateNew,
   placeholder = "Select...",
   label,
   required
@@ -30,7 +32,6 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
   const wrapperRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Close when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
@@ -41,13 +42,10 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Filter options based on current input value
   const filteredOptions = useMemo(() => {
     const searchTerm = String(value || '').toLowerCase().trim();
-    // Always return options to allow browsing, filtered if typed
     if (!options) return [];
     
-    // Split into high priority (highlighted) and normal
     let result = options.filter(opt => {
       const labelSafe = String(opt.label || '').toLowerCase();
       const subtextSafe = String(opt.subtext || '').toLowerCase();
@@ -56,20 +54,18 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
       return labelSafe.includes(searchTerm) || subtextSafe.includes(searchTerm);
     });
 
-    // Sort: Highlighted first
     result.sort((a, b) => {
         if (a.isHighlight && !b.isHighlight) return -1;
         if (!a.isHighlight && b.isHighlight) return 1;
         return 0;
     });
 
-    return result.slice(0, 50); // Performance limit
+    return result.slice(0, 50);
   }, [options, value]);
 
   const handleSelect = (optValue: string) => {
       onChange(optValue);
       setIsOpen(false);
-      // Optional: keep focus or blur? Blur usually feels cleaner after selection
       inputRef.current?.blur();
   };
 
@@ -82,12 +78,10 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
       )}
       
       <div className="relative group">
-        {/* Left Icon */}
         <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
             <Search className="w-4 h-4" />
         </div>
         
-        {/* Main Input - Acts as both Search and Value entry */}
         <input
             ref={inputRef}
             type="text"
@@ -105,7 +99,6 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
             autoComplete="off"
         />
 
-        {/* Right Action Icons */}
         <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
              {value && (
                 <button
@@ -134,7 +127,6 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
         </div>
       </div>
 
-      {/* Dropdown Menu */}
       {isOpen && (
         <div className="absolute z-50 w-full mt-2 bg-white rounded-xl shadow-xl border border-gray-200 max-h-60 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200 animate-in fade-in zoom-in-95 duration-100">
             {filteredOptions.length > 0 ? (
@@ -171,10 +163,19 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
             ) : (
                 <div className="p-4 text-center text-gray-400 text-sm">
                     {value ? (
-                        <div className="flex flex-col items-center">
+                        <div 
+                          className="flex flex-col items-center cursor-pointer group/add"
+                          onClick={() => {
+                            if (onCreateNew) {
+                              onCreateNew(value);
+                              setIsOpen(false);
+                            }
+                          }}
+                        >
                              <p>No existing match.</p>
-                             <p className="text-xs mt-1 text-indigo-600 font-semibold bg-indigo-50 px-2 py-1 rounded-md border border-indigo-100">
-                                Creating new: "{value}"
+                             <p className="text-xs mt-2 text-indigo-600 font-black bg-indigo-50 px-4 py-2 rounded-xl border-2 border-indigo-100 group-hover/add:bg-indigo-600 group-hover/add:text-white group-hover/add:border-indigo-600 transition-all flex items-center gap-2">
+                                <UserPlus className="w-3.5 h-3.5" />
+                                Add New Client: "{value}"
                              </p>
                         </div>
                     ) : (

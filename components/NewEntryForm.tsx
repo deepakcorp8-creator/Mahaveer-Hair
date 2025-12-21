@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { Client, Item, Technician, Entry, ServicePackage } from '../types';
-import { Save, AlertCircle, User, CreditCard, Scissors, Calendar, MapPin, RefreshCw, CheckCircle2, Ticket, FileDown, ShieldCheck, Search, PenSquare, Wallet, X, Clock, AlertTriangle, Loader2, IndianRupee, Sparkles, Layers } from 'lucide-react';
+import { Save, AlertCircle, User, CreditCard, Scissors, Calendar, MapPin, RefreshCw, CheckCircle2, Ticket, FileDown, ShieldCheck, Search, PenSquare, Wallet, X, Clock, AlertTriangle, Loader2, IndianRupee, Sparkles, Layers, UserPlus } from 'lucide-react';
 import { SearchableSelect } from './SearchableSelect';
 import { generateInvoice } from '../utils/invoiceGenerator';
 
@@ -29,6 +29,13 @@ const NewEntryForm: React.FC = () => {
   // 2. Details Modal State
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [detailForm, setDetailForm] = useState<Partial<Entry>>({});
+
+  // 3. NEW CLIENT MODAL STATE
+  const [isAddClientModalOpen, setIsAddClientModalOpen] = useState(false);
+  const [newClientForm, setNewClientForm] = useState<Client>({
+      name: '', contact: '', address: '', gender: 'Male', email: '', dob: ''
+  });
+  const [isClientSubmitting, setIsClientSubmitting] = useState(false);
 
   const [activePackage, setActivePackage] = useState<{
       package: ServicePackage,
@@ -75,8 +82,8 @@ const NewEntryForm: React.FC = () => {
 
   const init = async () => {
     const [options, packages] = await Promise.all([
-        api.getOptions(),
-        api.getPackages()
+        api.getOptions(true),
+        api.getPackages(true)
     ]);
     setClients(options.clients);
     setTechnicians(options.technicians);
@@ -114,6 +121,30 @@ const NewEntryForm: React.FC = () => {
       contactToUse = client.contact;
     }
     checkPackage(client ? client.name : clientName, contactToUse);
+  };
+
+  const handleTriggerNewClient = (name: string) => {
+      setNewClientForm({ ...newClientForm, name: name });
+      setIsAddClientModalOpen(true);
+  };
+
+  const handleAddClientSubmit = async (e: React.FormEvent) => {
+      e.preventDefault();
+      setIsClientSubmitting(true);
+      try {
+          await api.addClient(newClientForm);
+          setIsAddClientModalOpen(false);
+          // Refetch clients so the new one shows up in options
+          const options = await api.getOptions(true);
+          setClients(options.clients);
+          // Automatically select the new client
+          handleClientChange(newClientForm.name);
+          setNotification({ msg: `New client "${newClientForm.name}" added to master!`, type: 'success' });
+      } catch (err) {
+          alert("Failed to add client.");
+      } finally {
+          setIsClientSubmitting(false);
+      }
   };
   
   const checkPackage = async (name: string, contact?: string) => {
@@ -264,7 +295,14 @@ const NewEntryForm: React.FC = () => {
                     <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-6 bg-gradient-to-b from-white to-blue-50/20">
                         <div className="col-span-full">
                             <div className="flex items-center justify-between mb-1"><label className={labelClass}>Client Name <span className="text-red-500">*</span></label>{checkingPackage && <span className="text-[10px] text-indigo-600 flex items-center font-bold"><Loader2 className="w-3 h-3 mr-1 animate-spin" /> Checking Plan...</span>}</div>
-                            <SearchableSelect options={clients.map(c => ({ label: c.name, value: c.name, subtext: c.contact, isHighlight: activePackageClients.has(c.name.trim().toLowerCase()) }))} value={formData.clientName || ''} onChange={handleClientChange} placeholder="Search Client..." required />
+                            <SearchableSelect 
+                              options={clients.map(c => ({ label: c.name, value: c.name, subtext: c.contact, isHighlight: activePackageClients.has(c.name.trim().toLowerCase()) }))} 
+                              value={formData.clientName || ''} 
+                              onChange={handleClientChange} 
+                              onCreateNew={handleTriggerNewClient} // HOOKED UP HERE
+                              placeholder="Search Client..." 
+                              required 
+                            />
                         </div>
                         {activePackage && (
                              <div className={`col-span-full rounded-2xl border-2 p-5 flex items-start gap-4 shadow-lg transition-all duration-300 transform hover:scale-[1.01] animate-in fade-in slide-in-from-top-4 ${activePackage.isExpired ? 'bg-red-50 border-red-300' : 'bg-emerald-50 border-emerald-300'}`}>
@@ -356,6 +394,58 @@ const NewEntryForm: React.FC = () => {
                  }))}
           </div>
       </div>
+
+      {/* 4. ADD NEW CLIENT MODAL */}
+      {isAddClientModalOpen && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[110] flex items-center justify-center p-4">
+              <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-lg overflow-hidden border border-white/20 animate-in zoom-in-95 duration-200">
+                  <div className="bg-slate-900 px-8 py-6 flex justify-between items-center text-white">
+                      <div>
+                          <h3 className="font-black text-xl flex items-center tracking-tight uppercase">
+                              <UserPlus className="w-6 h-6 mr-3 text-indigo-400" /> Register Client
+                          </h3>
+                          <p className="text-slate-400 text-[10px] font-bold mt-1 uppercase tracking-widest">Client Master Enrollment</p>
+                      </div>
+                      <button onClick={() => setIsAddClientModalOpen(false)} className="hover:bg-slate-800 p-2 rounded-full transition-colors"><X className="w-6 h-6" /></button>
+                  </div>
+                  
+                  <form onSubmit={handleAddClientSubmit} className="p-8 space-y-5">
+                      <div>
+                          <label className={labelClass}>Client Name</label>
+                          <input required type="text" className={inputClass} value={newClientForm.name} onChange={e => setNewClientForm({...newClientForm, name: e.target.value})} />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                          <div>
+                              <label className={labelClass}>Contact</label>
+                              <input required type="text" className={inputClass} value={newClientForm.contact} onChange={e => setNewClientForm({...newClientForm, contact: e.target.value})} />
+                          </div>
+                          <div>
+                              <label className={labelClass}>Gender</label>
+                              <select className={inputClass} value={newClientForm.gender} onChange={e => setNewClientForm({...newClientForm, gender: e.target.value as any})}>
+                                  <option value="Male">Male</option>
+                                  <option value="Female">Female</option>
+                              </select>
+                          </div>
+                      </div>
+                      <div>
+                          <label className={labelClass}>Address</label>
+                          <input type="text" className={inputClass} value={newClientForm.address} onChange={e => setNewClientForm({...newClientForm, address: e.target.value})} />
+                      </div>
+                      <div>
+                          <label className={labelClass}>DOB</label>
+                          <input type="date" className={inputClass} value={newClientForm.dob} onChange={e => setNewClientForm({...newClientForm, dob: e.target.value})} />
+                      </div>
+                      
+                      <div className="flex gap-4 pt-4">
+                          <button type="button" onClick={() => setIsAddClientModalOpen(false)} className="flex-1 py-4 border-2 border-slate-200 text-slate-500 font-black rounded-2xl hover:bg-slate-50 transition-colors uppercase tracking-widest text-xs">Cancel</button>
+                          <button type="submit" disabled={isClientSubmitting} className="flex-[2] py-4 bg-indigo-600 text-white font-black rounded-2xl hover:bg-indigo-700 shadow-xl flex items-center justify-center border-b-4 border-indigo-800 active:translate-y-1 active:border-b-0 uppercase tracking-widest text-sm">
+                              {isClientSubmitting ? <RefreshCw className="w-5 h-5 animate-spin" /> : <><Save className="w-4 h-4 mr-2" /> Save & Use</>}
+                          </button>
+                      </div>
+                  </form>
+              </div>
+          </div>
+      )}
 
       {isPaymentModalOpen && editingEntry && (
           <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
