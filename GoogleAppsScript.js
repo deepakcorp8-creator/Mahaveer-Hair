@@ -1,6 +1,6 @@
 
 // =====================================================================================
-// ⚠️ MAHAVEER WEB APP - BACKEND SCRIPT (V27 - APPOINTMENT SYNC FIX)
+// ⚠️ MAHAVEER WEB APP - BACKEND SCRIPT (V28 - DATE & TIME FORMAT FIX)
 // =====================================================================================
 
 function doGet(e) {
@@ -253,6 +253,21 @@ function fromSheetDate(val) {
   return String(val).trim();
 }
 
+function fromSheetTime(val) {
+  if (!val) return "";
+  if (Object.prototype.toString.call(val) === '[object Date]') {
+     const d = new Date(val);
+     var hours = d.getHours();
+     var minutes = d.getMinutes();
+     var ampm = hours >= 12 ? 'PM' : 'AM';
+     hours = hours % 12;
+     hours = hours ? hours : 12; // 0 is 12
+     minutes = minutes < 10 ? '0' + minutes : minutes;
+     return hours + ':' + minutes + ' ' + ampm;
+  }
+  return String(val).trim();
+}
+
 function getTodayInSheetFormat() {
   const d = new Date();
   return ("0" + d.getDate()).slice(-2) + "/" + ("0" + (d.getMonth() + 1)).slice(-2) + "/" + d.getFullYear();
@@ -317,7 +332,7 @@ function getAppointments(ss) {
     if (!sheet || sheet.getLastRow() <= 1) return response([]);
     const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 9).getValues();
     return response(data.map((row) => ({
-      id: row[0], date: fromSheetDate(row[1]), clientName: row[2], contact: row[3], address: row[4], note: row[5], status: row[6] || 'PENDING', branch: row[7] || '', time: row[8] ? String(row[8]) : '' 
+      id: row[0], date: fromSheetDate(row[1]), clientName: row[2], contact: row[3], address: row[4], note: row[5], status: row[6] || 'PENDING', branch: row[7] || '', time: fromSheetTime(row[8]) 
     })));
 }
 

@@ -32,7 +32,9 @@ const AppointmentBooking: React.FC = () => {
     time: '10:00 AM'
   });
 
-  const todayStr = new Date().toISOString().split('T')[0];
+  // Use DD/MM/YYYY for comparison consistency with sidebar
+  const now = new Date();
+  const todayStr = ("0" + now.getDate()).slice(-2) + "/" + ("0" + (now.getMonth() + 1)).slice(-2) + "/" + now.getFullYear();
 
   useEffect(() => {
     loadData();
@@ -46,24 +48,41 @@ const AppointmentBooking: React.FC = () => {
       }));
   }, [timeParts]);
 
+  const parseSafeDate = (dateStr: string) => {
+    if (!dateStr) return new Date();
+    if (dateStr.includes('/')) {
+        const [d, m, y] = dateStr.split('/');
+        return new Date(parseInt(y), parseInt(m) - 1, parseInt(d));
+    }
+    // Handle standard date strings
+    const d = new Date(dateStr);
+    return isNaN(d.getTime()) ? new Date() : d;
+  };
+
   const loadData = async (force: boolean = false) => {
     const [apptData, options] = await Promise.all([
       api.getAppointments(force),
       api.getOptions()
     ]);
+    
     // Sort: Today first, then Pending, then Future date
     const sorted = apptData.sort((a, b) => {
         if (a.date === todayStr && b.date !== todayStr) return -1;
         if (a.date !== todayStr && b.date === todayStr) return 1;
-        return new Date(a.date).getTime() - new Date(b.date).getTime();
+        
+        const dateA = parseSafeDate(a.date).getTime();
+        const dateB = parseSafeDate(b.date).getTime();
+        return dateA - dateB;
     });
     setAppointments(sorted);
     setClients(options.clients);
   };
 
   const handleRecall = (appt: Appointment) => {
+      // Input date picker needs YYYY-MM-DD
+      const dateToSet = parseSafeDate(appt.date).toISOString().split('T')[0];
       setNewAppt({
-          date: todayStr,
+          date: dateToSet,
           clientName: appt.clientName,
           contact: appt.contact,
           address: appt.address,
@@ -118,9 +137,13 @@ const AppointmentBooking: React.FC = () => {
 
   // Filter Logic
   const filteredAppointments = appointments.filter(a => {
-      const searchSafe = searchFilter.toLowerCase();
-      const matchesSearch = (a.clientName || '').toLowerCase().includes(searchSafe) || String(a.contact || '').includes(searchFilter);
+      const searchSafe = (a.clientName || '').toLowerCase();
+      const contactSafe = String(a.contact || '');
+      const filterSafe = searchFilter.toLowerCase();
+      
+      const matchesSearch = searchSafe.includes(filterSafe) || contactSafe.includes(searchFilter);
       if (!matchesSearch) return false;
+      
       if (activeTab === 'SCHEDULE') return a.status === 'PENDING';
       if (activeTab === 'LEADS') return a.status === 'FOLLOWUP';
       if (activeTab === 'HISTORY') return a.status === 'CLOSED';
@@ -135,7 +158,8 @@ const AppointmentBooking: React.FC = () => {
   const followupCount = appointments.filter(a => a.status === 'FOLLOWUP').length;
 
   const renderAppointmentCard = (appt: Appointment, isToday: boolean = false) => {
-      const isOverdue = !isToday && new Date(appt.date) < new Date(todayStr) && appt.status === 'PENDING';
+      const dObj = parseSafeDate(appt.date);
+      const isOverdue = !isToday && dObj < new Date(now.setHours(0,0,0,0)) && appt.status === 'PENDING';
       const isLead = appt.status === 'FOLLOWUP';
       const isClosed = appt.status === 'CLOSED';
       
@@ -179,8 +203,8 @@ const AppointmentBooking: React.FC = () => {
                         flex flex-col items-center justify-center w-16 h-16 rounded-xl border-2 shadow-sm
                         ${isToday ? 'bg-white border-indigo-200 text-indigo-700' : isLead ? 'bg-amber-100 border-amber-200 text-amber-700' : isClosed ? 'bg-slate-100 border-slate-300 text-slate-500' : 'bg-slate-50 border-slate-300 text-slate-600'}
                     `}>
-                        <span className="text-xs font-bold uppercase">{new Date(appt.date).toLocaleString('default', { month: 'short' })}</span>
-                        <span className="text-2xl font-black leading-none">{new Date(appt.date).getDate()}</span>
+                        <span className="text-xs font-bold uppercase">{dObj.toLocaleString('default', { month: 'short' })}</span>
+                        <span className="text-2xl font-black leading-none">{dObj.getDate()}</span>
                     </div>
                     <div>
                         <h4 className={`font-black text-lg ${isClosed ? 'text-slate-500 line-through decoration-slate-400' : 'text-slate-800'}`}>{appt.clientName}</h4>
