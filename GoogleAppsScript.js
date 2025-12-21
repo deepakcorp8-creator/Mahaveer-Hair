@@ -1,6 +1,6 @@
 
 // =====================================================================================
-// ⚠️ MAHAVEER WEB APP - BACKEND SCRIPT (V23 - Robust Column Mapping & Duplicate Protection)
+// ⚠️ MAHAVEER WEB APP - BACKEND SCRIPT (V24 - GAP PROTECTION & PRECISE APPEND)
 // =====================================================================================
 
 function doGet(e) {
@@ -14,6 +14,22 @@ function doGet(e) {
   if (action == 'getAppointments') return getAppointments(ss);
 
   return response({error: "Invalid action"});
+}
+
+/**
+ * Robustly finds the last row with actual data in a specific column (defaults to Column B/Client Name)
+ * to prevent gaps caused by formatting or ghost rows.
+ */
+function getSafeLastRow(sheet, colIndex) {
+  var column = colIndex || 2; // Default to Column B
+  var lastRow = sheet.getMaxRows();
+  var values = sheet.getRange(1, column, lastRow).getValues();
+  for (var i = values.length - 1; i >= 0; i--) {
+    if (values[i][0] && values[i][0].toString().trim() !== "") {
+      return i + 1;
+    }
+  }
+  return 1;
 }
 
 function doPost(e) {
@@ -34,32 +50,32 @@ function doPost(e) {
       }
     }
 
-    // Explicit row mapping to match your sheet exactly
     const newRow = [
-      toSheetDate(data.date),              // A (1)
-      data.clientName,        // B (2)
-      data.contactNo,         // C (3)
-      data.address,           // D (4)
-      data.branch,            // E (5)
-      data.serviceType,       // F (6)
-      data.patchMethod,       // G (7)
-      data.technician,        // H (8)
-      data.workStatus,        // I (9)
-      data.amount,            // J (10)
-      data.paymentMethod,     // K (11)
-      String(data.remark || ""), // L (12) - Ensure Remark is STRING
-      data.numberOfService,   // M (13)
-      invoiceUrl,             // N (14)
-      data.patchSize || '',   // O (15)
-      data.pendingAmount || 0 // P (16)
+      toSheetDate(data.date),    // A
+      data.clientName,           // B
+      data.contactNo,            // C
+      data.address,              // D
+      data.branch,               // E
+      data.serviceType,          // F
+      data.patchMethod,          // G
+      data.technician,           // H
+      data.workStatus,           // I
+      data.amount,               // J
+      data.paymentMethod,        // K
+      String(data.remark || ""), // L
+      data.numberOfService,      // M
+      invoiceUrl,                // N
+      data.patchSize || '',      // O
+      data.pendingAmount || 0    // P
     ];
 
-    dbSheet.appendRow(newRow);
-    const lastRow = dbSheet.getLastRow();
+    // FIX: Find actual next row instead of using appendRow
+    const nextRow = getSafeLastRow(dbSheet, 2) + 1;
+    dbSheet.getRange(nextRow, 1, 1, newRow.length).setValues([newRow]);
     
-    // FORMATTING PROTECTIONS
-    dbSheet.getRange(lastRow, 1).setNumberFormat("dd/mm/yyyy"); // Date column
-    dbSheet.getRange(lastRow, 12).setNumberFormat("@"); // Force Remark column as PLAIN TEXT (@)
+    // Formatting
+    dbSheet.getRange(nextRow, 1).setNumberFormat("dd/mm/yyyy");
+    dbSheet.getRange(nextRow, 12).setNumberFormat("@"); // Remark as text
     
     return response({status: "success", invoiceUrl: invoiceUrl});
   }
@@ -82,7 +98,6 @@ function doPost(e) {
               if (data.pendingAmount !== undefined) dbSheet.getRange(rowId, 16).setValue(data.pendingAmount);
               if (data.paymentMethod) dbSheet.getRange(rowId, 11).setValue(data.paymentMethod);
               
-              // REMARK UPDATE - Force format to Text before setting
               const remarkCell = dbSheet.getRange(rowId, 12);
               remarkCell.setNumberFormat("@");
               remarkCell.setValue(String(data.remark || ""));
@@ -90,7 +105,7 @@ function doPost(e) {
               const today = getTodayInSheetFormat();
               const nextCall = toSheetDate(data.nextCallDate);
 
-              collectionSheet.appendRow([
+              const collectionRow = [
                 data.id, 
                 today, 
                 data.clientName, 
@@ -102,16 +117,51 @@ function doPost(e) {
                 String(data.remark || ""), 
                 nextCall || '', 
                 new Date().toString()
-              ]);
+              ];
 
-              const lastC = collectionSheet.getLastRow();
-              collectionSheet.getRange(lastC, 2).setNumberFormat("dd/mm/yyyy");
-              collectionSheet.getRange(lastC, 9).setNumberFormat("@"); // Text Remark
-              collectionSheet.getRange(lastC, 10).setNumberFormat("dd/mm/yyyy");
+              // USE SAFE APPEND
+              const nextC = getSafeLastRow(collectionSheet, 3) + 1; // Check by Client Name
+              collectionSheet.getRange(nextC, 1, 1, collectionRow.length).setValues([collectionRow]);
+
+              collectionSheet.getRange(nextC, 2).setNumberFormat("dd/mm/yyyy");
+              collectionSheet.getRange(nextC, 9).setNumberFormat("@"); 
+              collectionSheet.getRange(nextC, 10).setNumberFormat("dd/mm/yyyy");
 
               return response({status: "success", screenshotUrl: screenshotUrl});
           }
       } catch(e) { return response({error: e.message}); }
+  }
+
+  if (action == 'addPackage') {
+    const pkgSheet = getSheet(ss, "PACKAGE PLAN");
+    const pkgDate = toSheetDate(data.startDate);
+    const pkgRow = [pkgDate, data.clientName, data.packageName, data.totalCost, data.totalServices, data.status || 'PENDING'];
+    
+    const nextP = getSafeLastRow(pkgSheet, 2) + 1;
+    pkgSheet.getRange(nextP, 1, 1, pkgRow.length).setValues([pkgRow]);
+    pkgSheet.getRange(nextP, 1).setNumberFormat("dd/mm/yyyy");
+    return response({status: "success"});
+  }
+
+  if (action == 'addClient') {
+      const clientSheet = getSheet(ss, "CLIENT MASTER");
+      const clientRow = [data.name, data.contact, data.address, data.gender, data.email, toSheetDate(data.dob)];
+      
+      const nextCl = getSafeLastRow(clientSheet, 1) + 1;
+      clientSheet.getRange(nextCl, 1, 1, clientRow.length).setValues([clientRow]);
+      clientSheet.getRange(nextCl, 6).setNumberFormat("dd/mm/yyyy");
+      return response({status: "success"});
+  }
+
+  if (action == 'addAppointment') {
+    const apptSheet = getSheet(ss, "APPOINTMENT");
+    const id = 'appt_' + new Date().getTime();
+    const apptRow = [id, toSheetDate(data.date), data.clientName, data.contact, data.address, data.note, data.status, data.branch, data.time];
+    
+    const nextA = getSafeLastRow(apptSheet, 3) + 1;
+    apptSheet.getRange(nextA, 1, 1, apptRow.length).setValues([apptRow]);
+    apptSheet.getRange(nextA, 2).setNumberFormat("dd/mm/yyyy");
+    return response({status: "success", id: id});
   }
 
   if (action == 'editEntry') {
@@ -139,91 +189,13 @@ function doPost(e) {
     } catch(e) { return response({error: "Failed"}); }
   }
 
-  if (action == 'updateUserProfile') {
-      const loginSheet = getSheet(ss, "LOGIN");
-      const values = loginSheet.getDataRange().getValues();
-      for (let i = 1; i < values.length; i++) {
-          if (values[i][0].toString().trim().toLowerCase() === data.username.toString().trim().toLowerCase()) {
-              loginSheet.getRange(i + 1, 6).setValue(data.dpUrl || "");
-              loginSheet.getRange(i + 1, 7).setValue(data.gender || "");
-              const dobCell = loginSheet.getRange(i + 1, 8);
-              dobCell.setValue(toSheetDate(data.dob) || "");
-              dobCell.setNumberFormat("dd/mm/yyyy");
-              loginSheet.getRange(i + 1, 9).setValue(data.address || "");
-              return response({status: "success"});
-          }
-      }
-      return response({error: "User not found"});
-  }
-
-  if (action == 'editUser') {
-      const loginSheet = getSheet(ss, "LOGIN");
-      const values = loginSheet.getDataRange().getValues();
-      for (let i = 1; i < values.length; i++) {
-          if (values[i][0].toString().trim().toLowerCase() === data.username.toString().trim().toLowerCase()) {
-              if (data.password) loginSheet.getRange(i + 1, 2).setValue(data.password);
-              loginSheet.getRange(i + 1, 3).setValue(data.role);
-              loginSheet.getRange(i + 1, 4).setValue(data.department || "");
-              loginSheet.getRange(i + 1, 5).setValue(data.permissions || "");
-              return response({status: "success"});
-          }
-      }
-      return response({error: "User not found"});
-  }
-
+  // Identity logic
   if (action == 'addUser') {
       const loginSheet = getSheet(ss, "LOGIN");
-      loginSheet.appendRow([data.username, data.password, data.role, data.department, data.permissions]);
+      const userRow = [data.username, data.password, data.role, data.department, data.permissions];
+      const nextU = getSafeLastRow(loginSheet, 1) + 1;
+      loginSheet.getRange(nextU, 1, 1, userRow.length).setValues([userRow]);
       return response({status: "success"});
-  }
-
-  if (action == 'deleteUser') {
-      const loginSheet = getSheet(ss, "LOGIN");
-      const values = loginSheet.getDataRange().getValues();
-      for (let i = 1; i < values.length; i++) {
-          if (values[i][0].toString().trim().toLowerCase() === data.username.toString().trim().toLowerCase()) {
-              loginSheet.deleteRow(i + 1);
-              return response({status: "success"});
-          }
-      }
-      return response({error: "User not found"});
-  }
-
-  if (action == 'addPackage') {
-    const pkgSheet = getSheet(ss, "PACKAGE PLAN");
-    const pkgDate = toSheetDate(data.startDate);
-    pkgSheet.appendRow([pkgDate, data.clientName, data.packageName, data.totalCost, data.totalServices, data.status || 'PENDING']);
-    pkgSheet.getRange(pkgSheet.getLastRow(), 1).setNumberFormat("dd/mm/yyyy");
-    return response({status: "success"});
-  }
-
-  if (action == 'editPackage') {
-    const pkgSheet = getSheet(ss, "PACKAGE PLAN");
-    try {
-        const rowId = parseInt(data.id.split('_')[1]);
-        const dateCell = pkgSheet.getRange(rowId, 1);
-        dateCell.setValue(toSheetDate(data.startDate));
-        dateCell.setNumberFormat("dd/mm/yyyy");
-        pkgSheet.getRange(rowId, 3).setValue(data.packageName);
-        pkgSheet.getRange(rowId, 4).setValue(data.totalCost);
-        pkgSheet.getRange(rowId, 5).setValue(data.totalServices);
-        return response({status: "success"});
-    } catch(e) { return response({error: e.message}); }
-  }
-
-  if (action == 'addClient') {
-      const clientSheet = getSheet(ss, "CLIENT MASTER");
-      clientSheet.appendRow([data.name, data.contact, data.address, data.gender, data.email, toSheetDate(data.dob)]);
-      clientSheet.getRange(clientSheet.getLastRow(), 6).setNumberFormat("dd/mm/yyyy");
-      return response({status: "success"});
-  }
-
-  if (action == 'addAppointment') {
-    const apptSheet = getSheet(ss, "APPOINTMENT");
-    const id = 'appt_' + new Date().getTime();
-    apptSheet.appendRow([id, toSheetDate(data.date), data.clientName, data.contact, data.address, data.note, data.status, data.branch, data.time]);
-    apptSheet.getRange(apptSheet.getLastRow(), 2).setNumberFormat("dd/mm/yyyy");
-    return response({status: "success", id: id});
   }
 
   return response({error: "Action processed"});
@@ -250,7 +222,7 @@ function fromSheetDate(val) {
      const year = d.getFullYear();
      const month = ("0" + (d.getMonth() + 1)).slice(-2);
      const day = ("0" + d.getDate()).slice(-2);
-     return day + "/" + month + "/" + year; // Return consistent display format
+     return day + "/" + month + "/" + year;
   }
   return String(val).trim();
 }
@@ -281,7 +253,7 @@ function getEntries(ss) {
         date: fromSheetDate(row[0]), 
         clientName: row[1], contactNo: row[2], address: row[3], branch: row[4], serviceType: row[5], patchMethod: row[6], technician: row[7], workStatus: row[8], amount: totalBill, paymentMethod: payMethod, remark: String(row[11] || ""), numberOfService: row[12], invoiceUrl: row[13], patchSize: row[14], pendingAmount: pendingAmount
       };
-    }).reverse());
+    }).reverse().filter(e => e.clientName)); // Filter out truly empty rows
 }
 
 function getOptions(ss) {

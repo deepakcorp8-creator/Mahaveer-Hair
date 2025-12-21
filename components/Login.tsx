@@ -70,14 +70,21 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
            </div>
 
            <div className="space-y-6 text-center lg:text-left">
-              <h1 className="text-5xl md:text-8xl xl:text-[8.5rem] font-black tracking-tighter leading-[0.8] uppercase select-none">
-                <span className="block text-white">REDEFINE</span>
-                <span className="block text-transparent bg-clip-text bg-gradient-to-r from-[#B51A2B] via-[#FFA586] to-[#B51A2B] animate-shimmer">ESTHETICS</span>
+              <h1 className="text-5xl md:text-7xl xl:text-[6.5rem] font-black tracking-tighter leading-[1.05] uppercase select-none flex flex-col items-center lg:items-start">
+                <span className="block text-white opacity-0 animate-[slideUp_0.8s_ease-out_0.1s_forwards] animate-float-slow">
+                  Manage Your
+                </span>
+                <span className="block text-[#7DD3FC] opacity-0 animate-[slideUp_0.8s_ease-out_0.3s_forwards] animate-float-medium drop-shadow-[0_0_15px_rgba(125,211,252,0.3)]">
+                  Hair Solutions
+                </span>
+                <span className="block text-white opacity-0 animate-[slideUp_0.8s_ease-out_0.5s_forwards] animate-float-fast">
+                  Professionally.
+                </span>
               </h1>
               
               <div className="relative lg:pl-12 space-y-5 flex flex-col items-center lg:items-start">
                 <div className="hidden lg:block absolute left-0 top-0 w-2 h-full bg-gradient-to-b from-[#B51A2B] via-[#FFA586] to-transparent rounded-full" />
-                <p className="text-xl md:text-3xl font-extrabold text-[#FFA586] max-w-md leading-tight italic drop-shadow-2xl">
+                <p className="text-xl md:text-2xl font-extrabold text-[#FFA586]/80 max-w-md leading-tight italic drop-shadow-2xl">
                   "Where Art Meets Scientific Precision."
                 </p>
                 <div className="flex items-center gap-3 bg-white/5 border border-white/10 px-4 py-2 rounded-xl">
@@ -171,6 +178,22 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
       <style dangerouslySetInnerHTML={{ __html: `
         @keyframes shimmer { 0% { background-position: -200% center; } 100% { background-position: 200% center; } }
         .animate-shimmer { background-size: 200% auto; animation: shimmer 8s linear infinite; }
+        
+        @keyframes slideUp {
+          from { transform: translateY(40px); opacity: 0; }
+          to { transform: translateY(0); opacity: 1; }
+        }
+
+        @keyframes float {
+          0% { transform: translateY(0px); }
+          50% { transform: translateY(-10px); }
+          100% { transform: translateY(0px); }
+        }
+
+        .animate-float-slow { animation: float 6s ease-in-out infinite; }
+        .animate-float-medium { animation: float 5s ease-in-out infinite; }
+        .animate-float-fast { animation: float 4s ease-in-out infinite; }
+
         @keyframes shake { 10%, 90% { transform: translate3d(-1px, 0, 0); } 20%, 80% { transform: translate3d(2px, 0, 0); } 30%, 50%, 70% { transform: translate3d(-4px, 0, 0); } 40%, 60% { transform: translate3d(4px, 0, 0); } }
         .animate-shake { animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both; }
       `}} />
