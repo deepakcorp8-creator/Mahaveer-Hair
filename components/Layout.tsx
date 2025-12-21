@@ -1,8 +1,7 @@
 
 import React, { useEffect, useState, useRef } from 'react';
-// Fix: Use namespace import for react-router-dom to resolve named export resolution issues
-import * as RouterDom from 'react-router-dom';
-const { Link, useLocation } = RouterDom;
+// Fix: Use named imports for react-router-dom as namespace destructuring was failing
+import { Link, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, 
   PlusCircle, 
@@ -149,7 +148,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
     { path: '/pending-dues', label: 'Payment Follow-up', icon: Wallet, adminOnly: false },
     { path: '/daily-report', label: 'Today Report', icon: FileText, adminOnly: false },
     { path: '/history', label: 'Client History', icon: History, adminOnly: false },
-    { path: '/appointments', label: 'Bookings', icon: Calendar, adminOnly: false },
+    { path: '/appointments', label: 'Appointments', icon: Calendar, adminOnly: false },
     { path: '/packages', label: 'Service Packages', icon: PackageCheck, adminOnly: false },
     { path: '/clients', label: 'Clients', icon: Users, adminOnly: false }, 
     { path: '/reports', label: 'Analysis', icon: BarChart3, adminOnly: true },
@@ -229,7 +228,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
             {/* User Profile Info */}
             <div onClick={() => setIsProfileModalOpen(true)} className="bg-[#131C2E] rounded-xl p-3 border border-slate-700/50 flex items-center justify-between group hover:bg-[#1A263E] transition-all cursor-pointer shadow-sm">
                 <div className="flex items-center space-x-3 overflow-hidden">
-                    <div className="relative w-9 h-9 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 p-[1px] shadow-md">
+                    <div className="relative w-9 h-9 rounded-lg bg-gradient-to-br from-indigo-50 to-purple-600 p-[1px] shadow-md">
                         <div className="w-full h-full rounded-[7px] bg-[#131C2E] flex items-center justify-center overflow-hidden">
                             {user.dpUrl ? <img src={user.dpUrl} alt="Profile" className="w-full h-full object-cover" /> : <span className="text-white font-black text-xs uppercase">{user.username.charAt(0)}</span>}
                         </div>

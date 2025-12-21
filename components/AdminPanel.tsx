@@ -21,7 +21,7 @@ const AdminPanel: React.FC = () => {
       { id: '/pending-dues', label: 'Payment Follow-ups' },
       { id: '/daily-report', label: 'View Today Report' },
       { id: '/history', label: 'Client History' },
-      { id: '/appointments', label: 'Booking System' },
+      { id: '/appointments', label: 'Appointment System' },
       { id: '/packages', label: 'Service Packages' },
       { id: '/clients', label: 'Client Master' },
       { id: '/reports', label: 'Business Analysis' },
