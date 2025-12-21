@@ -5,7 +5,7 @@ import { Entry, Technician } from '../types';
 import { 
   Calendar, Filter, FileText, UserPlus, Scissors, CreditCard, Search, Wallet, 
   Smartphone, Landmark, AlertCircle, RefreshCw, Eye, FileDown, Printer, User, 
-  Ruler, Sparkles, Layers, Pencil, X, Save 
+  Ruler, Sparkles, Layers, Pencil, X, Save, Droplets, Zap, UserCheck
 } from 'lucide-react';
 import { generateInvoice } from '../utils/invoiceGenerator';
 
@@ -98,9 +98,16 @@ const DailyReport: React.FC = () => {
 
   const dailyEntries = entries.filter(e => e.date === selectedDate);
   const totalDailyRevenue = dailyEntries.reduce((sum, e) => sum + Number(e.amount || 0), 0);
-  const newClientsCount = dailyEntries.filter(e => e.serviceType === 'NEW').length;
-  const serviceCount = dailyEntries.filter(e => e.serviceType === 'SERVICE' || e.serviceType === 'WASHING').length;
   const totalTxns = dailyEntries.length;
+
+  // Detailed Counts
+  const serviceStats = {
+    NEW: dailyEntries.filter(e => e.serviceType === 'NEW').length,
+    SERVICE: dailyEntries.filter(e => e.serviceType === 'SERVICE').length,
+    WASHING: dailyEntries.filter(e => e.serviceType === 'WASHING').length,
+    DEMO: dailyEntries.filter(e => e.serviceType === 'DEMO').length,
+    MUNDAN: dailyEntries.filter(e => e.serviceType === 'MUNDAN').length,
+  };
 
   const paymentStats = {
     CASH: dailyEntries
@@ -115,10 +122,10 @@ const DailyReport: React.FC = () => {
     PENDING: dailyEntries.reduce((s, e) => s + Number(e.pendingAmount || 0), 0),
   };
 
-  const card3D = "bg-white rounded-2xl shadow-[0_8px_30px_-5px_rgba(0,0,0,0.1)] border border-slate-200 p-5 transition-transform duration-300 hover:-translate-y-1 hover:shadow-xl relative overflow-hidden";
+  const card3D = "bg-white rounded-2xl shadow-[0_8px_30px_-5px_rgba(0,0,0,0.05)] border border-slate-200 p-4 transition-transform duration-300 hover:-translate-y-1 hover:shadow-lg relative overflow-hidden";
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500 pb-10">
+    <div className="space-y-8 animate-in fade-in duration-500 pb-10">
       
       <div className="flex flex-col md:flex-row justify-between items-center bg-white p-6 rounded-3xl shadow-[0_15px_35px_-10px_rgba(0,0,0,0.08)] border border-slate-200 backdrop-blur-sm">
         <div>
@@ -143,53 +150,80 @@ const DailyReport: React.FC = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <div className="rounded-3xl p-6 text-white shadow-xl shadow-indigo-500/20 bg-gradient-to-br from-indigo-600 to-indigo-800 transform hover:scale-[1.02] transition-transform duration-300 relative overflow-hidden border border-indigo-700">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-10 -mt-10 blur-2xl"></div>
-              <div className="flex justify-between items-start relative z-10">
-                  <div>
-                      <p className="text-indigo-200 text-xs font-black uppercase tracking-widest border-b border-indigo-400/30 pb-1 mb-2 inline-block">Total Collection</p>
-                      <h3 className="text-3xl font-black mt-1">₹{totalDailyRevenue.toLocaleString()}</h3>
-                  </div>
-                  <div className="p-3 bg-white/20 rounded-2xl backdrop-blur-sm border border-white/20">
-                      <CreditCard className="w-6 h-6" />
-                  </div>
+      {/* Main KPI Row */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="rounded-3xl p-8 text-white shadow-2xl shadow-indigo-500/20 bg-gradient-to-br from-indigo-600 to-indigo-800 transform hover:scale-[1.01] transition-all duration-300 relative overflow-hidden border border-indigo-700 flex justify-between items-center">
+              <div className="absolute top-0 right-0 w-48 h-48 bg-white/10 rounded-full -mr-16 -mt-16 blur-3xl"></div>
+              <div className="relative z-10">
+                  <p className="text-indigo-200 text-xs font-black uppercase tracking-[0.2em] mb-2 border-b border-indigo-400/30 pb-1 inline-block">Daily Collection</p>
+                  <h3 className="text-5xl font-black tracking-tight">₹{totalDailyRevenue.toLocaleString()}</h3>
+                  <p className="text-indigo-300 text-xs font-bold mt-2 flex items-center"><Zap className="w-3 h-3 mr-1" /> Real-time tracking active</p>
               </div>
-          </div>
-          
-           <div className={`${card3D} border-l-8 border-l-blue-500`}>
-              <div className="flex justify-between items-start">
-                  <div>
-                      <p className="text-slate-400 text-xs font-black uppercase tracking-widest mb-1">New Patches</p>
-                      <h3 className="text-3xl font-black text-slate-800">{newClientsCount}</h3>
-                  </div>
-                  <div className="p-3 bg-blue-100 text-blue-600 rounded-2xl shadow-inner border border-blue-200">
-                      <UserPlus className="w-6 h-6" />
-                  </div>
+              <div className="p-5 bg-white/20 rounded-[2rem] backdrop-blur-md border border-white/20 shadow-inner group-hover:scale-110 transition-transform">
+                  <CreditCard className="w-10 h-10" />
               </div>
           </div>
 
-          <div className={`${card3D} border-l-8 border-l-violet-500`}>
-              <div className="flex justify-between items-start">
+          <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-[0_20px_50px_-15px_rgba(0,0,0,0.1)] flex justify-between items-center group hover:border-indigo-200 transition-colors">
+              <div>
+                  <p className="text-slate-400 text-xs font-black uppercase tracking-[0.2em] mb-2">Total Activity</p>
+                  <h3 className="text-5xl font-black text-slate-800 tracking-tight">{totalTxns} <span className="text-lg text-slate-300 font-bold ml-1 uppercase">Entries</span></h3>
+              </div>
+              <div className="p-5 bg-slate-100 text-slate-600 rounded-[2rem] shadow-inner border border-slate-200 group-hover:bg-indigo-50 group-hover:text-indigo-600 group-hover:border-indigo-100 transition-colors">
+                  <FileText className="w-10 h-10" />
+              </div>
+          </div>
+      </div>
+
+      {/* Service Breakdown Row - 5 Columns */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <div className={`${card3D} border-l-4 border-l-blue-500 bg-blue-50/20`}>
+              <div className="flex justify-between items-center">
                   <div>
-                      <p className="text-slate-400 text-xs font-black uppercase tracking-widest mb-1">Services Done</p>
-                      <h3 className="text-3xl font-black text-slate-800">{serviceCount}</h3>
+                      <p className="text-blue-600 text-[10px] font-black uppercase tracking-widest">New Patches</p>
+                      <h3 className="text-2xl font-black text-slate-800 mt-1">{serviceStats.NEW}</h3>
                   </div>
-                  <div className="p-3 bg-violet-100 text-violet-600 rounded-2xl shadow-inner border border-violet-200">
-                      <Scissors className="w-6 h-6" />
-                  </div>
+                  <div className="p-2 bg-blue-100 text-blue-600 rounded-xl border border-blue-200 shadow-sm"><UserPlus className="w-5 h-5" /></div>
               </div>
           </div>
 
-          <div className={`${card3D} border-l-8 border-l-slate-500`}>
-              <div className="flex justify-between items-start">
+          <div className={`${card3D} border-l-4 border-l-emerald-500 bg-emerald-50/20`}>
+              <div className="flex justify-between items-center">
                   <div>
-                      <p className="text-slate-400 text-xs font-black uppercase tracking-widest mb-1">Total Entries</p>
-                      <h3 className="text-3xl font-black text-slate-800">{totalTxns}</h3>
+                      <p className="text-emerald-600 text-[10px] font-black uppercase tracking-widest">Service Only</p>
+                      <h3 className="text-2xl font-black text-slate-800 mt-1">{serviceStats.SERVICE}</h3>
                   </div>
-                  <div className="p-3 bg-slate-100 text-slate-600 rounded-2xl shadow-inner border border-slate-200">
-                      <FileText className="w-6 h-6" />
+                  <div className="p-2 bg-emerald-100 text-emerald-600 rounded-xl border border-emerald-200 shadow-sm"><Scissors className="w-5 h-5" /></div>
+              </div>
+          </div>
+
+          <div className={`${card3D} border-l-4 border-l-indigo-500 bg-indigo-50/20`}>
+              <div className="flex justify-between items-center">
+                  <div>
+                      <p className="text-indigo-600 text-[10px] font-black uppercase tracking-widest">Washing</p>
+                      <h3 className="text-2xl font-black text-slate-800 mt-1">{serviceStats.WASHING}</h3>
                   </div>
+                  <div className="p-2 bg-indigo-100 text-indigo-600 rounded-xl border border-indigo-200 shadow-sm"><Droplets className="w-5 h-5" /></div>
+              </div>
+          </div>
+
+          <div className={`${card3D} border-l-4 border-l-amber-500 bg-amber-50/20`}>
+              <div className="flex justify-between items-center">
+                  <div>
+                      <p className="text-amber-600 text-[10px] font-black uppercase tracking-widest">Demo Visits</p>
+                      <h3 className="text-2xl font-black text-slate-800 mt-1">{serviceStats.DEMO}</h3>
+                  </div>
+                  <div className="p-2 bg-amber-100 text-amber-600 rounded-xl border border-amber-200 shadow-sm"><Sparkles className="w-5 h-5" /></div>
+              </div>
+          </div>
+
+          <div className={`${card3D} border-l-4 border-l-purple-500 bg-purple-50/20 col-span-2 md:col-span-1`}>
+              <div className="flex justify-between items-center">
+                  <div>
+                      <p className="text-purple-600 text-[10px] font-black uppercase tracking-widest">Mundan</p>
+                      <h3 className="text-2xl font-black text-slate-800 mt-1">{serviceStats.MUNDAN}</h3>
+                  </div>
+                  <div className="p-2 bg-purple-100 text-purple-600 rounded-xl border border-purple-200 shadow-sm"><UserCheck className="w-5 h-5" /></div>
               </div>
           </div>
       </div>
