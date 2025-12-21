@@ -24,7 +24,6 @@ let DATA_CACHE: {
 const CACHE_DURATION = 5 * 60 * 1000;
 const OPTIONS_CACHE_DURATION = 15 * 60 * 1000;
 
-// Helper to format date to DD/MM/YYYY for consistent sheet storage
 const toDDMMYYYY = (dateStr: string) => {
     if (!dateStr) return "";
     if (dateStr.includes('/')) return dateStr;
@@ -33,12 +32,9 @@ const toDDMMYYYY = (dateStr: string) => {
     return dateStr;
 };
 
-// CRITICAL FIX: Robust Date Normalizer to handle Sheet's inconsistent formats
 const normalizeToISO = (dateStr: string) => {
     if (!dateStr) return "";
-    // If already YYYY-MM-DD
     if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
-    // If DD/MM/YYYY
     if (dateStr.includes('/')) {
         const parts = dateStr.split('/');
         if (parts.length === 3) {
@@ -80,20 +76,28 @@ export const api = {
 
   addEntry: async (entry: Omit<Entry, 'id'>) => {
     const entryWithFormattedDate = { ...entry, date: toDDMMYYYY(entry.date) };
-    const newEntry = { ...entryWithFormattedDate, id: 'temp_' + Date.now() + Math.random().toString(36).substr(2, 5) };
-    
-    LOCAL_NEW_ENTRIES.push(newEntry as Entry);
+    const tempId = 'temp_' + Date.now();
     
     if (isLive) {
-      fetch(GOOGLE_SCRIPT_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: 'addEntry', ...entryWithFormattedDate })
-      }).catch(e => console.error("Sync Error", e));
+      try {
+        const res = await fetch(GOOGLE_SCRIPT_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ action: 'addEntry', ...entryWithFormattedDate })
+        });
+        const data = await res.json();
+        const savedEntry = { ...entry, id: data.id, invoiceUrl: data.invoiceUrl } as Entry;
+        LOCAL_NEW_ENTRIES.push(savedEntry);
+        return savedEntry;
+      } catch (e) {
+        console.error("Sync Error", e);
+        throw e;
+      }
     } else {
-        MOCK_ENTRIES.push(newEntry as Entry);
+        const mockEntry = { ...entry, id: tempId } as Entry;
+        MOCK_ENTRIES.push(mockEntry);
+        return mockEntry;
     }
-    return newEntry;
   },
 
   getEntries: async (forceRefresh = false) => {
@@ -106,7 +110,6 @@ export const api = {
             const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getEntries`);
             const data = await response.json();
             if (Array.isArray(data)) { 
-                // Normalize dates on arrival to YYYY-MM-DD
                 allEntries = data.map((e: any) => ({ ...e, date: normalizeToISO(e.date) }));
                 DATA_CACHE.entries = allEntries; 
                 DATA_CACHE.lastFetch['entries'] = now;
@@ -115,8 +118,8 @@ export const api = {
         } catch (e) { allEntries = DATA_CACHE.entries || [...MOCK_ENTRIES]; }
     } else { allEntries = [...MOCK_ENTRIES]; }
     
-    const serverCheck = new Set(allEntries.map(e => `${e.clientName}|${e.date}|${e.amount}`));
-    const uniqueLocal = LOCAL_NEW_ENTRIES.filter(e => !serverCheck.has(`${e.clientName}|${e.date}|${e.amount}`));
+    const serverCheck = new Set(allEntries.map(e => e.id));
+    const uniqueLocal = LOCAL_NEW_ENTRIES.filter(e => !serverCheck.has(e.id));
     
     return [...uniqueLocal, ...allEntries];
   },
