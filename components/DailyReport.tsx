@@ -1,13 +1,19 @@
 
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
-import { Entry } from '../types';
-import { Calendar, Filter, FileText, UserPlus, Scissors, CreditCard, Search, Wallet, Smartphone, Landmark, AlertCircle, RefreshCw, Eye, FileDown, Printer, User, Ruler, Sparkles, Layers } from 'lucide-react';
+import { Entry, Technician } from '../types';
+import { 
+  Calendar, Filter, FileText, UserPlus, Scissors, CreditCard, Search, Wallet, 
+  Smartphone, Landmark, AlertCircle, RefreshCw, Eye, FileDown, Printer, User, 
+  Ruler, Sparkles, Layers, Pencil, X, Save 
+} from 'lucide-react';
 import { generateInvoice } from '../utils/invoiceGenerator';
 
 const DailyReport: React.FC = () => {
   const [entries, setEntries] = useState<Entry[]>([]);
+  const [technicians, setTechnicians] = useState<Technician[]>([]);
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   
   // Filters
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
@@ -15,8 +21,14 @@ const DailyReport: React.FC = () => {
   const [paymentFilter, setPaymentFilter] = useState('ALL');
   const [searchTerm, setSearchTerm] = useState('');
 
+  // Edit Modal State
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingEntry, setEditingEntry] = useState<Entry | null>(null);
+  const [editForm, setEditForm] = useState<Partial<Entry>>({});
+
   useEffect(() => {
     loadData();
+    loadOptions();
   }, []);
 
   const loadData = async () => {
@@ -31,10 +43,49 @@ const DailyReport: React.FC = () => {
     }
   };
 
+  const loadOptions = async () => {
+      try {
+          const options = await api.getOptions();
+          setTechnicians(options.technicians);
+      } catch (e) { console.error(e); }
+  };
+
   const formatDateDisplay = (dateStr: string) => {
     if (!dateStr || !dateStr.includes('-')) return dateStr;
     const [y, m, d] = dateStr.split('-');
     return `${d}/${m}/${y}`;
+  };
+
+  const openEditModal = (entry: Entry) => {
+      setEditingEntry(entry);
+      setEditForm({
+          technician: entry.technician,
+          serviceType: entry.serviceType,
+          patchMethod: entry.patchMethod,
+          amount: entry.amount,
+          paymentMethod: entry.paymentMethod,
+          remark: entry.remark,
+          pendingAmount: entry.pendingAmount || 0
+      });
+      setIsEditModalOpen(true);
+  };
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!editingEntry || submitting) return;
+      
+      setSubmitting(true);
+      try {
+          const updated = { ...editingEntry, ...editForm } as Entry;
+          await api.updateEntry(updated);
+          await loadData();
+          setIsEditModalOpen(false);
+          setEditingEntry(null);
+      } catch (err) {
+          alert("Failed to update entry.");
+      } finally {
+          setSubmitting(false);
+      }
   };
 
   const filteredData = entries.filter(entry => {
@@ -228,7 +279,7 @@ const DailyReport: React.FC = () => {
                          <th className="px-6 py-5">Service</th>
                          <th className="px-6 py-5">Payment</th>
                          <th className="px-6 py-5 text-right">Amount</th>
-                         <th className="px-6 py-5 text-center">Invoice</th>
+                         <th className="px-6 py-5 text-center">Actions</th>
                      </tr>
                  </thead>
                  <tbody className="divide-y divide-slate-100">
@@ -292,6 +343,14 @@ const DailyReport: React.FC = () => {
                                  </td>
                                  <td className="px-6 py-5 text-center">
                                      <div className="flex items-center justify-center gap-2">
+                                         <button 
+                                            onClick={() => openEditModal(entry)}
+                                            className="inline-flex items-center justify-center p-2 rounded-lg bg-white text-indigo-600 hover:bg-indigo-50 border border-indigo-200 transition-colors shadow-sm"
+                                            title="Edit Transaction"
+                                         >
+                                             <Pencil className="w-4 h-4" />
+                                         </button>
+
                                          {entry.invoiceUrl && entry.invoiceUrl.startsWith('http') && (
                                              <a 
                                                 href={entry.invoiceUrl} 
@@ -323,6 +382,117 @@ const DailyReport: React.FC = () => {
              Showing {filteredData.length} records
          </div>
       </div>
+
+      {/* EDIT MODAL */}
+      {isEditModalOpen && editingEntry && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+              <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in-95 border border-white/20">
+                  <div className="bg-slate-900 px-8 py-6 flex justify-between items-center text-white">
+                      <div>
+                          <h3 className="font-black text-xl flex items-center tracking-tight uppercase">
+                              <Pencil className="w-6 h-6 mr-3 text-indigo-400" /> Edit Transaction
+                          </h3>
+                          <p className="text-slate-400 text-xs font-bold mt-1 uppercase tracking-widest">Client: {editingEntry.clientName}</p>
+                      </div>
+                      <button onClick={() => setIsEditModalOpen(false)} className="hover:bg-slate-800 p-2 rounded-full transition-colors"><X className="w-6 h-6" /></button>
+                  </div>
+                  
+                  <form onSubmit={handleEditSubmit} className="p-8 space-y-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <div>
+                              <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">Assigned Technician</label>
+                              <select 
+                                  value={editForm.technician || ''} 
+                                  onChange={e => setEditForm({...editForm, technician: e.target.value})} 
+                                  className="w-full rounded-xl border-slate-200 border-2 bg-slate-50 px-4 py-3.5 font-bold text-slate-700 outline-none focus:border-indigo-500 focus:bg-white transition-all"
+                              >
+                                  {technicians.map(t => (<option key={t.name} value={t.name}>{t.name}</option>))}
+                              </select>
+                          </div>
+                          <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                  <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">Type</label>
+                                  <select 
+                                      value={editForm.serviceType || ''} 
+                                      onChange={e => setEditForm({...editForm, serviceType: e.target.value as any})} 
+                                      className="w-full rounded-xl border-slate-200 border-2 bg-slate-50 px-4 py-3.5 font-bold text-slate-700 outline-none focus:border-indigo-500 focus:bg-white transition-all"
+                                  >
+                                      <option value="SERVICE">SERVICE</option>
+                                      <option value="NEW">NEW</option>
+                                      <option value="DEMO">DEMO</option>
+                                      <option value="MUNDAN">MUNDAN</option>
+                                  </select>
+                              </div>
+                              <div>
+                                  <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">Method</label>
+                                  <select 
+                                      value={editForm.patchMethod || ''} 
+                                      onChange={e => setEditForm({...editForm, patchMethod: e.target.value as any})} 
+                                      className="w-full rounded-xl border-slate-200 border-2 bg-slate-50 px-4 py-3.5 font-bold text-slate-700 outline-none focus:border-indigo-500 focus:bg-white transition-all"
+                                  >
+                                      <option value="TAPING">TAPING</option>
+                                      <option value="BONDING">BONDING</option>
+                                      <option value="CLIPPING">CLIPPING</option>
+                                  </select>
+                              </div>
+                          </div>
+
+                          <div>
+                              <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">Bill Amount (₹)</label>
+                              <input 
+                                  type="number" 
+                                  value={editForm.amount} 
+                                  onChange={e => setEditForm({...editForm, amount: Number(e.target.value)})}
+                                  className="w-full rounded-xl border-slate-200 border-2 bg-slate-50 px-4 py-3.5 font-black text-slate-800 text-lg outline-none focus:border-indigo-500 focus:bg-white transition-all" 
+                              />
+                          </div>
+
+                          <div>
+                              <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">Payment Method</label>
+                              <select 
+                                  value={editForm.paymentMethod || ''} 
+                                  onChange={e => setEditForm({...editForm, paymentMethod: e.target.value as any})} 
+                                  className="w-full rounded-xl border-slate-200 border-2 bg-slate-50 px-4 py-3.5 font-black text-slate-700 outline-none focus:border-indigo-500 focus:bg-white transition-all"
+                              >
+                                  <option value="CASH">CASH</option>
+                                  <option value="UPI">UPI</option>
+                                  <option value="CARD">CARD</option>
+                                  <option value="PENDING">PENDING</option>
+                              </select>
+                          </div>
+
+                          <div className="md:col-span-2">
+                              <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">Notes / Remarks</label>
+                              <textarea 
+                                  value={editForm.remark || ''} 
+                                  onChange={e => setEditForm({...editForm, remark: e.target.value})} 
+                                  rows={3} 
+                                  className="w-full rounded-xl border-slate-200 border-2 bg-slate-50 px-4 py-3.5 font-bold text-slate-700 outline-none focus:border-indigo-500 focus:bg-white transition-all resize-none" 
+                                  placeholder="Enter any update remarks..."
+                              />
+                          </div>
+                      </div>
+
+                      <div className="flex gap-4 pt-4 border-t border-slate-100">
+                          <button 
+                            type="button" 
+                            onClick={() => setIsEditModalOpen(false)}
+                            className="flex-1 py-4 border-2 border-slate-200 text-slate-500 font-black rounded-2xl hover:bg-slate-50 transition-colors uppercase tracking-widest text-sm"
+                          >
+                              Discard
+                          </button>
+                          <button 
+                            type="submit"
+                            disabled={submitting}
+                            className="flex-[2] py-4 bg-indigo-600 text-white font-black rounded-2xl hover:bg-indigo-700 shadow-xl shadow-indigo-200 transition-all flex items-center justify-center border-b-4 border-indigo-800 active:translate-y-1 active:border-b-0 uppercase tracking-widest"
+                          >
+                              {submitting ? <RefreshCw className="w-5 h-5 animate-spin" /> : <><Save className="w-5 h-5 mr-3" /> Update Record</>}
+                          </button>
+                      </div>
+                  </form>
+              </div>
+          </div>
+      )}
 
     </div>
   );
