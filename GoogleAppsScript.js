@@ -1,6 +1,6 @@
 
 // =====================================================================================
-// ⚠️ MAHAVEER WEB APP - BACKEND SCRIPT (V35 - PACKAGE PLAN DATA FIX)
+// ⚠️ MAHAVEER WEB APP - BACKEND SCRIPT (V36 - ACTION FIX)
 // =====================================================================================
 
 function doGet(e) {
@@ -29,39 +29,6 @@ function getSafeLastRow(sheet, colIndex) {
   return 1;
 }
 
-function createInvoice(data) {
-  try {
-    const folderName = "MAHAVEER_INVOICES";
-    let folders = DriveApp.getFoldersByName(folderName);
-    let folder = folders.hasNext() ? folders.next() : DriveApp.createFolder(folderName);
-    
-    const date = data.date || new Date().toLocaleDateString();
-    const html = `
-      <div style="font-family: Arial, sans-serif; padding: 30px;">
-        <h1 style="color: #B51A2B; text-align: center; margin-bottom: 5px;">MAHAVEER HAIR SOLUTION</h1>
-        <p style="text-align: center; font-size: 10px; color: #666; margin-top: 0;">Official Service Invoice</p>
-        <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;"/>
-        <table style="width: 100%; font-size: 12px;">
-          <tr><td><strong>Client:</strong> ${data.clientName}</td><td style="text-align: right;"><strong>Date:</strong> ${date}</td></tr>
-          <tr><td><strong>Contact:</strong> ${data.contactNo}</td><td style="text-align: right;"><strong>Branch:</strong> ${data.branch || 'RPR'}</td></tr>
-        </table>
-        <table style="width: 100%; margin-top: 30px; border-collapse: collapse; font-size: 12px;">
-          <tr style="background: #f8f8f8;"><th style="padding: 10px; border: 1px solid #ddd; text-align: left;">Service Description</th><th style="padding: 10px; border: 1px solid #ddd; text-align: right;">Amount</th></tr>
-          <tr><td style="padding: 12px 10px; border: 1px solid #ddd;">${data.serviceType} (${data.patchMethod || 'Standard'})${data.patchSize ? '<br/><small>Size: ' + data.patchSize + '</small>' : ''}</td><td style="padding: 12px 10px; border: 1px solid #ddd; text-align: right;">₹${data.amount}</td></tr>
-          <tr><td style="padding: 10px; border: 1px solid #ddd; text-align: right;"><strong>Total Paid</strong></td><td style="padding: 10px; border: 1px solid #ddd; text-align: right;"><strong>₹${data.amount - (data.pendingAmount || 0)}</strong></td></tr>
-          ${(data.pendingAmount > 0) ? `<tr><td style="padding: 10px; border: 1px solid #ddd; text-align: right; color: #dc2626;"><strong>Outstanding Due</strong></td><td style="padding: 10px; border: 1px solid #ddd; text-align: right; color: #dc2626;"><strong>₹${data.pendingAmount}</strong></td></tr>` : ''}
-        </table>
-        <div style="margin-top: 50px; text-align: center;"><p style="font-size: 9px; color: #999;">This is a system generated invoice. No physical signature required.</p><p style="font-size: 10px; color: #333; font-weight: bold;">Thank you for choosing Mahaveer Hair Solution!</p></div>
-      </div>
-    `;
-    const htmlBlob = Utilities.newBlob(html, 'text/html', `Inv_${data.clientName}.html`);
-    const pdfBlob = htmlBlob.getAs('application/pdf');
-    const file = folder.createFile(pdfBlob).setName(`Invoice_${data.clientName}_${Date.now()}.pdf`);
-    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-    return "https://drive.google.com/uc?export=view&id=" + file.getId();
-  } catch (e) { return "Error generating PDF: " + e.toString(); }
-}
-
 function doPost(e) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const data = JSON.parse(e.postData.contents);
@@ -81,7 +48,7 @@ function doPost(e) {
   if (action == 'editEntry') {
       const dbSheet = getSheet(ss, "DATA BASE");
       try {
-          const rowId = parseInt(data.id.split('_')[1]);
+          const rowId = parseInt(String(data.id).split('_')[1]);
           if (rowId > 1) {
               const updatedRow = [toSheetDate(data.date), data.clientName, data.contactNo, data.address, data.branch, data.serviceType, data.patchMethod, data.technician, data.workStatus, data.amount, data.paymentMethod, String(data.remark || ""), data.numberOfService, data.invoiceUrl || "", data.patchSize || '', data.pendingAmount || 0];
               dbSheet.getRange(rowId, 1, 1, updatedRow.length).setValues([updatedRow]);
@@ -93,13 +60,11 @@ function doPost(e) {
   if (action == 'deleteEntry') {
       const dbSheet = getSheet(ss, "DATA BASE");
       try {
-          const targetIdString = String(data.id).trim();
-          const rowId = parseInt(targetIdString.split('_')[1]);
-          if (!isNaN(rowId) && rowId > 1 && rowId <= dbSheet.getLastRow()) {
+          const rowId = parseInt(String(data.id).split('_')[1]);
+          if (!isNaN(rowId) && rowId > 1) {
               dbSheet.deleteRow(rowId);
               return response({status: "success"});
           }
-          return response({error: "Invalid row index"});
       } catch(e) { return response({error: e.message}); }
   }
 
@@ -126,7 +91,6 @@ function doPost(e) {
                   return response({status: "success"});
               }
           }
-          return response({error: "Appointment not found"});
       } catch(e) { return response({error: e.message}); }
   }
 
@@ -135,7 +99,6 @@ function doPost(e) {
       try {
           const targetId = String(data.id).trim();
           const lastRow = apptSheet.getLastRow();
-          if (lastRow < 2) return response({error: "No data to delete"});
           const values = apptSheet.getRange(1, 1, lastRow, 1).getValues();
           for (let i = 1; i < values.length; i++) {
               if (String(values[i][0]).trim() === targetId) {
@@ -143,7 +106,6 @@ function doPost(e) {
                   return response({status: "success"});
               }
           }
-          return response({error: "ID not found"});
       } catch(e) { return response({error: e.message}); }
   }
 
@@ -158,7 +120,6 @@ function doPost(e) {
 
   if (action == 'addPackage') {
       const pkgSheet = getSheet(ss, "PACKAGE PLAN");
-      // Column Map: START DATE(A), CLIENT(B), PACKAGE(C), COST(D), TOTAL SRV(E), STATUS(F), OLD SRV #(G), TYPE(H)
       const newRow = [toSheetDate(data.startDate), data.clientName, data.packageName, data.totalCost, data.totalServices, 'PENDING', data.oldServiceNumber || 0, data.packageType || 'NEW'];
       const nextRow = getSafeLastRow(pkgSheet, 2) + 1;
       pkgSheet.getRange(nextRow, 1, 1, newRow.length).setValues([newRow]);
@@ -169,7 +130,7 @@ function doPost(e) {
   if (action == 'editPackage') {
       const pkgSheet = getSheet(ss, "PACKAGE PLAN");
       try {
-          const rowId = parseInt(data.id.split('_')[1]);
+          const rowId = parseInt(String(data.id).split('_')[1]);
           if (rowId > 1) {
               const updatedRow = [toSheetDate(data.startDate), data.clientName, data.packageName, data.totalCost, data.totalServices, data.status || 'PENDING', data.oldServiceNumber || 0, data.packageType || 'NEW'];
               pkgSheet.getRange(rowId, 1, 1, updatedRow.length).setValues([updatedRow]);
@@ -181,9 +142,10 @@ function doPost(e) {
   if (action == 'updatePackageStatus') {
       const pkgSheet = getSheet(ss, "PACKAGE PLAN");
       try {
-          const rowId = parseInt(data.id.split('_')[1]);
+          const rowId = parseInt(String(data.id).split('_')[1]);
           if (rowId > 1) {
               pkgSheet.getRange(rowId, 6).setValue(data.status);
+              SpreadsheetApp.flush();
               return response({status: "success"});
           }
       } catch(e) { return response({error: e.message}); }
@@ -192,9 +154,10 @@ function doPost(e) {
   if (action == 'deletePackage') {
       const pkgSheet = getSheet(ss, "PACKAGE PLAN");
       try {
-          const rowId = parseInt(data.id.split('_')[1]);
+          const rowId = parseInt(String(data.id).split('_')[1]);
           if (rowId > 1) {
               pkgSheet.deleteRow(rowId);
+              SpreadsheetApp.flush();
               return response({status: "success"});
           }
       } catch(e) { return response({error: e.message}); }
@@ -204,8 +167,8 @@ function doPost(e) {
       const dbSheet = getSheet(ss, "DATA BASE");
       const collectionSheet = getSheet(ss, "PAYMENT COLLECTION");
       try {
-          const rowId = parseInt(data.id.split('_')[1]);
-          if (rowId > 0 && rowId <= dbSheet.getMaxRows()) {
+          const rowId = parseInt(String(data.id).split('_')[1]);
+          if (rowId > 0) {
               var screenshotUrl = data.existingScreenshotUrl || "";
               if (data.screenshotBase64 && data.screenshotBase64.indexOf('data:image') === 0) {
                   var splitData = data.screenshotBase64.split('base64,');
@@ -228,7 +191,7 @@ function doPost(e) {
       } catch(e) { return response({error: e.message}); }
   }
 
-  return response({error: "Action processed"});
+  return response({error: "Action not handled"});
 }
 
 function toSheetDate(dateStr) {
@@ -330,4 +293,18 @@ function getUsers(ss) {
     if (!sheet || sheet.getLastRow() <= 1) return response([]);
     const data = sheet.getDataRange().getValues();
     return response(data.slice(1).map(row => ({ username: row[0], password: row[1], role: row[2], department: row[3], permissions: row[4], dpUrl: row[5], gender: row[6], dob: fromSheetDate(row[7]), address: row[8] })));
+}
+
+function createInvoice(data) {
+  try {
+    const folderName = "MAHAVEER_INVOICES";
+    let folders = DriveApp.getFoldersByName(folderName);
+    let folder = folders.hasNext() ? folders.next() : DriveApp.createFolder(folderName);
+    const date = data.date || new Date().toLocaleDateString();
+    const html = `<div style="font-family: Arial, sans-serif; padding: 30px;"><h1 style="color: #B51A2B; text-align: center;">MAHAVEER HAIR SOLUTION</h1><p style="text-align: center;">Official Invoice</p><hr/><table style="width: 100%;"><tr><td><strong>Client:</strong> ${data.clientName}</td><td style="text-align: right;"><strong>Date:</strong> ${date}</td></tr></table><table style="width: 100%; margin-top: 20px; border-collapse: collapse;"><tr style="background: #eee;"><th>Desc</th><th>Amount</th></tr><tr><td>${data.serviceType}</td><td>₹${data.amount}</td></tr></table></div>`;
+    const pdfBlob = Utilities.newBlob(html, 'text/html').getAs('application/pdf');
+    const file = folder.createFile(pdfBlob).setName(`Inv_${data.clientName}_${Date.now()}.pdf`);
+    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    return "https://drive.google.com/uc?export=view&id=" + file.getId();
+  } catch (e) { return ""; }
 }

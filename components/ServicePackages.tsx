@@ -15,6 +15,7 @@ const ServicePackages: React.FC = () => {
   const [clients, setClients] = useState<Client[]>([]);
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(false);
+  const [processingId, setProcessingId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [currentUser, setCurrentUser] = useState<User | null>(null);
 
@@ -32,13 +33,13 @@ const ServicePackages: React.FC = () => {
     loadData();
   }, []);
 
-  const loadData = async () => {
+  const loadData = async (force = false) => {
     try {
         setLoading(true);
         const [options, pkgData, entriesData] = await Promise.all([
-            api.getOptions(true),
-            api.getPackages(true),
-            api.getEntries(true)
+            api.getOptions(force),
+            api.getPackages(force),
+            api.getEntries(force)
         ]);
         setClients(options.clients || []);
         setPackages(pkgData);
@@ -73,7 +74,7 @@ const ServicePackages: React.FC = () => {
                 clientName: '', contact: '', packageName: '', totalCost: 0, totalServices: 12,
                 startDate: new Date().toISOString().split('T')[0], status: 'PENDING', packageType: 'NEW', oldServiceNumber: 0
             });
-            setTimeout(loadData, 1000);
+            await loadData(true);
         }
     } catch (e) { alert("Error saving. Please check connection."); } finally { setLoading(false); }
   };
@@ -84,26 +85,35 @@ const ServicePackages: React.FC = () => {
       setLoading(true);
       try {
           await api.editPackage(editingPackage);
-          await loadData();
+          await loadData(true);
           setIsEditModalOpen(false);
           setEditingPackage(null);
       } catch (e) { alert("Update failed."); } finally { setLoading(false); }
   };
   
-  const handlePackageAction = async (e: React.MouseEvent, id: string, action: 'APPROVE' | 'REJECT') => {
+  const handlePackageAction = async (e: React.MouseEvent, id: string, action: 'APPROVE' | 'DELETE') => {
       e.stopPropagation(); e.preventDefault(); 
-      if (loading) return;
-      const isDelete = action === 'REJECT';
-      if(window.confirm(isDelete ? "Permanently delete this entry?" : "Activate this membership?")) {
-          setLoading(true);
+      if (processingId || loading) return;
+
+      const isDelete = action === 'DELETE';
+      const promptMsg = isDelete ? "Permanently delete this membership record from Google Sheets?" : "Activate this membership plan?";
+      
+      if(window.confirm(promptMsg)) {
+          setProcessingId(id);
           try {
-              if (isDelete) await api.deletePackage(id);
-              else await api.updatePackageStatus(id, 'APPROVED');
-              setTimeout(async () => {
-                  await loadData();
-                  setLoading(false);
-              }, 1500);
-          } catch (e) { alert("Action failed."); setLoading(false); }
+              if (isDelete) {
+                  await api.deletePackage(id);
+              } else {
+                  await api.updatePackageStatus(id, 'APPROVED');
+              }
+              // Force refresh data from server after action is confirmed
+              await loadData(true);
+          } catch (err) { 
+              console.error(err);
+              alert("Action failed. Please check your network or backend script."); 
+          } finally { 
+              setProcessingId(null); 
+          }
       }
   }
 
@@ -119,10 +129,7 @@ const ServicePackages: React.FC = () => {
       const totalUsed = (Number(pkg.oldServiceNumber) || 0) + dbUsedCount;
       const remaining = Math.max(0, Number(pkg.totalServices) - totalUsed);
       const isExpired = totalUsed >= Number(pkg.totalServices);
-      
-      // LOGIC: OLD shows Column G value, NEW shows #1
       const startAtDisplay = pkg.packageType === 'OLD' ? (pkg.oldServiceNumber || 0) : 1;
-      
       return { totalUsed, remaining, isExpired, startAtDisplay };
   };
 
@@ -137,18 +144,20 @@ const ServicePackages: React.FC = () => {
   const renderCard = (pkg: ServicePackage) => {
     const stats = getPackageUsage(pkg);
     const isPending = !pkg.status || pkg.status === 'PENDING';
+    const isProcessing = processingId === pkg.id;
     
     return (
         <div key={pkg.id} className={`
             relative bg-white rounded-3xl border-2 transition-all duration-300 group
             ${isPending ? 'border-amber-200 bg-amber-50/10 shadow-sm' : 'border-slate-100 hover:border-indigo-300 hover:shadow-xl'}
+            ${isProcessing ? 'opacity-60 scale-[0.98]' : ''}
         `}>
             <div className="p-5 h-full flex flex-col relative z-10">
                 <div className="flex items-center gap-4 mb-4">
                     <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shadow-sm
                         ${isPending ? 'bg-gradient-to-br from-amber-400 to-orange-500 text-white' : 'bg-gradient-to-br from-indigo-500 to-violet-600 text-white'}
                     `}>
-                        {isPending ? <Clock className="w-5 h-5" /> : <PackageCheck className="w-5 h-5" />}
+                        {isProcessing ? <RefreshCw className="w-5 h-5 animate-spin" /> : (isPending ? <Clock className="w-5 h-5" /> : <PackageCheck className="w-5 h-5" />)}
                     </div>
                     <div className="min-w-0 flex-1">
                         <h3 className="font-black text-slate-900 text-[14px] leading-tight truncate uppercase">{pkg.clientName}</h3>
@@ -180,8 +189,20 @@ const ServicePackages: React.FC = () => {
                             
                             {currentUser?.role === Role.ADMIN ? (
                                 <div className="flex gap-2">
-                                    <button onClick={(e) => handlePackageAction(e, pkg.id, 'APPROVE')} className="flex-1 py-2.5 rounded-xl bg-emerald-500 text-white text-[10px] font-black hover:bg-emerald-600 transition-all shadow-md active:scale-95 uppercase tracking-wide">APPROVE</button>
-                                    <button onClick={(e) => handlePackageAction(e, pkg.id, 'REJECT')} className="w-11 flex items-center justify-center rounded-xl bg-white border-2 border-red-50 text-red-500 hover:bg-red-50 active:scale-95 transition-colors"><Trash2 className="w-4 h-4" /></button>
+                                    <button 
+                                        onClick={(e) => handlePackageAction(e, pkg.id, 'APPROVE')} 
+                                        disabled={!!processingId}
+                                        className="flex-1 py-2.5 rounded-xl bg-emerald-500 text-white text-[10px] font-black hover:bg-emerald-600 transition-all shadow-md active:scale-95 uppercase tracking-wide disabled:bg-slate-300"
+                                    >
+                                        {isProcessing ? 'PROCESSING...' : 'APPROVE'}
+                                    </button>
+                                    <button 
+                                        onClick={(e) => handlePackageAction(e, pkg.id, 'DELETE')} 
+                                        disabled={!!processingId}
+                                        className="w-11 flex items-center justify-center rounded-xl bg-white border-2 border-red-50 text-red-500 hover:bg-red-50 active:scale-95 transition-colors disabled:text-slate-300"
+                                    >
+                                        <Trash2 className="w-4 h-4" />
+                                    </button>
                                 </div>
                             ) : (
                                 <div className="flex items-center justify-center gap-2 py-1 text-amber-600 text-[10px] font-black uppercase tracking-[0.2em]"><ShieldAlert className="w-3.5 h-3.5" /> Verifying...</div>
