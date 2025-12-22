@@ -4,6 +4,9 @@ import { MOCK_CLIENTS, MOCK_ENTRIES, MOCK_APPOINTMENTS, MOCK_ITEMS, MOCK_TECHNIC
 
 const isLive = GOOGLE_SCRIPT_URL && GOOGLE_SCRIPT_URL.startsWith('http');
 
+let LOCAL_NEW_ENTRIES: Entry[] = [];
+let LOCAL_NEW_APPOINTMENTS: Appointment[] = [];
+
 let DATA_CACHE: {
     options: any | null;
     packages: ServicePackage[] | null;
@@ -44,34 +47,6 @@ const normalizeToISO = (dateStr: string) => {
     return dateStr;
 };
 
-// Helper for Google Apps Script fetch (POST)
-const gasPost = async (payload: any) => {
-    try {
-        const res = await fetch(GOOGLE_SCRIPT_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-            body: JSON.stringify(payload)
-        });
-        
-        if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
-        
-        const text = await res.text();
-        try {
-            const json = JSON.parse(text);
-            if (json.error) throw new Error(json.error);
-            return json;
-        } catch (e) {
-            console.error("Non-JSON response from GAS:", text);
-            // If it starts with status:success, we can assume it worked even if JSON parse failed
-            if (text.includes('"status":"success"')) return { status: "success" };
-            throw new Error("Invalid response format from server");
-        }
-    } catch (err) {
-        console.error("GAS POST Error:", err);
-        throw err;
-    }
-};
-
 export const api = {
   getOptions: async (forceRefresh = false) => {
     const now = Date.now();
@@ -86,9 +61,50 @@ export const api = {
             DATA_CACHE.lastFetch['options'] = now;
             return result;
         }
-      } catch (e) { console.warn("Fallback options", e); }
+      } catch (e) { console.warn("Fallback to mock options", e); }
     }
     return { clients: MOCK_CLIENTS, technicians: MOCK_TECHNICIANS, items: MOCK_ITEMS };
+  },
+
+  addClient: async (client: Client) => {
+    DATA_CACHE.options = null;
+    const formattedClient = { ...client, dob: toDDMMYYYY(client.dob) };
+    if (isLive) fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'addClient', ...formattedClient }) }).catch(err => console.error("Sync Error", err));
+    else MOCK_CLIENTS.push(formattedClient);
+    return formattedClient;
+  },
+
+  updateClient: async (client: Client, originalName: string) => {
+      DATA_CACHE.options = null;
+      const formattedClient = { ...client, dob: toDDMMYYYY(client.dob) };
+      if (isLive) {
+          const res = await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'editClient', originalName, ...formattedClient }) });
+          return await res.json();
+      }
+      const idx = MOCK_CLIENTS.findIndex(c => c.name === originalName);
+      if (idx !== -1) MOCK_CLIENTS[idx] = formattedClient;
+      return { status: "success" };
+  },
+
+  addEntry: async (entry: Omit<Entry, 'id'>) => {
+    const entryWithFormattedDate = { ...entry, date: toDDMMYYYY(entry.date) };
+    if (isLive) {
+      try {
+        const res = await fetch(GOOGLE_SCRIPT_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ action: 'addEntry', ...entryWithFormattedDate })
+        });
+        const data = await res.json();
+        const savedEntry = { ...entry, id: data.id, invoiceUrl: data.invoiceUrl } as Entry;
+        LOCAL_NEW_ENTRIES.push(savedEntry);
+        return savedEntry;
+      } catch (e) { console.error("Sync Error", e); throw e; }
+    } else {
+        const mockEntry = { ...entry, id: 'temp_' + Date.now() } as Entry;
+        MOCK_ENTRIES.push(mockEntry);
+        return mockEntry;
+    }
   },
 
   getEntries: async (forceRefresh = false) => {
@@ -98,16 +114,146 @@ export const api = {
         allEntries = DATA_CACHE.entries;
     } else if (isLive) {
         try {
-            const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getEntries&_t=${now}`);
+            const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getEntries`);
             const data = await response.json();
             if (Array.isArray(data)) { 
                 allEntries = data.map((e: any) => ({ ...e, date: normalizeToISO(e.date) }));
                 DATA_CACHE.entries = allEntries; 
                 DATA_CACHE.lastFetch['entries'] = now;
+                LOCAL_NEW_ENTRIES = [];
             }
         } catch (e) { allEntries = DATA_CACHE.entries || [...MOCK_ENTRIES]; }
     } else { allEntries = [...MOCK_ENTRIES]; }
-    return allEntries;
+    const serverCheck = new Set(allEntries.map(e => e.id));
+    const uniqueLocal = LOCAL_NEW_ENTRIES.filter(e => !serverCheck.has(e.id));
+    return [...uniqueLocal, ...allEntries];
+  },
+
+  updateEntry: async (entry: Entry) => {
+    const formatted = { ...entry, date: toDDMMYYYY(entry.date) };
+    if (isLive) {
+        try { await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'editEntry', ...formatted }) }); }
+        catch(e) { console.error("Update Fail", e); throw e; }
+    }
+    if (DATA_CACHE.entries) {
+        const item = DATA_CACHE.entries.find(e => e.id === formatted.id);
+        if (item) Object.assign(item, { ...formatted, date: normalizeToISO(formatted.date) });
+    }
+    return true;
+  },
+
+  deleteEntry: async (id: string) => {
+      if (isLive) {
+          try {
+              const res = await fetch(GOOGLE_SCRIPT_URL, { 
+                  method: 'POST', 
+                  headers: { 'Content-Type': 'text/plain;charset=utf-8' }, 
+                  body: JSON.stringify({ action: 'deleteEntry', id: String(id) }) 
+              });
+              const result = await res.json();
+              if (result.error) throw new Error(result.error);
+              DATA_CACHE.entries = null; // Force reload on next fetch
+          } catch (e) { console.error("Delete Fail", e); throw e; }
+      } else {
+        if (DATA_CACHE.entries) {
+            DATA_CACHE.entries = DATA_CACHE.entries.filter(e => e.id !== id);
+        }
+      }
+      return true;
+  },
+
+  updatePaymentFollowUp: async (payload: any) => {
+      const formattedPayload = { ...payload, nextCallDate: toDDMMYYYY(payload.nextCallDate) };
+      if (isLive) {
+          try {
+              const res = await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'updatePaymentFollowUp', ...formattedPayload }) });
+              const data = await res.json();
+              if(DATA_CACHE.entries) {
+                const entry = DATA_CACHE.entries.find(e => e.id === payload.id);
+                if(entry) {
+                    if(payload.paymentMethod) entry.paymentMethod = payload.paymentMethod as any;
+                    if(payload.pendingAmount !== undefined) entry.pendingAmount = payload.pendingAmount;
+                    if(payload.nextCallDate) entry.nextCallDate = normalizeToISO(formattedPayload.nextCallDate);
+                    if(payload.remark) entry.remark = String(payload.remark);
+                    if(data.screenshotUrl) entry.paymentScreenshotUrl = data.screenshotUrl;
+                }
+              }
+              return data;
+          } catch(e) { throw e; }
+      }
+      return { status: "success" };
+  },
+
+  getAppointments: async (forceRefresh = false) => {
+    let allAppts: Appointment[] = [];
+    const now = Date.now();
+    if (!forceRefresh && DATA_CACHE.appointments && (now - (DATA_CACHE.lastFetch['appointments'] || 0) < CACHE_DURATION)) {
+        allAppts = DATA_CACHE.appointments;
+    } else if (isLive) {
+        try {
+            const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getAppointments`);
+            const data = await response.json();
+            if (Array.isArray(data)) { 
+                allAppts = data.map((a: any) => ({ ...a, date: normalizeToISO(a.date) })); 
+                DATA_CACHE.appointments = allAppts; 
+                DATA_CACHE.lastFetch['appointments'] = now; 
+                LOCAL_NEW_APPOINTMENTS = [];
+            }
+        } catch (e) { allAppts = DATA_CACHE.appointments || [...MOCK_APPOINTMENTS]; }
+    } else { allAppts = [...MOCK_APPOINTMENTS]; }
+    return allAppts;
+  },
+
+  addAppointment: async (appt: Omit<Appointment, 'id'>) => {
+    const formatted = { ...appt, date: toDDMMYYYY(appt.date) };
+    if (isLive) {
+        try {
+            const res = await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'addAppointment', ...formatted }) });
+            const data = await res.json();
+            const newAppt = { ...formatted, id: data.id } as Appointment;
+            LOCAL_NEW_APPOINTMENTS.push(newAppt);
+            return newAppt;
+        } catch (e) { console.error("Sync Error", e); throw e; }
+    } else {
+        const mockAppt = { ...formatted, id: 'temp_' + Date.now() } as Appointment;
+        MOCK_APPOINTMENTS.push(mockAppt);
+        return mockAppt;
+    }
+  },
+  
+  updateAppointmentStatus: async (id: string, status: Appointment['status']) => {
+    if (DATA_CACHE.appointments) {
+        const item = DATA_CACHE.appointments.find(a => a.id === id);
+        if (item) item.status = status;
+    }
+    if (isLive) {
+        try {
+            const res = await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'updateAppointmentStatus', id, status }) });
+            const result = await res.json();
+            if (result.error) throw new Error(result.error);
+        } catch (e) { console.error("Update Status Fail", e); throw e; }
+    }
+    return true;
+  },
+
+  deleteAppointment: async (id: string) => {
+    if (isLive) {
+        try {
+            const res = await fetch(GOOGLE_SCRIPT_URL, { 
+                method: 'POST', 
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' }, 
+                body: JSON.stringify({ action: 'deleteAppointment', id: String(id) }) 
+            });
+            const result = await res.json();
+            if (result.error) throw new Error(result.error);
+            DATA_CACHE.appointments = null; // Force reload
+        } catch (e) { console.error("Delete Appt Fail:", e); throw e; }
+    } else {
+        if (DATA_CACHE.appointments) {
+            DATA_CACHE.appointments = DATA_CACHE.appointments.filter(a => a.id !== id);
+        }
+    }
+    return true;
   },
 
   getPackages: async (forceRefresh = false) => {
@@ -115,15 +261,15 @@ export const api = {
       if (!forceRefresh && DATA_CACHE.packages && (now - (DATA_CACHE.lastFetch['packages'] || 0) < CACHE_DURATION)) return DATA_CACHE.packages;
       if (isLive) {
           try {
-              const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getPackages&_nocache=${now}${Math.random()}`);
+              const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getPackages&t=${now}`);
               const data = await response.json();
               if (Array.isArray(data)) {
                   const formattedData = data.map((pkg: any) => ({ 
                       ...pkg, 
                       startDate: normalizeToISO(pkg.startDate), 
-                      status: (pkg.status || '').trim().toUpperCase() || 'PENDING',
+                      status: pkg.status ? pkg.status : 'PENDING',
                       oldServiceNumber: Number(pkg.oldServiceNumber || 0),
-                      packageType: (pkg.packageType || 'NEW').trim().toUpperCase()
+                      packageType: pkg.packageType || 'NEW'
                   }));
                   DATA_CACHE.packages = formattedData;
                   DATA_CACHE.lastFetch['packages'] = now;
@@ -137,122 +283,49 @@ export const api = {
   addPackage: async (pkg: Omit<ServicePackage, 'id'>) => {
       DATA_CACHE.packages = null;
       const formatted = { ...pkg, startDate: toDDMMYYYY(pkg.startDate) };
-      if (isLive) {
-        return await gasPost({ action: 'addPackage', ...formatted, status: 'PENDING' });
-      }
+      if (isLive) await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'addPackage', ...formatted, status: 'PENDING' }) });
       return true;
   },
 
   updatePackageStatus: async (id: string, status: ServicePackage['status']) => {
       DATA_CACHE.packages = null;
-      if (isLive) {
-          return await gasPost({ action: 'updatePackageStatus', id, status: status.toUpperCase() });
-      }
-      return { status: "success" };
+      if (isLive) await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'updatePackageStatus', id, status }) });
+      return true;
   },
   
   deletePackage: async (id: string) => {
       DATA_CACHE.packages = null;
-      if (isLive) {
-          return await gasPost({ action: 'deletePackage', id });
-      }
-      return { status: "success" };
+      if (isLive) await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'deletePackage', id }) });
+      return true;
   },
 
   editPackage: async (pkg: ServicePackage) => {
       DATA_CACHE.packages = null;
       const formatted = { ...pkg, startDate: toDDMMYYYY(pkg.startDate) };
-      if (isLive) {
-        return await gasPost({ action: 'editPackage', ...formatted });
-      }
+      if (isLive) await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'editPackage', ...formatted }) });
       return true;
   },
 
-  addClient: async (client: Client) => {
-    DATA_CACHE.options = null;
-    const formattedClient = { ...client, dob: toDDMMYYYY(client.dob) };
-    if (isLive) return await gasPost({ action: 'addClient', ...formattedClient });
-    return formattedClient;
-  },
-
-  updateClient: async (client: Client, originalName: string) => {
-      DATA_CACHE.options = null;
-      const formattedClient = { ...client, dob: toDDMMYYYY(client.dob) };
-      if (isLive) return await gasPost({ action: 'editClient', originalName, ...formattedClient });
-      return { status: "success" };
-  },
-
-  addEntry: async (entry: Omit<Entry, 'id'>) => {
-    const formatted = { ...entry, date: toDDMMYYYY(entry.date) };
-    if (isLive) return await gasPost({ action: 'addEntry', ...formatted });
-    return { ...entry, id: 'temp_' + Date.now() };
-  },
-
-  updateEntry: async (entry: Entry) => {
-    const formatted = { ...entry, date: toDDMMYYYY(entry.date) };
-    if (isLive) return await gasPost({ action: 'editEntry', ...formatted });
-    return true;
-  },
-
-  deleteEntry: async (id: string) => {
-      if (isLive) return await gasPost({ action: 'deleteEntry', id });
-      return true;
-  },
-
-  updatePaymentFollowUp: async (payload: any) => {
-      const formattedPayload = { ...payload, nextCallDate: toDDMMYYYY(payload.nextCallDate) };
-      if (isLive) return await gasPost({ action: 'updatePaymentFollowUp', ...formattedPayload });
-      return { status: "success" };
-  },
-
-  getAppointments: async (forceRefresh = false) => {
-    let allAppts: Appointment[] = [];
-    const now = Date.now();
-    if (!forceRefresh && DATA_CACHE.appointments && (now - (DATA_CACHE.lastFetch['appointments'] || 0) < CACHE_DURATION)) {
-        allAppts = DATA_CACHE.appointments;
-    } else if (isLive) {
-        try {
-            const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getAppointments&_t=${now}`);
-            const data = await response.json();
-            if (Array.isArray(data)) { 
-                allAppts = data.map((a: any) => ({ ...a, date: normalizeToISO(a.date) })); 
-                DATA_CACHE.appointments = allAppts; 
-                DATA_CACHE.lastFetch['appointments'] = now;
-            }
-        } catch (e) { allAppts = DATA_CACHE.appointments || [...MOCK_APPOINTMENTS]; }
-    } else { allAppts = [...MOCK_APPOINTMENTS]; }
-    return allAppts;
-  },
-
-  addAppointment: async (appt: Omit<Appointment, 'id'>) => {
-    const formatted = { ...appt, date: toDDMMYYYY(appt.date) };
-    if (isLive) return await gasPost({ action: 'addAppointment', ...formatted });
-    return { ...formatted, id: 'temp_' + Date.now() };
-  },
-  
-  updateAppointmentStatus: async (id: string, status: Appointment['status']) => {
-    if (isLive) return await gasPost({ action: 'updateAppointmentStatus', id, status });
-    return true;
-  },
-
-  deleteAppointment: async (id: string) => {
-    if (isLive) return await gasPost({ action: 'deleteAppointment', id });
-    return true;
-  },
-
-  checkClientPackage: async (clientName: string) => {
+  checkClientPackage: async (clientName: string, contact?: string) => {
       if (!clientName) return null;
       const normalizedName = clientName.trim().toLowerCase();
       const packages = await api.getPackages();
-      const pkg = packages.find((p: any) => p.clientName.trim().toLowerCase() === normalizedName && (p.status === 'ACTIVE' || p.status === 'APPROVED'));
+      const pkg = packages.find((p: any) => {
+          const matchName = p.clientName.trim().toLowerCase() === normalizedName;
+          const matchContact = contact ? String(p.contact || '').includes(contact) : true;
+          return matchName && matchContact && (p.status === 'ACTIVE' || p.status === 'APPROVED');
+      });
       if (!pkg) return null;
       const entries = await api.getEntries();
       const pkgStartDate = new Date(pkg.startDate); pkgStartDate.setHours(0,0,0,0);
-      const usedCount = entries.filter((e: any) => {
+      
+      // Used Count = Old Services + Database Records since start
+      const dbUsedCount = entries.filter((e: any) => {
           const entryDate = new Date(e.date); entryDate.setHours(0,0,0,0);
           return (e.clientName.trim().toLowerCase() === normalizedName && entryDate >= pkgStartDate && (e.serviceType === 'SERVICE') && (e.workStatus === 'DONE' || e.workStatus === 'PENDING_APPROVAL'));
       }).length;
-      const totalUsedCount = (pkg.oldServiceNumber || 0) + usedCount;
+
+      const totalUsedCount = (pkg.oldServiceNumber || 0) + dbUsedCount;
       return { 
           package: pkg, 
           usedCount: totalUsedCount, 
@@ -274,28 +347,36 @@ export const api = {
   },
 
   addUser: async (user: User & { password: string }) => {
-      if (isLive) return await gasPost({ action: 'addUser', ...user, permissions: user.permissions ? user.permissions.join(',') : '' });
+      if (isLive) await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'addUser', ...user, permissions: user.permissions ? user.permissions.join(',') : '' }) });
       return true;
   },
 
   updateUser: async (user: User & { password?: string }) => {
-      if (isLive) return await gasPost({ action: 'editUser', ...user, permissions: user.permissions ? user.permissions.join(',') : '' });
+      if (isLive) await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'editUser', ...user, permissions: user.permissions ? user.permissions.join(',') : '' }) });
       return true;
   },
   
   deleteUser: async (username: string) => {
-       if (isLive) return await gasPost({ action: 'deleteUser', username });
+       if (isLive) await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'deleteUser', username }) });
        return true;
   },
 
   updateUserProfile: async (payload: any) => {
       const formatted = { ...payload, dob: toDDMMYYYY(payload.dob) };
-      if (isLive) return await gasPost({ action: 'updateUserProfile', ...formatted });
+      if (isLive) {
+          try {
+              const res = await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'updateUserProfile', ...formatted }) });
+              return await res.json();
+          } catch (e) { console.error("Failed to update profile", e); throw e; }
+      }
       return { status: "success" };
   },
 
   getDashboardStats: async (): Promise<DashboardStats> => {
-    const [entries, options] = await Promise.all([ api.getEntries(true), api.getOptions(true) ]);
+    const [entries, options] = await Promise.all([
+        api.getEntries(true),
+        api.getOptions(true)
+    ]);
     const totalClients = options.clients ? options.clients.length : 0;
     const totalAmount = entries.reduce((sum: number, e: any) => sum + Number(e.amount || 0), 0);
     const today = new Date().toISOString().split('T')[0];
