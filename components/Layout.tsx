@@ -1,5 +1,6 @@
 
 import React, { useEffect, useState, useRef } from 'react';
+// Fix: Use named imports for react-router-dom as namespace destructuring was failing
 import { Link, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, 
@@ -39,8 +40,8 @@ interface LayoutProps {
 const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
   const [pendingCount, setPendingCount] = useState(0);
-  const [todayApptCount, setTodayApptCount] = useState(0);
   
+  // Profile Modal State
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [profileForm, setProfileForm] = useState({
       dpUrl: '',
@@ -54,12 +55,14 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
   const location = useLocation();
   const mainContentRef = useRef<HTMLDivElement>(null);
 
+  // SCROLL TO TOP ON ROUTE CHANGE
   useEffect(() => {
     if (mainContentRef.current) {
         mainContentRef.current.scrollTop = 0;
     }
   }, [location.pathname]);
 
+  // Sync profile form with user data when modal opens
   useEffect(() => {
       if (isProfileModalOpen && user) {
           setProfileForm({
@@ -72,36 +75,20 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
   }, [isProfileModalOpen, user]);
 
   useEffect(() => {
-    const checkNotifications = async () => {
-        try {
-            // FIX: Format today's date as DD/MM/YYYY to match Backend response
-            const now = new Date();
-            const d = ("0" + now.getDate()).slice(-2);
-            const m = ("0" + (now.getMonth() + 1)).slice(-2);
-            const y = now.getFullYear();
-            const todayStrFormatted = `${d}/${m}/${y}`;
-            
-            // 1. Check Packages (for Admin)
-            if (user?.role === Role.ADMIN) {
+    // Check for pending packages if user is Admin
+    if (user?.role === Role.ADMIN) {
+        const checkPending = async () => {
+            try {
                 const pkgs = await api.getPackages(); 
-                const pCount = pkgs.filter(p => p.status === 'PENDING' || !p.status).length;
-                setPendingCount(pCount);
+                const count = pkgs.filter(p => p.status === 'PENDING' || !p.status).length;
+                setPendingCount(count);
+            } catch (e) {
+                console.error("Failed to check pending packages", e);
             }
-
-            // 2. Check Today's Appointments
-            const appts = await api.getAppointments();
-            // We count all appointments for today that aren't closed
-            const aCount = appts.filter(a => a.date === todayStrFormatted && a.status !== 'CLOSED').length;
-            setTodayApptCount(aCount);
-
-        } catch (e) {
-            console.error("Failed to check notifications", e);
-        }
-    };
-    
-    if (user) {
-        checkNotifications();
-        const interval = setInterval(checkNotifications, 60000); 
+        };
+        
+        checkPending();
+        const interval = setInterval(checkPending, 60000);
         return () => clearInterval(interval);
     }
   }, [user]);
@@ -219,10 +206,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
               <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 mb-3 px-3 pt-2 flex items-center gap-2">Navigation <div className="h-px bg-slate-800 flex-1"></div></div>
               {menuItems.map((item) => {
                 const active = isActive(item.path);
-                
-                const showPkgBadge = item.path === '/packages' && user.role === Role.ADMIN && pendingCount > 0;
-                const showApptBadge = item.path === '/appointments' && todayApptCount > 0;
-
+                const showBadge = item.path === '/packages' && user.role === Role.ADMIN && pendingCount > 0;
                 return (
                   <Link
                     key={item.path}
@@ -234,24 +218,14 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
                   >
                     <item.icon className={`w-5 h-5 mr-3 ${active ? 'text-white' : 'text-slate-500 group-hover:text-indigo-400'}`} />
                     <span className="font-bold text-[13px] tracking-wide">{item.label}</span>
-                    
-                    {showPkgBadge && (
-                        <span className="absolute right-3 bg-red-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full border-2 border-white shadow-lg animate-pulse">
-                            {pendingCount}
-                        </span>
-                    )}
-
-                    {showApptBadge && (
-                        <span className="absolute right-3 min-w-[20px] h-[20px] flex items-center justify-center bg-indigo-500 text-white text-[10px] font-black px-1 rounded-full border-2 border-slate-900 shadow-[0_0_10px_rgba(99,102,241,0.5)] animate-bounce-subtle">
-                            {todayApptCount}
-                        </span>
-                    )}
+                    {showBadge && <span className="absolute right-3 bg-red-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full border border-red-400">{pendingCount}</span>}
                   </Link>
                 );
               })}
         </nav>
 
         <div className="p-4 relative z-10 shrink-0 bg-gradient-to-t from-[#0B1120] to-transparent space-y-3">
+            {/* User Profile Info */}
             <div onClick={() => setIsProfileModalOpen(true)} className="bg-[#131C2E] rounded-xl p-3 border border-slate-700/50 flex items-center justify-between group hover:bg-[#1A263E] transition-all cursor-pointer shadow-sm">
                 <div className="flex items-center space-x-3 overflow-hidden">
                     <div className="relative w-9 h-9 rounded-lg bg-gradient-to-br from-indigo-50 to-purple-600 p-[1px] shadow-md">
@@ -267,6 +241,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
                 <button onClick={(e) => { e.stopPropagation(); onLogout(); }} className="text-slate-500 hover:text-red-400 p-2 transition-colors"><LogOut className="w-4 h-4" /></button>
             </div>
 
+            {/* PROFESSIONAL SIDEBAR FOOTER */}
             <div className="px-1 space-y-3">
                  <div className="text-center">
                     <span className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] opacity-80 block mb-1">
@@ -289,6 +264,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
         </div>
       </aside>
 
+      {/* Profile Modal & Main Content */}
       {isProfileModalOpen && (
           <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
               <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden relative">
@@ -311,10 +287,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
         
         <header className="hidden lg:flex items-center justify-between px-8 py-3 bg-white/80 backdrop-blur-md border-b border-slate-200/50 sticky top-0 z-40 shrink-0 h-16 shadow-sm">
              <div className="flex items-center text-slate-400 text-xs font-black uppercase bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200 shadow-inner"><Calendar className="w-3.5 h-3.5 mr-2 text-indigo-500" />{todayDate}</div>
-             <div className="flex items-center gap-4">
-                {todayApptCount > 0 && <Link to="/appointments" className="p-2.5 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-100 animate-pulse" title="Appointments Today"><Calendar className="w-5 h-5" /></Link>}
-                {user.role === Role.ADMIN && pendingCount > 0 && <Link to="/packages" className="p-2.5 rounded-full bg-red-50 text-red-600 border border-red-100 animate-pulse"><Bell className="w-5 h-5" /></Link>}
-             </div>
+             <div className="flex items-center gap-4">{user.role === Role.ADMIN && pendingCount > 0 && <Link to="/packages" className="p-2.5 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-100 animate-pulse"><Bell className="w-5 h-5" /></Link>}</div>
         </header>
 
         <header className="bg-white/90 shadow-md lg:hidden flex items-center justify-between p-4 z-40 sticky top-0 border-b border-slate-100">
@@ -323,8 +296,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
                <span className="font-black text-slate-800 text-lg tracking-tight">Mahaveer</span>
           </div>
           <div className="flex items-center gap-3">
-             {todayApptCount > 0 && <Link to="/appointments" className="p-2 text-indigo-600 bg-indigo-50 rounded-full border border-indigo-100 animate-pulse"><Calendar className="w-5 h-5" /></Link>}
-             {user.role === Role.ADMIN && pendingCount > 0 && <Link to="/packages" className="p-2 text-red-600 bg-red-50 rounded-full border border-red-100"><Bell className="w-5 h-5" /></Link>}
+             {user.role === Role.ADMIN && pendingCount > 0 && <Link to="/packages" className="p-2 text-indigo-600 bg-indigo-50 rounded-full border border-indigo-100"><Bell className="w-5 h-5" /></Link>}
              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 p-[2px] shadow-md"><div className="w-full h-full rounded-full bg-white flex items-center justify-center text-indigo-700 font-black text-sm overflow-hidden">{user.dpUrl ? <img src={user.dpUrl} className="w-full h-full object-cover" /> : user.username.charAt(0)}</div></div>
           </div>
         </header>
@@ -333,16 +305,6 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
            <div className="max-w-7xl mx-auto space-y-8 pb-20">{children}</div>
         </main>
       </div>
-
-      <style dangerouslySetInnerHTML={{ __html: `
-        @keyframes bounce-subtle {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-3px); }
-        }
-        .animate-bounce-subtle {
-          animation: bounce-subtle 2s infinite ease-in-out;
-        }
-      `}} />
     </div>
   );
 };

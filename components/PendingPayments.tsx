@@ -6,7 +6,7 @@ import {
   Wallet, CheckCircle2, Search, X, RefreshCw, Calendar, Phone, UploadCloud, 
   Check, ArrowRight, Clock, AlertTriangle, UserCheck, IndianRupee, Megaphone, 
   MapPin, Scissors, User, MessageCircle, Filter, ChevronDown, Copy, CheckSquare, 
-  Trash2, Send, MessageSquare, SlidersHorizontal
+  Trash2, Send, MessageSquare
 } from 'lucide-react';
 
 const PendingPayments: React.FC = () => {
@@ -19,7 +19,6 @@ const PendingPayments: React.FC = () => {
   const [sortBy, setSortBy] = useState<'AMOUNT_DESC' | 'DATE_ASC' | 'DATE_DESC'>('DATE_ASC');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState<Entry | null>(null);
   const [modalMode, setModalMode] = useState<'BOTH' | 'PAY' | 'FOLLOWUP'>('BOTH');
   const [amountToPay, setAmountToPay] = useState<number | string>('');
@@ -161,98 +160,55 @@ const PendingPayments: React.FC = () => {
 
   return (
     <div className="max-w-7xl mx-auto pb-40 animate-in fade-in duration-500 relative min-h-screen">
-        
-        {/* FLOATING FILTER BUTTON */}
-        <button 
-            onClick={() => setIsFilterOpen(!isFilterOpen)}
-            className="fixed bottom-24 right-6 z-[60] p-4 bg-indigo-600 text-white rounded-full shadow-2xl shadow-indigo-500/50 hover:bg-indigo-700 transition-all active:scale-90 border-2 border-indigo-400 group"
-        >
-            {isFilterOpen ? <X className="w-6 h-6" /> : <SlidersHorizontal className="w-6 h-6" />}
-        </button>
-
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8">
             <div className="bg-white rounded-3xl p-6 border-l-8 border-l-red-500 shadow-lg shadow-red-100 flex items-center justify-between group hover:-translate-y-1 transition-transform"><div><div className="flex items-center gap-2 mb-2"><span className="bg-red-100 text-red-600 p-1.5 rounded-lg"><AlertTriangle className="w-4 h-4" /></span><p className="text-slate-500 text-xs font-black uppercase tracking-widest">Total Outstanding</p></div><h3 className="text-3xl font-black text-slate-800">₹{stats.totalOutstanding.toLocaleString()}</h3><p className="text-xs font-bold text-red-500 mt-1">{entries.length} Clients Pending</p></div></div>
             <div className="bg-white rounded-3xl p-6 border-l-8 border-l-amber-500 shadow-lg shadow-amber-100 flex items-center justify-between group hover:-translate-y-1 transition-transform"><div><div className="flex items-center gap-2 mb-2"><span className="bg-amber-100 text-amber-600 p-1.5 rounded-lg"><Clock className="w-4 h-4" /></span><p className="text-slate-500 text-xs font-black uppercase tracking-widest">Today's Follow-ups</p></div><h3 className="text-3xl font-black text-slate-800">{stats.dueTodayCount}</h3><p className="text-xs font-bold text-amber-600 mt-1">Calls Scheduled Today</p></div></div>
             <div className="bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-3xl p-6 text-white shadow-xl shadow-emerald-200 flex items-center justify-between group hover:-translate-y-1 transition-transform"><div><div className="flex items-center gap-2 mb-2"><span className="bg-white/20 p-1.5 rounded-lg backdrop-blur-sm"><IndianRupee className="w-4 h-4 text-white" /></span><p className="text-emerald-100 text-xs font-black uppercase tracking-widest">Today Collection</p></div><h3 className="text-3xl font-black">₹{sessionCollected.toLocaleString()}</h3><p className="text-xs font-bold text-emerald-100 mt-1 opacity-80">Session Total</p></div></div>
         </div>
 
-        {/* ACTIVE FILTER INDICATORS */}
-        {(searchTerm || filterDate || sortBy !== 'DATE_ASC') && (
-            <div className="flex flex-wrap gap-2 mb-4 animate-in fade-in">
-                {searchTerm && <span className="bg-white px-3 py-1.5 rounded-full border border-slate-200 text-[10px] font-black uppercase text-indigo-600 shadow-sm flex items-center gap-1.5">Search: {searchTerm} <X className="w-3 h-3 cursor-pointer" onClick={() => setSearchTerm('')} /></span>}
-                {filterDate && <span className="bg-white px-3 py-1.5 rounded-full border border-slate-200 text-[10px] font-black uppercase text-indigo-600 shadow-sm flex items-center gap-1.5">Date: {formatDateDisplay(filterDate)} <X className="w-3 h-3 cursor-pointer" onClick={() => setFilterDate('')} /></span>}
-                {sortBy !== 'DATE_ASC' && <span className="bg-white px-3 py-1.5 rounded-full border border-slate-200 text-[10px] font-black uppercase text-indigo-600 shadow-sm flex items-center gap-1.5">Sort: {sortBy} <X className="w-3 h-3 cursor-pointer" onClick={() => setSortBy('DATE_ASC')} /></span>}
-            </div>
-        )}
-
-        {/* COLLAPSIBLE FILTER PANEL */}
-        {isFilterOpen && (
-            <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-                <div className="bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden border border-white/20 animate-in zoom-in-95 duration-200">
-                    <div className="bg-slate-900 px-8 py-6 flex justify-between items-center text-white">
-                        <div className="flex items-center gap-3">
-                            <SlidersHorizontal className="w-6 h-6 text-indigo-400" />
-                            <h3 className="font-black text-xl uppercase tracking-tight">Payment Filters</h3>
-                        </div>
-                        <button onClick={() => setIsFilterOpen(false)} className="p-2 hover:bg-slate-800 rounded-full transition-colors"><X className="w-6 h-6" /></button>
+        {/* FIXED FILTER BAR: Adjusted sticky top for mobile and added z-index for visibility */}
+        <div className="sticky top-[70px] lg:top-4 z-[40] mb-6">
+            <div className="bg-white p-4 rounded-2xl shadow-xl border-2 border-slate-200 flex flex-col sm:flex-row gap-4 items-center">
+                <div className="relative flex-1 w-full">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <input 
+                        type="text" 
+                        placeholder="Search Client Name, Phone..." 
+                        value={searchTerm} 
+                        onChange={(e) => setSearchTerm(e.target.value)} 
+                        className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-bold text-sm" 
+                    />
+                </div>
+                <div className="flex flex-row gap-3 w-full sm:w-auto">
+                    <div className="relative flex-1 sm:flex-none">
+                        <input 
+                            type="date" 
+                            value={filterDate} 
+                            onChange={(e) => setFilterDate(e.target.value)} 
+                            className="w-full pl-4 pr-3 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 text-sm font-bold text-slate-600" 
+                        />
                     </div>
-                    
-                    <div className="p-8 space-y-6">
-                        <div>
-                            <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2">Search Client</label>
-                            <div className="relative">
-                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                                <input 
-                                    type="text" 
-                                    placeholder="Search name or number..." 
-                                    value={searchTerm} 
-                                    onChange={(e) => setSearchTerm(e.target.value)} 
-                                    className="w-full pl-10 pr-4 py-4 bg-slate-50 border-2 border-slate-200 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 font-bold outline-none" 
-                                />
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2">Follow-up Date</label>
-                                <input 
-                                    type="date" 
-                                    value={filterDate} 
-                                    onChange={(e) => setFilterDate(e.target.value)} 
-                                    className="w-full px-4 py-4 bg-slate-50 border-2 border-slate-200 rounded-2xl font-bold text-slate-600 outline-none" 
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2">Order By</label>
-                                <div className="relative">
-                                    <select 
-                                        value={sortBy} 
-                                        onChange={(e) => setSortBy(e.target.value as any)} 
-                                        className="w-full appearance-none px-4 py-4 bg-slate-50 border-2 border-slate-200 rounded-2xl font-black text-slate-700 outline-none cursor-pointer"
-                                    >
-                                        <option value="DATE_ASC">Due (Old)</option>
-                                        <option value="DATE_DESC">Due (New)</option>
-                                        <option value="AMOUNT_DESC">Amount</option>
-                                    </select>
-                                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none" />
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="flex gap-3 pt-4">
-                            <button onClick={() => { setSearchTerm(''); setFilterDate(''); setSortBy('DATE_ASC'); }} className="flex-1 py-4 border-2 border-slate-200 rounded-2xl font-black text-slate-400 uppercase tracking-widest text-xs hover:bg-slate-50 transition-all">Clear</button>
-                            <button onClick={() => setIsFilterOpen(false)} className="flex-[2] py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase tracking-widest text-sm shadow-xl hover:bg-indigo-700">Apply Filter</button>
-                        </div>
+                    <div className="relative flex-1 sm:flex-none group">
+                        <select 
+                            value={sortBy} 
+                            onChange={(e) => setSortBy(e.target.value as any)} 
+                            className="w-full appearance-none pl-4 pr-10 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 text-sm font-bold text-slate-600 cursor-pointer"
+                        >
+                            <option value="DATE_ASC">📅 Due (Old)</option>
+                            <option value="DATE_DESC">📅 Due (New)</option>
+                            <option value="AMOUNT_DESC">💰 Amount</option>
+                        </select>
+                        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                     </div>
                 </div>
             </div>
-        )}
+        </div>
 
         <div className="space-y-4">
             {loading ? (
                 <div className="flex flex-col items-center justify-center py-20"><RefreshCw className="w-8 h-8 text-indigo-500 animate-spin mb-4" /><p className="text-slate-400 font-bold">Loading payments...</p></div>
             ) : processedEntries.length === 0 ? (
-                <div className="bg-white rounded-[2.5rem] border-2 border-slate-200 p-12 text-center"><h3 className="text-2xl font-black text-slate-800 mb-2">All Caught Up!</h3><p className="text-slate-500 font-medium">No pending payments found.</p></div>
+                <div className="bg-white rounded-[2.5rem] border-2 border-slate-200 p-12 text-center"><h3 className="text-2xl font-black text-slate-800 mb-2">All Caught Up!</h3><p className="text-slate-500 font-medium">No pending payments.</p></div>
             ) : (
                 processedEntries.map(entry => {
                     const dueAmount = entry.paymentMethod === 'PENDING' ? entry.amount : entry.pendingAmount;

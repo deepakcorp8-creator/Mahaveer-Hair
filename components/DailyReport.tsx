@@ -5,7 +5,7 @@ import { Entry, Technician } from '../types';
 import { 
   Calendar, Filter, FileText, UserPlus, Scissors, CreditCard, Search, Wallet, 
   Smartphone, Landmark, AlertCircle, RefreshCw, Eye, FileDown, Printer, User, 
-  Ruler, Sparkles, Layers, Pencil, X, Save, Droplets, Zap, UserCheck, ChevronDown, SlidersHorizontal
+  Ruler, Sparkles, Layers, Pencil, X, Save, Droplets, Zap, UserCheck
 } from 'lucide-react';
 import { generateInvoice } from '../utils/invoiceGenerator';
 
@@ -20,7 +20,6 @@ const DailyReport: React.FC = () => {
   const [serviceFilter, setServiceFilter] = useState('ALL');
   const [paymentFilter, setPaymentFilter] = useState('ALL');
   const [searchTerm, setSearchTerm] = useState('');
-  const [isFilterOpen, setIsFilterOpen] = useState(false);
 
   // Edit Modal State
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -126,20 +125,8 @@ const DailyReport: React.FC = () => {
   const card3D = "bg-white rounded-2xl shadow-[0_8px_30px_-5px_rgba(0,0,0,0.05)] border border-slate-200 p-4 transition-transform duration-300 hover:-translate-y-1 hover:shadow-lg relative overflow-hidden";
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500 pb-20 relative min-h-screen">
+    <div className="space-y-8 animate-in fade-in duration-500 pb-10">
       
-      {/* FLOATING FILTER TOGGLE BUTTON */}
-      <button 
-        onClick={() => setIsFilterOpen(!isFilterOpen)}
-        className="fixed bottom-24 right-6 z-[60] p-4 bg-indigo-600 text-white rounded-full shadow-2xl shadow-indigo-500/50 hover:bg-indigo-700 transition-all active:scale-90 border-2 border-indigo-400 group"
-        title="Open Filters"
-      >
-        {isFilterOpen ? <X className="w-6 h-6" /> : <SlidersHorizontal className="w-6 h-6 group-hover:rotate-12 transition-transform" />}
-        {!isFilterOpen && (searchTerm || serviceFilter !== 'ALL' || paymentFilter !== 'ALL') && (
-            <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
-        )}
-      </button>
-
       <div className="flex flex-col md:flex-row justify-between items-center bg-white p-6 rounded-3xl shadow-[0_15px_35px_-10px_rgba(0,0,0,0.08)] border border-slate-200 backdrop-blur-sm">
         <div>
            <div className="flex items-center gap-2">
@@ -272,88 +259,50 @@ const DailyReport: React.FC = () => {
           </div>
       </div>
 
-      {/* OVERLAY FILTER MODAL FOR BETTER SCROLLING */}
-      {isFilterOpen && (
-          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-              <div className="bg-white w-full max-w-lg rounded-[2rem] shadow-2xl overflow-hidden border border-white/20 animate-in zoom-in-95 duration-200">
-                  <div className="bg-slate-900 px-8 py-6 flex justify-between items-center text-white">
-                      <div className="flex items-center gap-3">
-                          <SlidersHorizontal className="w-6 h-6 text-indigo-400" />
-                          <h3 className="font-black text-xl uppercase tracking-tight">Filter Records</h3>
-                      </div>
-                      <button onClick={() => setIsFilterOpen(false)} className="p-2 hover:bg-slate-800 rounded-full transition-colors"><X className="w-6 h-6" /></button>
-                  </div>
-                  
-                  <div className="p-8 space-y-6">
-                      <div>
-                          <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2 ml-1">Search Identity</label>
-                          <div className="relative">
-                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                            <input 
-                                type="text" 
-                                placeholder="Client Name / Contact..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="w-full pl-12 pr-4 py-4 bg-slate-50 border-2 border-slate-200 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 font-bold outline-none transition-all"
-                            />
-                          </div>
-                      </div>
+      <div className="bg-white p-5 rounded-2xl shadow-[0_10px_25px_-5px_rgba(0,0,0,0.05)] border border-slate-200 flex flex-col md:flex-row gap-6 items-center justify-between sticky top-4 z-20">
+          <div className="flex items-center gap-3 w-full md:w-auto">
+              <div className="bg-indigo-50 p-2 rounded-lg border border-indigo-100"><Filter className="w-4 h-4 text-indigo-600" /></div>
+              <span className="text-sm font-bold text-slate-700">Filter Records:</span>
+          </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <div>
-                              <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2 ml-1">Service Type</label>
-                              <div className="relative">
-                                  <select 
-                                    value={serviceFilter}
-                                    onChange={(e) => setServiceFilter(e.target.value)}
-                                    className="w-full pl-4 pr-10 py-4 bg-slate-50 border-2 border-slate-200 rounded-2xl font-black text-slate-700 outline-none appearance-none cursor-pointer focus:border-indigo-500 transition-all"
-                                  >
-                                      <option value="ALL">All Services</option>
-                                      <option value="NEW">New Patch</option>
-                                      <option value="SERVICE">Service</option>
-                                      <option value="WASHING">Washing</option>
-                                      <option value="DEMO">Demo</option>
-                                      <option value="MUNDAN">Mundan</option>
-                                  </select>
-                                  <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none" />
-                              </div>
-                          </div>
-                          <div>
-                              <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2 ml-1">Payment Status</label>
-                               <div className="relative">
-                                  <select 
-                                    value={paymentFilter}
-                                    onChange={(e) => setPaymentFilter(e.target.value)}
-                                    className="w-full pl-4 pr-10 py-4 bg-slate-50 border-2 border-slate-200 rounded-2xl font-black text-slate-700 outline-none appearance-none cursor-pointer focus:border-indigo-500 transition-all"
-                                  >
-                                      <option value="ALL">All Payments</option>
-                                      <option value="CASH">Cash</option>
-                                      <option value="UPI">UPI</option>
-                                      <option value="CARD">Card</option>
-                                      <option value="PENDING">Pending</option>
-                                  </select>
-                                  <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none" />
-                              </div>
-                          </div>
-                      </div>
-
-                      <div className="flex gap-3 pt-4">
-                          <button onClick={() => { setSearchTerm(''); setServiceFilter('ALL'); setPaymentFilter('ALL'); }} className="flex-1 py-4 border-2 border-slate-200 rounded-2xl font-black text-slate-400 uppercase tracking-widest text-xs hover:bg-slate-50 transition-all">Reset All</button>
-                          <button onClick={() => setIsFilterOpen(false)} className="flex-[2] py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase tracking-widest text-sm shadow-xl shadow-indigo-200 hover:bg-indigo-700 transition-all">Apply Filters</button>
-                      </div>
-                  </div>
+          <div className="flex flex-col md:flex-row gap-4 w-full md:w-auto">
+              <div className="relative">
+                  <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input 
+                    type="text" 
+                    placeholder="Search Client Name..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 w-full shadow-inner font-semibold placeholder:font-normal"
+                  />
               </div>
-          </div>
-      )}
 
-      {/* Summary Chips for Active Filters */}
-      {(searchTerm || serviceFilter !== 'ALL' || paymentFilter !== 'ALL') && (
-          <div className="flex flex-wrap gap-2 animate-in slide-in-from-top-2">
-              {searchTerm && <span className="bg-white px-3 py-1.5 rounded-full border border-slate-200 text-[10px] font-black uppercase text-indigo-600 shadow-sm flex items-center gap-1.5">Search: {searchTerm} <X className="w-3 h-3 cursor-pointer" onClick={() => setSearchTerm('')} /></span>}
-              {serviceFilter !== 'ALL' && <span className="bg-white px-3 py-1.5 rounded-full border border-slate-200 text-[10px] font-black uppercase text-indigo-600 shadow-sm flex items-center gap-1.5">Type: {serviceFilter} <X className="w-3 h-3 cursor-pointer" onClick={() => setServiceFilter('ALL')} /></span>}
-              {paymentFilter !== 'ALL' && <span className="bg-white px-3 py-1.5 rounded-full border border-slate-200 text-[10px] font-black uppercase text-indigo-600 shadow-sm flex items-center gap-1.5">Pay: {paymentFilter} <X className="w-3 h-3 cursor-pointer" onClick={() => setPaymentFilter('ALL')} /></span>}
+              <select 
+                value={serviceFilter}
+                onChange={(e) => setServiceFilter(e.target.value)}
+                className="px-4 py-2.5 border border-slate-200 bg-slate-50 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 font-bold text-slate-600 shadow-sm cursor-pointer"
+              >
+                  <option value="ALL">All Services</option>
+                  <option value="NEW">New Patch</option>
+                  <option value="SERVICE">Service</option>
+                  <option value="WASHING">Washing</option>
+                  <option value="DEMO">Demo</option>
+                  <option value="MUNDAN">Mundan</option>
+              </select>
+
+              <select 
+                value={paymentFilter}
+                onChange={(e) => setPaymentFilter(e.target.value)}
+                className="px-4 py-2.5 border border-slate-200 bg-slate-50 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 font-bold text-slate-600 shadow-sm cursor-pointer"
+              >
+                  <option value="ALL">All Payments</option>
+                  <option value="CASH">Cash</option>
+                  <option value="UPI">UPI</option>
+                  <option value="CARD">Card</option>
+                  <option value="PENDING">Pending</option>
+              </select>
           </div>
-      )}
+      </div>
 
       <div className="bg-white rounded-3xl shadow-[0_20px_40px_-12px_rgba(0,0,0,0.1)] border border-slate-200 overflow-hidden">
          <div className="overflow-x-auto">
