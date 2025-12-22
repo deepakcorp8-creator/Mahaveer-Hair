@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { Appointment, Client } from '../types';
-import { Calendar, CheckCircle, Clock, Filter, Activity, CheckSquare, Plus, Search, Phone, MessageCircle, RefreshCw, CalendarClock, History, ArrowRightCircle, Megaphone, UserCheck, XCircle, MapPin } from 'lucide-react';
+import { Calendar, CheckCircle, Clock, Filter, Activity, CheckSquare, Plus, Search, Phone, MessageCircle, RefreshCw, CalendarClock, History, ArrowRightCircle, Megaphone, UserCheck, XCircle, MapPin, Trash2 } from 'lucide-react';
 
 const AppointmentBooking: React.FC = () => {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -46,18 +46,25 @@ const AppointmentBooking: React.FC = () => {
   }, [timeParts]);
 
   const loadData = async () => {
-    const [apptData, options] = await Promise.all([
-      api.getAppointments(),
-      api.getOptions()
-    ]);
-    // Sort: Today first, then Pending, then Future date
-    const sorted = apptData.sort((a, b) => {
-        if (a.date === todayStr && b.date !== todayStr) return -1;
-        if (a.date !== todayStr && b.date === todayStr) return 1;
-        return new Date(a.date).getTime() - new Date(b.date).getTime();
-    });
-    setAppointments(sorted);
-    setClients(options.clients);
+    setLoading(true);
+    try {
+        const [apptData, options] = await Promise.all([
+          api.getAppointments(),
+          api.getOptions()
+        ]);
+        // Sort: Today first, then Pending, then Future date
+        const sorted = apptData.sort((a, b) => {
+            if (a.date === todayStr && b.date !== todayStr) return -1;
+            if (a.date !== todayStr && b.date === todayStr) return 1;
+            return new Date(a.date).getTime() - new Date(b.date).getTime();
+        });
+        setAppointments(sorted);
+        setClients(options.clients);
+    } catch (e) {
+        console.error(e);
+    } finally {
+        setLoading(false);
+    }
   };
 
   const handleRecall = (appt: Appointment) => {
@@ -79,7 +86,7 @@ const AppointmentBooking: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (loading) return; // Prevent double submission
+    if (loading) return; 
 
     setLoading(true);
     try {
@@ -107,8 +114,27 @@ const AppointmentBooking: React.FC = () => {
   };
 
   const updateStatus = async (id: string, status: Appointment['status']) => {
-    await api.updateAppointmentStatus(id, status);
-    loadData();
+    setLoading(true);
+    try {
+        await api.updateAppointmentStatus(id, status);
+        await loadData();
+    } catch (e) {
+        console.error(e);
+        setLoading(false);
+    }
+  };
+
+  const handleDelete = async (id: string, name: string) => {
+      if (window.confirm(`Are you sure you want to DELETE the appointment for "${name}"? This action cannot be undone.`)) {
+          setLoading(true);
+          try {
+              await api.deleteAppointment(id);
+              await loadData();
+          } catch (e) {
+              alert("Failed to delete appointment.");
+              setLoading(false);
+          }
+      }
   };
 
   // Filter Logic
@@ -278,6 +304,15 @@ const AppointmentBooking: React.FC = () => {
                             Re-book
                         </button>
                     )}
+
+                    {/* DELETE BUTTON (Added for all cards) */}
+                    <button 
+                        onClick={() => handleDelete(appt.id, appt.clientName)}
+                        className="p-2.5 rounded-xl bg-red-50 text-red-500 hover:bg-red-500 hover:text-white transition-all border border-red-100 hover:border-red-600 shadow-sm"
+                        title="Delete Appointment"
+                    >
+                        <Trash2 className="w-4 h-4" />
+                    </button>
                 </div>
             </div>
         </div>

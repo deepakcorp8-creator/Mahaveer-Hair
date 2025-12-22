@@ -1,6 +1,6 @@
 
 // =====================================================================================
-// ⚠️ MAHAVEER WEB APP - BACKEND SCRIPT (V27 - ENTRY DELETE CAPABILITY)
+// ⚠️ MAHAVEER WEB APP - BACKEND SCRIPT (V28 - APPOINTMENT DELETE CAPABILITY)
 // =====================================================================================
 
 function doGet(e) {
@@ -118,6 +118,22 @@ function doPost(e) {
               dbSheet.deleteRow(rowId);
               return response({status: "success"});
           }
+      } catch(e) { return response({error: e.message}); }
+  }
+
+  if (action == 'deleteAppointment') {
+      const apptSheet = getSheet(ss, "APPOINTMENT");
+      try {
+          const id = data.id;
+          const range = apptSheet.getDataRange();
+          const values = range.getValues();
+          for (let i = 1; i < values.length; i++) {
+              if (values[i][0] == id) {
+                  apptSheet.deleteRow(i + 1);
+                  return response({status: "success"});
+              }
+          }
+          return response({error: "Appointment not found"});
       } catch(e) { return response({error: e.message}); }
   }
 

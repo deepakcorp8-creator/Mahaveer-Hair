@@ -214,6 +214,18 @@ export const api = {
     return true;
   },
 
+  deleteAppointment: async (id: string) => {
+    if (isLive) {
+        try {
+            await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'deleteAppointment', id }) });
+        } catch (e) { console.error("Delete Appt Fail", e); throw e; }
+    }
+    if (DATA_CACHE.appointments) {
+        DATA_CACHE.appointments = DATA_CACHE.appointments.filter(a => a.id !== id);
+    }
+    return true;
+  },
+
   getPackages: async (forceRefresh = false) => {
       const now = Date.now();
       if (!forceRefresh && DATA_CACHE.packages && (now - (DATA_CACHE.lastFetch['packages'] || 0) < CACHE_DURATION)) return DATA_CACHE.packages;
