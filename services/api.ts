@@ -61,7 +61,7 @@ export const api = {
             DATA_CACHE.lastFetch['options'] = now;
             return result;
         }
-      } catch (e) { console.warn("Fallback to mock options", e); }
+      } catch (e) { console.warn("Fallback options", e); }
     }
     return { clients: MOCK_CLIENTS, technicians: MOCK_TECHNICIANS, items: MOCK_ITEMS };
   },
@@ -152,7 +152,7 @@ export const api = {
               });
               const result = await res.json();
               if (result.error) throw new Error(result.error);
-              DATA_CACHE.entries = null; // Force reload on next fetch
+              DATA_CACHE.entries = null;
           } catch (e) { console.error("Delete Fail", e); throw e; }
       } else {
         if (DATA_CACHE.entries) {
@@ -246,7 +246,7 @@ export const api = {
             });
             const result = await res.json();
             if (result.error) throw new Error(result.error);
-            DATA_CACHE.appointments = null; // Force reload
+            DATA_CACHE.appointments = null;
         } catch (e) { console.error("Delete Appt Fail:", e); throw e; }
     } else {
         if (DATA_CACHE.appointments) {
@@ -267,9 +267,9 @@ export const api = {
                   const formattedData = data.map((pkg: any) => ({ 
                       ...pkg, 
                       startDate: normalizeToISO(pkg.startDate), 
-                      status: pkg.status ? pkg.status : 'PENDING',
+                      status: (pkg.status || '').trim().toUpperCase() || 'PENDING',
                       oldServiceNumber: Number(pkg.oldServiceNumber || 0),
-                      packageType: pkg.packageType || 'NEW'
+                      packageType: (pkg.packageType || 'NEW').trim().toUpperCase()
                   }));
                   DATA_CACHE.packages = formattedData;
                   DATA_CACHE.lastFetch['packages'] = now;
@@ -300,11 +300,13 @@ export const api = {
           const res = await fetch(GOOGLE_SCRIPT_URL, { 
             method: 'POST', 
             headers: { 'Content-Type': 'text/plain;charset=utf-8' }, 
-            body: JSON.stringify({ action: 'updatePackageStatus', id, status }) 
+            body: JSON.stringify({ action: 'updatePackageStatus', id, status: status.toUpperCase() }) 
           });
-          return await res.json();
+          const result = await res.json();
+          if (result.error) throw new Error(result.error);
+          return result;
       }
-      return true;
+      return { status: "success" };
   },
   
   deletePackage: async (id: string) => {
@@ -315,9 +317,11 @@ export const api = {
             headers: { 'Content-Type': 'text/plain;charset=utf-8' }, 
             body: JSON.stringify({ action: 'deletePackage', id }) 
           });
-          return await res.json();
+          const result = await res.json();
+          if (result.error) throw new Error(result.error);
+          return result;
       }
-      return true;
+      return { status: "success" };
   },
 
   editPackage: async (pkg: ServicePackage) => {

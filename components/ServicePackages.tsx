@@ -4,9 +4,9 @@ import { api } from '../services/api';
 import { ServicePackage, Client, Entry, Role, User } from '../types';
 import { 
   PackageCheck, Plus, Search, User as UserIcon, Clock, Pencil, X, 
-  ShieldAlert, Sparkles, CheckCircle2, AlertTriangle, CalendarRange, 
-  IndianRupee, Layers, Info, Trash2, Check, ArrowRightCircle, Target,
-  RefreshCw
+  ShieldAlert, Sparkles, CheckCircle2, IndianRupee, 
+  CalendarRange, Trash2, Check, RefreshCw, Target, Layers,
+  Calendar, ChevronDown
 } from 'lucide-react';
 import { SearchableSelect } from './SearchableSelect';
 
@@ -22,24 +22,13 @@ const ServicePackages: React.FC = () => {
   const [editingPackage, setEditingPackage] = useState<ServicePackage | null>(null);
 
   const [newPkg, setNewPkg] = useState<Partial<ServicePackage>>({
-    clientName: '',
-    contact: '',
-    packageName: '',
-    totalCost: 0,
-    totalServices: 12,
-    startDate: new Date().toISOString().split('T')[0],
-    status: 'PENDING',
-    packageType: 'NEW',
-    oldServiceNumber: 0
+    clientName: '', contact: '', packageName: '', totalCost: 0, totalServices: 12,
+    startDate: new Date().toISOString().split('T')[0], status: 'PENDING', packageType: 'NEW', oldServiceNumber: 0
   });
 
   useEffect(() => {
     const savedUser = localStorage.getItem('mahaveer_user');
-    if (savedUser) {
-        try {
-            setCurrentUser(JSON.parse(savedUser));
-        } catch (e) {}
-    }
+    if (savedUser) { try { setCurrentUser(JSON.parse(savedUser)); } catch (e) {} }
     loadData();
   }, []);
 
@@ -54,11 +43,7 @@ const ServicePackages: React.FC = () => {
         setClients(options.clients || []);
         setPackages(pkgData);
         setEntries(entriesData);
-    } catch (e) {
-        console.error(e);
-    } finally {
-        setLoading(false);
-    }
+    } catch (e) { console.error(e); } finally { setLoading(false); }
   };
 
   const handleClientChange = (name: string) => {
@@ -73,7 +58,6 @@ const ServicePackages: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (loading) return; 
-
     setLoading(true);
     try {
         if(newPkg.clientName && newPkg.packageName && newPkg.totalServices) {
@@ -84,73 +68,42 @@ const ServicePackages: React.FC = () => {
                 oldServiceNumber: oldNum,
                 packageType: newPkg.packageType || 'NEW'
             });
-            
-            alert("✅ Package request sent to admin.");
-            
+            alert("✅ Membership Request Submitted.");
             setNewPkg({
-                clientName: '',
-                contact: '',
-                packageName: '',
-                totalCost: 0,
-                totalServices: 12,
-                startDate: new Date().toISOString().split('T')[0],
-                status: 'PENDING',
-                packageType: 'NEW',
-                oldServiceNumber: 0
+                clientName: '', contact: '', packageName: '', totalCost: 0, totalServices: 12,
+                startDate: new Date().toISOString().split('T')[0], status: 'PENDING', packageType: 'NEW', oldServiceNumber: 0
             });
-            
-            await loadData();
+            setTimeout(loadData, 1000);
         }
-    } catch (e) {
-        console.error(e);
-        alert("Sync error. Please try again.");
-    } finally {
-        setLoading(false);
-    }
+    } catch (e) { alert("Error saving. Please check connection."); } finally { setLoading(false); }
   };
 
   const handleUpdatePackage = async (e: React.FormEvent) => {
       e.preventDefault();
       if (!editingPackage || loading) return; 
-      
       setLoading(true);
       try {
           await api.editPackage(editingPackage);
           await loadData();
           setIsEditModalOpen(false);
           setEditingPackage(null);
-      } catch (e) {
-          alert("Update failed.");
-      } finally {
-          setLoading(false);
-      }
+      } catch (e) { alert("Update failed."); } finally { setLoading(false); }
   };
   
-  const handlePackageApproval = async (e: React.MouseEvent, id: string, action: 'APPROVE' | 'REJECT') => {
-      e.stopPropagation();
-      e.preventDefault(); 
+  const handlePackageAction = async (e: React.MouseEvent, id: string, action: 'APPROVE' | 'REJECT') => {
+      e.stopPropagation(); e.preventDefault(); 
       if (loading) return;
-      
       const isDelete = action === 'REJECT';
-      const msg = isDelete ? "DELETE this request permanently?" : "ACTIVATE this membership plan?";
-      
-      if(window.confirm(msg)) {
+      if(window.confirm(isDelete ? "Permanently delete this entry?" : "Activate this membership?")) {
           setLoading(true);
           try {
-              if (isDelete) {
-                  await api.deletePackage(id);
-              } else {
-                  await api.updatePackageStatus(id, 'APPROVED');
-              }
-              
-              // Force clear and reload
+              if (isDelete) await api.deletePackage(id);
+              else await api.updatePackageStatus(id, 'APPROVED');
               setTimeout(async () => {
                   await loadData();
-              }, 1200);
-          } catch (e) {
-              alert("Server connection error.");
-              setLoading(false);
-          }
+                  setLoading(false);
+              }, 1500);
+          } catch (e) { alert("Action failed."); setLoading(false); }
       }
   }
 
@@ -158,28 +111,19 @@ const ServicePackages: React.FC = () => {
       const pkgName = (pkg.clientName || '').trim().toLowerCase();
       const pkgStart = new Date(pkg.startDate);
       pkgStart.setHours(0,0,0,0);
-
       const dbUsedCount = entries.filter(e => {
           const entryName = (e.clientName || '').trim().toLowerCase();
-          const entryDate = new Date(e.date);
-          entryDate.setHours(0,0,0,0);
-          
-          return (
-              entryName === pkgName && 
-              entryDate >= pkgStart && 
-              e.serviceType === 'SERVICE' &&
-              e.workStatus === 'DONE'
-          );
+          const entryDate = new Date(e.date); entryDate.setHours(0,0,0,0);
+          return (entryName === pkgName && entryDate >= pkgStart && e.serviceType === 'SERVICE' && e.workStatus === 'DONE');
       }).length;
-      
       const totalUsed = (Number(pkg.oldServiceNumber) || 0) + dbUsedCount;
       const remaining = Math.max(0, Number(pkg.totalServices) - totalUsed);
       const isExpired = totalUsed >= Number(pkg.totalServices);
       
-      // LOGIC: OLD shows the entered number, NEW shows #1
-      const startDisplay = pkg.packageType === 'OLD' ? pkg.oldServiceNumber : 1;
+      // LOGIC: OLD shows Column G value, NEW shows #1
+      const startAtDisplay = pkg.packageType === 'OLD' ? (pkg.oldServiceNumber || 0) : 1;
       
-      return { totalUsed, remaining, isExpired, startDisplay };
+      return { totalUsed, remaining, isExpired, startAtDisplay };
   };
 
   const filteredPackages = packages.filter(p => 
@@ -187,116 +131,94 @@ const ServicePackages: React.FC = () => {
     (p.packageName || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const pendingPackages = filteredPackages.filter(p => p.status === 'PENDING' || !p.status);
-  const activePackages = filteredPackages.filter(p => p.status !== 'PENDING' && !!p.status);
+  const pendingPackages = filteredPackages.filter(p => !p.status || p.status === 'PENDING');
+  const activePackages = filteredPackages.filter(p => p.status === 'APPROVED' || p.status === 'ACTIVE');
 
   const renderCard = (pkg: ServicePackage) => {
     const stats = getPackageUsage(pkg);
-    const isPending = pkg.status === 'PENDING' || !pkg.status;
-    const isOldType = pkg.packageType === 'OLD';
+    const isPending = !pkg.status || pkg.status === 'PENDING';
     
     return (
         <div key={pkg.id} className={`
-            relative overflow-hidden rounded-[1.5rem] border-2 transition-all duration-300 group bg-white
-            ${isPending 
-                ? 'border-amber-200' 
-                : 'border-slate-100 hover:border-indigo-200 shadow-sm hover:shadow-lg'}
+            relative bg-white rounded-3xl border-2 transition-all duration-300 group
+            ${isPending ? 'border-amber-200 bg-amber-50/10 shadow-sm' : 'border-slate-100 hover:border-indigo-300 hover:shadow-xl'}
         `}>
-            <div className="p-4 h-full flex flex-col relative z-10">
-                {/* Compact Header */}
-                <div className="flex items-center gap-3 mb-4">
-                    <div className={`
-                        w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center shadow-md transform group-hover:scale-105 transition-transform
-                        ${isPending 
-                            ? 'bg-gradient-to-br from-amber-400 to-orange-500 text-white' 
-                            : 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white'}
+            <div className="p-5 h-full flex flex-col relative z-10">
+                <div className="flex items-center gap-4 mb-4">
+                    <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shadow-sm
+                        ${isPending ? 'bg-gradient-to-br from-amber-400 to-orange-500 text-white' : 'bg-gradient-to-br from-indigo-500 to-violet-600 text-white'}
                     `}>
                         {isPending ? <Clock className="w-5 h-5" /> : <PackageCheck className="w-5 h-5" />}
                     </div>
                     <div className="min-w-0 flex-1">
-                        <h3 className="font-black text-slate-800 text-sm leading-tight truncate">
-                            {pkg.clientName}
-                        </h3>
+                        <h3 className="font-black text-slate-900 text-[14px] leading-tight truncate uppercase">{pkg.clientName}</h3>
                         <div className="flex items-center gap-1.5 mt-0.5">
-                            <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded-md border
-                                ${isPending ? 'bg-amber-50 text-amber-600 border-amber-100' : 'bg-indigo-50 text-indigo-700 border-indigo-100'}
-                            `}>
-                                {pkg.packageName}
+                            <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-lg border tracking-wider
+                                ${isPending ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-indigo-50 text-indigo-700 border-indigo-200'}
+                            `}>{pkg.packageName}</span>
+                            <span className="text-[7px] font-black uppercase bg-slate-900 text-white px-1.5 py-0.5 rounded flex items-center gap-1">
+                                {pkg.packageType === 'OLD' ? <Layers className="w-2.5 h-2.5" /> : <Sparkles className="w-2.5 h-2.5" />}
+                                {pkg.packageType}
                             </span>
-                            {isOldType && <span className="bg-slate-100 text-slate-500 text-[8px] font-black px-1 py-0.5 rounded border border-slate-200 uppercase tracking-tighter">OLD</span>}
                         </div>
                     </div>
                 </div>
 
                 <div className="flex-1">
                     {isPending ? (
-                        <div className="bg-slate-50 rounded-xl p-3 border border-amber-100 mb-3 space-y-3">
-                            <div className="flex items-center justify-between text-center">
-                                <div className="text-left">
-                                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none mb-0.5">Max Limit</p>
-                                    <p className="text-xs font-black text-slate-700">{pkg.totalServices} Visits</p>
+                        <div className="bg-white rounded-2xl p-4 border border-amber-100 mb-2 space-y-4 shadow-sm">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Max Limit</p>
+                                    <p className="text-sm font-black text-slate-700">{pkg.totalServices} Visits</p>
                                 </div>
                                 <div className="text-right">
-                                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none mb-0.5">Start At</p>
-                                    <p className="text-xs font-black text-indigo-600">#{stats.startDisplay}</p>
+                                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Starts At</p>
+                                    <p className="text-sm font-black text-indigo-600">#{stats.startAtDisplay}</p>
                                 </div>
                             </div>
                             
                             {currentUser?.role === Role.ADMIN ? (
                                 <div className="flex gap-2">
-                                    <button 
-                                        onClick={(e) => handlePackageApproval(e, pkg.id, 'APPROVE')} 
-                                        className="flex-1 py-2 rounded-lg bg-emerald-500 text-white text-[10px] font-black hover:bg-emerald-600 transition-all shadow-sm active:scale-95"
-                                    >
-                                        APPROVE
-                                    </button>
-                                    <button 
-                                        onClick={(e) => handlePackageApproval(e, pkg.id, 'REJECT')} 
-                                        className="w-10 flex items-center justify-center rounded-lg bg-white border border-red-200 text-red-500 hover:bg-red-50 active:scale-95"
-                                    >
-                                        <Trash2 className="w-3.5 h-3.5" />
-                                    </button>
+                                    <button onClick={(e) => handlePackageAction(e, pkg.id, 'APPROVE')} className="flex-1 py-2.5 rounded-xl bg-emerald-500 text-white text-[10px] font-black hover:bg-emerald-600 transition-all shadow-md active:scale-95 uppercase tracking-wide">APPROVE</button>
+                                    <button onClick={(e) => handlePackageAction(e, pkg.id, 'REJECT')} className="w-11 flex items-center justify-center rounded-xl bg-white border-2 border-red-50 text-red-500 hover:bg-red-50 active:scale-95 transition-colors"><Trash2 className="w-4 h-4" /></button>
                                 </div>
                             ) : (
-                                <p className="text-[8px] font-black text-slate-400 text-center uppercase tracking-widest py-1">Awaiting Admin...</p>
+                                <div className="flex items-center justify-center gap-2 py-1 text-amber-600 text-[10px] font-black uppercase tracking-[0.2em]"><ShieldAlert className="w-3.5 h-3.5" /> Verifying...</div>
                             )}
                         </div>
                     ) : (
-                        <div className="mb-4">
-                            <div className="flex justify-between items-end mb-1.5">
-                                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Usage</span>
-                                <span className={`text-xs font-black ${stats.isExpired ? 'text-red-500' : 'text-slate-800'}`}>
-                                    {stats.totalUsed} <span className="text-slate-300 font-bold text-[10px]">/ {pkg.totalServices}</span>
+                        <div className="mb-4 mt-1">
+                            <div className="flex justify-between items-end mb-2">
+                                <div className="flex flex-col">
+                                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Utilized Progress</span>
+                                    <span className="text-[9px] font-black text-indigo-600">Starting Point: #{stats.startAtDisplay}</span>
+                                </div>
+                                <span className={`text-sm font-black ${stats.isExpired ? 'text-red-500' : 'text-slate-800'}`}>
+                                    {stats.totalUsed} <span className="text-slate-300 font-bold text-xs">/ {pkg.totalServices}</span>
                                 </span>
                             </div>
                             <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden shadow-inner">
-                                <div 
-                                    className={`h-full rounded-full transition-all duration-1000 ${stats.isExpired ? 'bg-red-500' : 'bg-indigo-600'}`} 
-                                    style={{width: `${Math.min((stats.totalUsed / pkg.totalServices) * 100, 100)}%`}}
-                                ></div>
+                                <div className={`h-full rounded-full transition-all duration-1000 ${stats.isExpired ? 'bg-red-500' : 'bg-indigo-600'}`} style={{width: `${Math.min((stats.totalUsed / pkg.totalServices) * 100, 100)}%`}}></div>
                             </div>
                         </div>
                     )}
                 </div>
 
-                {/* Footer Metadata (Compact) */}
-                <div className="pt-3 border-t border-slate-100 grid grid-cols-2 gap-2 mt-1">
+                <div className="pt-3 border-t border-slate-50 flex justify-between items-center mt-2">
                     <div className="flex items-center gap-1.5">
-                        <IndianRupee className="w-3 h-3 text-slate-400" />
-                        <span className="text-[10px] font-black text-slate-700">₹{pkg.totalCost}</span>
+                        <IndianRupee className="w-3 h-3 text-slate-300" />
+                        <span className="text-[11px] font-black text-slate-700">₹{pkg.totalCost.toLocaleString()}</span>
                     </div>
-                    <div className="flex items-center gap-1.5 justify-end">
-                        <span className="text-[10px] font-bold text-slate-500">{pkg.startDate}</span>
-                        <CalendarRange className="w-3 h-3 text-slate-400" />
+                    <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] font-black text-slate-400">{pkg.startDate}</span>
+                        <CalendarRange className="w-3 h-3 text-slate-300" />
                     </div>
                 </div>
 
                 {currentUser?.role === Role.ADMIN && !isPending && (
-                <button 
-                    onClick={(e) => { e.stopPropagation(); setEditingPackage(pkg); setIsEditModalOpen(true); }}
-                    className="absolute top-3 right-3 text-slate-200 hover:text-indigo-600 p-1 transition-colors"
-                >
-                    <Pencil className="w-3 h-3" />
+                <button onClick={(e) => { e.stopPropagation(); setEditingPackage(pkg); setIsEditModalOpen(true); }} className="absolute top-4 right-4 text-slate-200 hover:text-indigo-600 p-1 transition-all opacity-0 group-hover:opacity-100">
+                    <Pencil className="w-3.5 h-3.5" />
                 </button>
                 )}
             </div>
@@ -305,35 +227,43 @@ const ServicePackages: React.FC = () => {
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 animate-in fade-in duration-500 pb-24">
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 animate-in fade-in duration-700 pb-20">
       
-      {/* Sidebar: Entry Form (Compact) */}
-      <div className="lg:col-span-1">
-        <div className="bg-white rounded-[2rem] shadow-xl border-2 border-slate-200 sticky top-10 overflow-hidden">
-            <div className="px-6 py-6 bg-slate-900 text-white">
-                <div className="flex items-center gap-3">
-                    <div className="p-2 bg-indigo-600 rounded-xl shadow-lg"><PackageCheck className="w-5 h-5 text-white" /></div>
-                    <h3 className="font-black text-lg tracking-tight uppercase">New Plan</h3>
+      {/* SIDEBAR: CREATION FORM (PROFESSIONAL THEME) */}
+      <div className="lg:col-span-4">
+        <div className="bg-white rounded-[2rem] shadow-2xl shadow-slate-200 border border-slate-100 sticky top-10 overflow-hidden">
+            {/* Form Header */}
+            <div className="px-7 py-7 bg-[#131C2E] text-white flex items-center gap-4">
+                <div className="p-2.5 bg-indigo-600 rounded-xl shadow-lg">
+                    <PackageCheck className="w-6 h-6 text-white" />
                 </div>
+                <h3 className="font-black text-xl tracking-tight uppercase">NEW PLAN</h3>
             </div>
             
-            <form onSubmit={handleSubmit} className="p-6 space-y-5">
-                <div> 
-                     <SearchableSelect label="Assign Client" options={clients.map(c => ({ label: c.name, value: c.name, subtext: c.contact }))} value={newPkg.clientName || ''} onChange={handleClientChange} placeholder="Search Name..." required />
+            <form onSubmit={handleSubmit} className="p-8 space-y-6">
+                <div>
+                    <label className="block text-[11px] font-black uppercase tracking-widest text-slate-500 mb-2 ml-1">ASSIGN CLIENT <span className="text-red-500">*</span></label>
+                    <SearchableSelect 
+                        options={clients.map(c => ({ label: c.name, value: c.name, subtext: c.contact }))} 
+                        value={newPkg.clientName || ''} 
+                        onChange={handleClientChange} 
+                        placeholder="Search Name..." 
+                        required 
+                    />
                 </div>
                 
-                <div className="space-y-2">
-                    <label className="block text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Plan Source</label>
-                    <div className="flex gap-2 p-1 bg-slate-100 rounded-xl border border-slate-200">
+                <div className="space-y-2.5">
+                    <label className="block text-[11px] font-black uppercase tracking-widest text-slate-500 ml-1">PLAN SOURCE</label>
+                    <div className="flex p-1.5 bg-slate-100 rounded-2xl border border-slate-200">
                         {['NEW', 'OLD'].map(type => (
                             <button
                                 type="button"
                                 key={type}
                                 onClick={() => setNewPkg(prev => ({ ...prev, packageType: type as any }))}
-                                className={`flex-1 py-2 rounded-lg text-[10px] font-black transition-all border
+                                className={`flex-1 py-3.5 rounded-xl text-xs font-black transition-all
                                 ${newPkg.packageType === type 
-                                    ? 'bg-white text-indigo-700 shadow-sm border-indigo-200' 
-                                    : 'text-slate-400 border-transparent'}
+                                    ? 'bg-white text-[#131C2E] shadow-sm border border-slate-200' 
+                                    : 'text-slate-400 hover:text-slate-600'}
                                 `}
                             >
                                 {type}
@@ -344,67 +274,90 @@ const ServicePackages: React.FC = () => {
 
                 {newPkg.packageType === 'OLD' && (
                     <div className="animate-in slide-in-from-top-2 duration-300">
-                        <label className="block text-[9px] font-black uppercase tracking-widest text-indigo-600 mb-1 ml-1">Start Count</label>
+                        <label className="block text-[11px] font-black uppercase tracking-widest text-indigo-600 mb-2 ml-1">STARTING SERVICE #</label>
                         <input 
                             type="number" 
-                            className="w-full rounded-xl border-2 border-indigo-100 bg-white px-4 py-3 text-indigo-900 font-black focus:border-indigo-500 outline-none text-xl shadow-inner"
-                            placeholder="0"
+                            className="w-full rounded-2xl border-2 border-indigo-100 bg-white px-5 py-4 text-xl font-black text-indigo-900 outline-none focus:border-indigo-500 shadow-inner"
+                            placeholder="e.g. 5"
                             value={newPkg.oldServiceNumber || ''}
                             onChange={e => setNewPkg({...newPkg, oldServiceNumber: Number(e.target.value)})}
                         />
+                        <p className="text-[10px] text-indigo-400 font-bold mt-2 ml-1 italic">* Enter the count of services already used.</p>
                     </div>
                 )}
 
-                <div className="space-y-4">
+                <div className="space-y-5">
                     <div>
-                        <label className="block text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1 ml-1">Plan Name</label>
-                        <input type="text" className="w-full rounded-xl border-2 border-slate-100 bg-slate-50 px-4 py-3 text-slate-800 font-bold outline-none focus:border-indigo-500" placeholder="e.g. 1 Year" value={newPkg.packageName} onChange={e => setNewPkg({...newPkg, packageName: e.target.value})} required />
+                        <label className="block text-[11px] font-black uppercase tracking-widest text-slate-500 mb-2 ml-1">PLAN NAME</label>
+                        <input 
+                            type="text" 
+                            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 text-sm font-bold text-slate-800 outline-none focus:bg-white focus:border-indigo-500 transition-all shadow-sm" 
+                            placeholder="e.g. 1 Year" 
+                            value={newPkg.packageName} 
+                            onChange={e => setNewPkg({...newPkg, packageName: e.target.value})} 
+                            required 
+                        />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label className="block text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1 ml-1">Cost (₹)</label>
-                            <input type="number" className="w-full rounded-xl border-2 border-slate-100 bg-slate-50 px-4 py-3 text-slate-800 font-bold outline-none" value={newPkg.totalCost || ''} onChange={e => setNewPkg({...newPkg, totalCost: Number(e.target.value)})} required />
+                            <label className="block text-[11px] font-black uppercase tracking-widest text-slate-500 mb-2 ml-1">COST (₹)</label>
+                            <input 
+                                type="number" 
+                                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm font-black text-slate-800 focus:bg-white outline-none focus:border-indigo-500" 
+                                value={newPkg.totalCost || ''} 
+                                onChange={e => setNewPkg({...newPkg, totalCost: Number(e.target.value)})} 
+                                required 
+                            />
                         </div>
                         <div>
-                            <label className="block text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1 ml-1">Total visits</label>
-                            <input type="number" className="w-full rounded-xl border-2 border-slate-100 bg-slate-50 px-4 py-3 text-slate-800 font-bold outline-none" value={newPkg.totalServices || ''} onChange={e => setNewPkg({...newPkg, totalServices: Number(e.target.value)})} required />
+                            <label className="block text-[11px] font-black uppercase tracking-widest text-slate-500 mb-2 ml-1">MAX VISITS</label>
+                            <input 
+                                type="number" 
+                                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm font-black text-slate-800 focus:bg-white outline-none focus:border-indigo-500" 
+                                value={newPkg.totalServices || ''} 
+                                onChange={e => setNewPkg({...newPkg, totalServices: Number(e.target.value)})} 
+                                required 
+                            />
                         </div>
                     </div>
 
                     <div>
-                        <label className="block text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1 ml-1">Start Date</label>
-                        <input type="date" className="w-full rounded-xl border-2 border-slate-100 bg-slate-50 px-4 py-3 text-slate-800 font-bold outline-none" value={newPkg.startDate} onChange={e => setNewPkg({...newPkg, startDate: e.target.value})} required />
+                        <label className="block text-[11px] font-black uppercase tracking-widest text-slate-500 mb-2 ml-1">START DATE</label>
+                        <div className="relative">
+                            <input 
+                                type="date" 
+                                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 text-sm font-bold text-slate-800 focus:bg-white outline-none focus:border-indigo-500 transition-all" 
+                                value={newPkg.startDate} 
+                                onChange={e => setNewPkg({...newPkg, startDate: e.target.value})} 
+                                required 
+                            />
+                            <Calendar className="absolute right-5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                        </div>
                     </div>
                 </div>
 
                 <button 
                     type="submit" 
                     disabled={loading} 
-                    className="w-full py-4 bg-slate-900 hover:bg-slate-800 text-white font-black text-sm rounded-xl shadow-lg transition-all active:scale-95 border-b-4 border-slate-950"
+                    className="w-full py-5 bg-[#131C2E] hover:bg-[#1A263E] text-white font-black text-sm uppercase rounded-2xl shadow-xl transition-all active:scale-[0.98] border-b-4 border-slate-900 mt-4"
                 >
-                    {loading ? 'Processing...' : 'Submit Plan'}
+                    {loading ? <RefreshCw className="w-5 h-5 animate-spin mx-auto" /> : 'Register Plan'}
                 </button>
             </form>
         </div>
       </div>
 
-      {/* Main List: Higher Density Cards */}
-      <div className="lg:col-span-3 space-y-10">
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 px-2">
+      {/* MAIN LISTING AREA (8 COLUMNS) */}
+      <div className="lg:col-span-8 space-y-10">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 px-1">
             <div>
-                <h2 className="text-3xl font-black text-slate-900 tracking-tight">Active Ledger</h2>
-                <p className="text-slate-400 font-bold text-xs uppercase tracking-widest mt-1">Real-time service tracking</p>
+                <h2 className="text-4xl font-black text-slate-900 tracking-tighter uppercase">Active Ledger</h2>
+                <p className="text-slate-400 font-bold text-xs uppercase tracking-[0.3em] mt-1.5">Real-time Service Entitlements</p>
             </div>
             <div className="relative w-full md:w-72">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
-                <input 
-                    type="text" 
-                    placeholder="Search client..." 
-                    className="w-full pl-10 pr-4 py-3 rounded-2xl border-2 border-slate-100 bg-white focus:outline-none focus:border-indigo-500 font-bold text-xs" 
-                    value={searchTerm} 
-                    onChange={e => setSearchTerm(e.target.value)} 
-                />
+                <input type="text" placeholder="Search client..." className="w-full pl-11 pr-5 py-3.5 rounded-2xl border-2 border-slate-100 bg-white text-sm font-bold focus:outline-none focus:border-indigo-500 transition-all" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
             </div>
         </div>
         
@@ -412,9 +365,9 @@ const ServicePackages: React.FC = () => {
             <div className="animate-in fade-in slide-in-from-bottom-4">
                 <div className="flex items-center gap-2 mb-4 ml-2">
                     <ShieldAlert className="w-4 h-4 text-amber-500" />
-                    <h3 className="text-[10px] font-black text-slate-700 uppercase tracking-[0.2em]">Pending Review ({pendingPackages.length})</h3>
+                    <h3 className="text-[11px] font-black text-slate-600 uppercase tracking-[0.25em]">Pending Review ({pendingPackages.length})</h3>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                     {pendingPackages.map(pkg => renderCard(pkg))}
                 </div>
             </div>
@@ -423,38 +376,44 @@ const ServicePackages: React.FC = () => {
         <div className="animate-in fade-in slide-in-from-bottom-8">
             <div className="flex items-center gap-2 mb-4 ml-2">
                 <CheckCircle2 className="w-4 h-4 text-indigo-600" />
-                <h3 className="text-[10px] font-black text-slate-700 uppercase tracking-[0.2em]">Verified Plans ({activePackages.length})</h3>
+                <h3 className="text-[11px] font-black text-slate-600 uppercase tracking-[0.25em]">Verified Plans ({activePackages.length})</h3>
             </div>
             {activePackages.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                     {activePackages.map(pkg => renderCard(pkg))}
                 </div>
             ) : (
-                <div className="py-20 text-center bg-white rounded-[2rem] border-2 border-dashed border-slate-200">
-                    <p className="text-slate-300 font-black text-xs uppercase tracking-widest">No active plans found</p>
+                <div className="py-24 text-center bg-white rounded-[3rem] border-2 border-dashed border-slate-200">
+                    <p className="text-slate-300 font-black text-sm uppercase tracking-widest italic">No active records found in ledger.</p>
                 </div>
             )}
         </div>
       </div>
 
-      {/* Edit Modal (Polished) */}
+      {/* MODAL: REGISTRY MODIFICATION */}
       {isEditModalOpen && editingPackage && (
-          <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-[200] flex items-center justify-center p-6">
-              <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200">
+          <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-[200] flex items-center justify-center p-4">
+              <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200 border border-slate-200">
                   <div className="bg-slate-900 px-8 py-6 flex justify-between items-center text-white">
-                      <h3 className="font-black text-lg uppercase tracking-tight">Modify Plan</h3>
-                      <button onClick={() => setIsEditModalOpen(false)} className="hover:bg-slate-800 p-2 rounded-full"><X className="w-6 h-6" /></button>
+                      <div>
+                        <h3 className="font-black text-lg uppercase tracking-tight">Modify Registry</h3>
+                        <p className="text-slate-400 text-[10px] font-black uppercase mt-1 tracking-widest">{editingPackage.clientName}</p>
+                      </div>
+                      <button onClick={() => setIsEditModalOpen(false)} className="hover:bg-slate-800 p-2 rounded-full transition-colors"><X className="w-6 h-6" /></button>
                   </div>
                   <form onSubmit={handleUpdatePackage} className="p-8 space-y-6">
-                      <div><label className="block text-[10px] font-black uppercase text-slate-400 mb-1 ml-1">Plan Name</label><input type="text" value={editingPackage.packageName} onChange={e => setEditingPackage({...editingPackage, packageName: e.target.value})} className="w-full rounded-xl border-2 border-slate-100 bg-slate-50 px-4 py-3 font-bold" required /></div>
+                      <div><label className="text-[10px] font-black uppercase text-slate-400 mb-2 ml-1 block">Plan Name</label><input type="text" value={editingPackage.packageName} onChange={e => setEditingPackage({...editingPackage, packageName: e.target.value})} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3.5 text-sm font-black outline-none focus:border-indigo-500" required /></div>
                       <div className="grid grid-cols-2 gap-4">
-                          <div><label className="block text-[10px] font-black uppercase text-slate-400 mb-1 ml-1">Price (₹)</label><input type="number" value={editingPackage.totalCost} onChange={e => setEditingPackage({...editingPackage, totalCost: Number(e.target.value)})} className="w-full rounded-xl border-2 border-slate-100 bg-slate-50 px-4 py-3 font-bold" required /></div>
-                          <div><label className="block text-[10px] font-black uppercase text-slate-400 mb-1 ml-1">Max Capacity</label><input type="number" value={editingPackage.totalServices} onChange={e => setEditingPackage({...editingPackage, totalServices: Number(e.target.value)})} className="w-full rounded-xl border-2 border-slate-100 bg-slate-50 px-4 py-3 font-bold" required /></div>
+                          <div><label className="text-[10px] font-black uppercase text-slate-400 mb-2 ml-1 block">Revenue Val (₹)</label><input type="number" value={editingPackage.totalCost} onChange={e => setEditingPackage({...editingPackage, totalCost: Number(e.target.value)})} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3.5 text-sm font-black outline-none" required /></div>
+                          <div><label className="text-[10px] font-black uppercase text-slate-400 mb-2 ml-1 block">Max Entitlement</label><input type="number" value={editingPackage.totalServices} onChange={e => setEditingPackage({...editingPackage, totalServices: Number(e.target.value)})} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3.5 text-sm font-black outline-none" required /></div>
                       </div>
-                      <div><label className="block text-[10px] font-black uppercase text-indigo-500 mb-1 ml-1">Historical Count</label><input type="number" value={editingPackage.oldServiceNumber || 0} onChange={e => setEditingPackage({...editingPackage, oldServiceNumber: Number(e.target.value)})} className="w-full rounded-xl border-2 border-indigo-100 bg-indigo-50/30 px-4 py-3 font-black text-indigo-800" /></div>
+                      <div className="p-4 bg-indigo-50/50 rounded-2xl border border-indigo-100 shadow-inner">
+                        <label className="text-[10px] font-black uppercase text-indigo-600 mb-2 ml-1 block">Previous Service Count (Used)</label>
+                        <input type="number" value={editingPackage.oldServiceNumber || 0} onChange={e => setEditingPackage({...editingPackage, oldServiceNumber: Number(e.target.value)})} className="w-full rounded-xl border-2 border-indigo-200 bg-white px-4 py-3 text-xl font-black text-indigo-900 outline-none" />
+                      </div>
                       <div className="flex gap-4 pt-4">
-                          <button type="button" onClick={() => setIsEditModalOpen(false)} className="flex-1 py-4 border-2 border-slate-100 text-slate-400 font-black rounded-xl uppercase text-[10px]">Cancel</button>
-                          <button type="submit" disabled={loading} className="flex-[2] py-4 bg-indigo-600 text-white font-black rounded-xl hover:bg-indigo-700 shadow-lg uppercase text-xs">Apply Updates</button>
+                          <button type="button" onClick={() => setIsEditModalOpen(false)} className="flex-1 py-4 text-slate-400 font-black rounded-xl uppercase text-[10px] tracking-widest border border-slate-100 hover:bg-slate-50 transition-colors">Dismiss</button>
+                          <button type="submit" disabled={loading} className="flex-[2] py-4 bg-indigo-600 text-white font-black rounded-xl shadow-xl shadow-indigo-100 uppercase text-xs tracking-widest hover:bg-indigo-700 transition-all active:translate-y-1">Commit Updates</button>
                       </div>
                   </form>
               </div>

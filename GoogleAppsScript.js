@@ -1,6 +1,6 @@
 
 // =====================================================================================
-// ⚠️ MAHAVEER WEB APP - BACKEND SCRIPT (V34 - PACKAGE PLAN UPDATES)
+// ⚠️ MAHAVEER WEB APP - BACKEND SCRIPT (V35 - PACKAGE PLAN DATA FIX)
 // =====================================================================================
 
 function doGet(e) {
@@ -19,6 +19,7 @@ function doGet(e) {
 function getSafeLastRow(sheet, colIndex) {
   var column = colIndex || 2; 
   var lastRow = sheet.getMaxRows();
+  if (lastRow === 0) return 0;
   var values = sheet.getRange(1, column, lastRow).getValues();
   for (var i = values.length - 1; i >= 0; i--) {
     if (values[i][0] && values[i][0].toString().trim() !== "") {
@@ -134,6 +135,7 @@ function doPost(e) {
       try {
           const targetId = String(data.id).trim();
           const lastRow = apptSheet.getLastRow();
+          if (lastRow < 2) return response({error: "No data to delete"});
           const values = apptSheet.getRange(1, 1, lastRow, 1).getValues();
           for (let i = 1; i < values.length; i++) {
               if (String(values[i][0]).trim() === targetId) {
@@ -156,7 +158,8 @@ function doPost(e) {
 
   if (action == 'addPackage') {
       const pkgSheet = getSheet(ss, "PACKAGE PLAN");
-      const newRow = [toSheetDate(data.startDate), data.clientName, data.packageName, data.totalCost, data.totalServices, data.status || 'PENDING', data.oldServiceNumber || 0, data.packageType || 'NEW'];
+      // Column Map: START DATE(A), CLIENT(B), PACKAGE(C), COST(D), TOTAL SRV(E), STATUS(F), OLD SRV #(G), TYPE(H)
+      const newRow = [toSheetDate(data.startDate), data.clientName, data.packageName, data.totalCost, data.totalServices, 'PENDING', data.oldServiceNumber || 0, data.packageType || 'NEW'];
       const nextRow = getSafeLastRow(pkgSheet, 2) + 1;
       pkgSheet.getRange(nextRow, 1, 1, newRow.length).setValues([newRow]);
       pkgSheet.getRange(nextRow, 1).setNumberFormat("dd/mm/yyyy");
@@ -262,7 +265,7 @@ function getTodayInSheetFormat() {
 }
 
 function getEntries(ss) {
-    const sheet = getSheet(ss, "DATA BASE");
+    const sheet = ss.getSheetByName("DATA BASE");
     if (!sheet || sheet.getLastRow() <= 1) return response([]);
     const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 16).getValues();
     return response(data.map((row, index) => ({
@@ -309,9 +312,9 @@ function getPackages(ss) {
       packageName: row[2], 
       totalCost: row[3], 
       totalServices: row[4], 
-      status: row[5] || 'PENDING',
+      status: String(row[5] || 'PENDING').trim().toUpperCase(),
       oldServiceNumber: Number(row[6] || 0),
-      packageType: row[7] || 'NEW'
+      packageType: String(row[7] || 'NEW').trim().toUpperCase()
     })));
 }
 
