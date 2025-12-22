@@ -1,6 +1,6 @@
 
 // =====================================================================================
-// ⚠️ MAHAVEER WEB APP - BACKEND SCRIPT (V28 - APPOINTMENT DELETE CAPABILITY)
+// ⚠️ MAHAVEER WEB APP - BACKEND SCRIPT (V29 - APPOINTMENT SYNC FIX)
 // =====================================================================================
 
 function doGet(e) {
@@ -118,6 +118,34 @@ function doPost(e) {
               dbSheet.deleteRow(rowId);
               return response({status: "success"});
           }
+      } catch(e) { return response({error: e.message}); }
+  }
+
+  if (action == 'addAppointment') {
+      const apptSheet = getSheet(ss, "APPOINTMENT");
+      try {
+          const id = 'appt_' + new Date().getTime();
+          // Col A: S.No (ID), B: Date, C: Name, D: Contacts, E: Address, F: Note, G: Status, H: Branch, I: Time
+          const newRow = [id, toSheetDate(data.date), data.clientName, data.contact, data.address, data.note, data.status || 'PENDING', data.branch, data.time];
+          const nextRow = getSafeLastRow(apptSheet, 2) + 1;
+          apptSheet.getRange(nextRow, 1, 1, newRow.length).setValues([newRow]);
+          apptSheet.getRange(nextRow, 2).setNumberFormat("dd/mm/yyyy");
+          return response({status: "success", id: id});
+      } catch(e) { return response({error: e.message}); }
+  }
+
+  if (action == 'updateAppointmentStatus') {
+      const apptSheet = getSheet(ss, "APPOINTMENT");
+      try {
+          const range = apptSheet.getDataRange();
+          const values = range.getValues();
+          for (let i = 1; i < values.length; i++) {
+              if (values[i][0] == data.id) {
+                  apptSheet.getRange(i + 1, 7).setValue(data.status); // Column G is Status
+                  return response({status: "success"});
+              }
+          }
+          return response({error: "Appointment not found"});
       } catch(e) { return response({error: e.message}); }
   }
 
@@ -242,6 +270,7 @@ function getSheet(ss, name) {
     if (!sheet) {
         sheet = ss.insertSheet(name);
         if (name === "DATA BASE") sheet.appendRow(["DATE","CLIENT NAME","CONTACT","ADDRESS","BRANCH","SERVICE","METHOD","TECH","STATUS","TOTAL BILL","MODE","REMARK","SRV_NO","INVOICE","SIZE","PENDING"]);
+        if (name === "APPOINTMENT") sheet.appendRow(["S.No","Date","Name","Contacts","Address","Note","status","Branch","Time"]);
     }
     return sheet;
 }

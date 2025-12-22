@@ -198,11 +198,19 @@ export const api = {
 
   addAppointment: async (appt: Omit<Appointment, 'id'>) => {
     const formatted = { ...appt, date: toDDMMYYYY(appt.date) };
-    const newAppt = { ...formatted, id: 'temp_' + Date.now() };
-    LOCAL_NEW_APPOINTMENTS.push(newAppt as Appointment);
-    if (isLive) fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'addAppointment', ...formatted }) }).catch(e => console.error(e));
-    else MOCK_APPOINTMENTS.push(newAppt as Appointment);
-    return newAppt;
+    if (isLive) {
+        try {
+            const res = await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'addAppointment', ...formatted }) });
+            const data = await res.json();
+            const newAppt = { ...formatted, id: data.id } as Appointment;
+            LOCAL_NEW_APPOINTMENTS.push(newAppt);
+            return newAppt;
+        } catch (e) { console.error("Sync Error", e); throw e; }
+    } else {
+        const mockAppt = { ...formatted, id: 'temp_' + Date.now() } as Appointment;
+        MOCK_APPOINTMENTS.push(mockAppt);
+        return mockAppt;
+    }
   },
   
   updateAppointmentStatus: async (id: string, status: Appointment['status']) => {
@@ -210,7 +218,11 @@ export const api = {
         const item = DATA_CACHE.appointments.find(a => a.id === id);
         if (item) item.status = status;
     }
-    if (isLive) fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'updateAppointmentStatus', id, status }) });
+    if (isLive) {
+        try {
+            await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'updateAppointmentStatus', id, status }) });
+        } catch (e) { console.error("Update Status Fail", e); throw e; }
+    }
     return true;
   },
 

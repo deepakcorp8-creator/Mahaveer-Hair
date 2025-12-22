@@ -49,8 +49,8 @@ const AppointmentBooking: React.FC = () => {
     setLoading(true);
     try {
         const [apptData, options] = await Promise.all([
-          api.getAppointments(),
-          api.getOptions()
+          api.getAppointments(true),
+          api.getOptions(true)
         ]);
         // Sort: Today first, then Pending, then Future date
         const sorted = apptData.sort((a, b) => {
@@ -102,11 +102,16 @@ const AppointmentBooking: React.FC = () => {
             time: '10:00 AM'
         }); 
         setTimeParts({ hour: '10', minute: '00', period: 'AM' });
+        
+        // POPUP ALERT AS REQUESTED
+        alert("✅ Booking Confirmed! Data saved to Sheet.");
+        
         await loadData();
         // Scroll to top of main container after successful booking
         document.querySelector('main')?.scrollTo({ top: 0, behavior: 'smooth' });
       }
     } catch (err) {
+      alert("Failed to sync booking. Please check connection.");
       console.error(err);
     } finally {
       setLoading(false);
