@@ -145,13 +145,19 @@ export const api = {
   deleteEntry: async (id: string) => {
       if (isLive) {
           try {
-              const res = await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'deleteEntry', id }) });
+              const res = await fetch(GOOGLE_SCRIPT_URL, { 
+                  method: 'POST', 
+                  headers: { 'Content-Type': 'text/plain;charset=utf-8' }, 
+                  body: JSON.stringify({ action: 'deleteEntry', id: String(id) }) 
+              });
               const result = await res.json();
               if (result.error) throw new Error(result.error);
+              DATA_CACHE.entries = null; // Force reload on next fetch
           } catch (e) { console.error("Delete Fail", e); throw e; }
-      }
-      if (DATA_CACHE.entries) {
-          DATA_CACHE.entries = DATA_CACHE.entries.filter(e => e.id !== id);
+      } else {
+        if (DATA_CACHE.entries) {
+            DATA_CACHE.entries = DATA_CACHE.entries.filter(e => e.id !== id);
+        }
       }
       return true;
   },
@@ -240,8 +246,7 @@ export const api = {
             });
             const result = await res.json();
             if (result.error) throw new Error(result.error);
-            // Clear cache to force reload
-            DATA_CACHE.appointments = null;
+            DATA_CACHE.appointments = null; // Force reload
         } catch (e) { 
             console.error("Delete Appt Fail:", e); 
             throw e; 

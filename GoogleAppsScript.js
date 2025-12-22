@@ -1,6 +1,6 @@
 
 // =====================================================================================
-// ⚠️ MAHAVEER WEB APP - BACKEND SCRIPT (V31 - FIX DELETE & TIME)
+// ⚠️ MAHAVEER WEB APP - BACKEND SCRIPT (V32 - FIX DELETE & 1899 TIME)
 // =====================================================================================
 
 function doGet(e) {
@@ -113,19 +113,22 @@ function doPost(e) {
   if (action == 'deleteEntry') {
       const dbSheet = getSheet(ss, "DATA BASE");
       try {
-          const rowId = parseInt(data.id.split('_')[1]);
-          if (rowId > 1) {
+          // Verify ID exists
+          const targetIdString = String(data.id).trim();
+          const rowId = parseInt(targetIdString.split('_')[1]);
+          
+          if (!isNaN(rowId) && rowId > 1 && rowId <= dbSheet.getLastRow()) {
               dbSheet.deleteRow(rowId);
-              return response({status: "success"});
+              return response({status: "success", message: "Deleted row " + rowId});
           }
-      } catch(e) { return response({error: e.message}); }
+          return response({error: "Invalid row index: " + rowId});
+      } catch(e) { return response({error: "Delete logic failed: " + e.message}); }
   }
 
   if (action == 'addAppointment') {
       const apptSheet = getSheet(ss, "APPOINTMENT");
       try {
           const id = 'appt_' + new Date().getTime();
-          // Col A: S.No (ID), B: Date, C: Name, D: Contacts, E: Address, F: Note, G: Status, H: Branch, I: Time
           const newRow = [id, toSheetDate(data.date), data.clientName, data.contact, data.address, data.note, data.status || 'PENDING', data.branch, data.time];
           const nextRow = getSafeLastRow(apptSheet, 2) + 1;
           apptSheet.getRange(nextRow, 1, 1, newRow.length).setValues([newRow]);
@@ -245,7 +248,6 @@ function fromSheetDate(val) {
   if (!val) return "";
   if (Object.prototype.toString.call(val) === '[object Date]') {
      const d = new Date(val);
-     // Handle Google Sheets special dates starting at 1899
      if (d.getFullYear() < 1900) return "";
      return ("0" + d.getDate()).slice(-2) + "/" + ("0" + (d.getMonth() + 1)).slice(-2) + "/" + d.getFullYear();
   }
@@ -255,10 +257,15 @@ function fromSheetDate(val) {
 function fromSheetTime(val) {
     if (!val) return "";
     if (Object.prototype.toString.call(val) === '[object Date]') {
-        // Correctly format time even if year is 1899
         return Utilities.formatDate(val, Session.getScriptTimeZone(), "hh:mm a");
     }
-    return String(val).trim();
+    const strVal = String(val).trim();
+    if (strVal.includes("1899")) {
+        // If it was already converted to string but kept the date, try to extract time
+        const match = strVal.match(/\d{2}:\d{2}:\d{2}/);
+        return match ? match[0] : strVal;
+    }
+    return strVal;
 }
 
 function getTodayInSheetFormat() {

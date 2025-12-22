@@ -89,16 +89,17 @@ const DailyReport: React.FC = () => {
   };
 
   const handleDelete = async (id: string, name: string) => {
+      // ONE CONFIRMATION ONLY
       if (window.confirm(`Are you sure you want to DELETE the entry for "${name}"? This action cannot be undone.`)) {
           setLoading(true);
           try {
               const success = await api.deleteEntry(id);
               if (success) {
-                  alert(`SUCCESS: Entry for "${name}" has been permanently removed from the Database.`);
+                  // No alert on success, just reload data
                   await loadData();
               }
-          } catch (err) {
-              alert("Failed to delete entry.");
+          } catch (err: any) {
+              alert(`❌ Error: ${err.message || "Failed to delete entry from sheet."}`);
               setLoading(false);
           }
       }

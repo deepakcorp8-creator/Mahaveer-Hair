@@ -130,16 +130,18 @@ const AppointmentBooking: React.FC = () => {
   };
 
   const handleDelete = async (id: string, name: string) => {
+      // ONE CONFIRMATION ONLY
       if (window.confirm(`Are you sure you want to DELETE the appointment for "${name}"? This action cannot be undone.`)) {
           setLoading(true);
           try {
               const success = await api.deleteAppointment(id);
               if (success) {
-                  alert(`SUCCESS: Appointment for "${name}" has been deleted from the database.`);
+                  // No success alert here, just reload data
                   await loadData();
               }
-          } catch (e) {
-              alert("Failed to delete appointment.");
+          } catch (e: any) {
+              // Show actual server error if deletion fails
+              alert(`❌ Error: ${e.message || "Failed to delete appointment from sheet."}`);
               setLoading(false);
           }
       }
