@@ -125,21 +125,6 @@ const DailyReport: React.FC = () => {
       setIsSearchExpanded(false);
   };
 
-  const serviceStats = {
-    NEW: dailyEntries.filter(e => e.serviceType === 'NEW').length,
-    SERVICE: dailyEntries.filter(e => e.serviceType === 'SERVICE').length,
-    WASHING: dailyEntries.filter(e => e.serviceType === 'WASHING').length,
-    DEMO: dailyEntries.filter(e => e.serviceType === 'DEMO').length,
-    MUNDAN: dailyEntries.filter(e => e.serviceType === 'MUNDAN').length,
-  };
-
-  const paymentStats = {
-    CASH: dailyEntries.filter(e => e.paymentMethod === 'CASH').reduce((s, e) => s + (Number(e.amount || 0) - Number(e.pendingAmount || 0)), 0),
-    UPI: dailyEntries.filter(e => e.paymentMethod === 'UPI').reduce((s, e) => s + (Number(e.amount || 0) - Number(e.pendingAmount || 0)), 0),
-    CARD: dailyEntries.filter(e => e.paymentMethod === 'CARD').reduce((s, e) => s + (Number(e.amount || 0) - Number(e.pendingAmount || 0)), 0),
-    PENDING: dailyEntries.reduce((s, e) => s + Number(e.pendingAmount || 0), 0),
-  };
-
   const isFilterActive = serviceFilter !== 'ALL' || paymentFilter !== 'ALL';
 
   return (
@@ -191,106 +176,78 @@ const DailyReport: React.FC = () => {
           </div>
       </div>
 
-      {/* ULTRA-MINIMAL FLOATING ACTION ICONS */}
-      <div className="sticky top-[70px] lg:top-4 z-[40] mb-6 flex justify-end gap-3 px-2">
+      {/* ULTRA-MINIMAL FLOATING ACTION ICONS - LEFT ALIGNED & NO WHITE BAR */}
+      <div className="sticky top-[70px] lg:top-4 z-[40] mb-6 flex justify-start items-center gap-3 px-1 h-14">
           {/* SEARCH TRIGGER */}
-          <div className={`flex items-center transition-all duration-500 ease-in-out ${isSearchExpanded ? 'w-full md:w-80' : 'w-12'}`}>
-              {isSearchExpanded && (
-                  <div className="mr-2 w-full animate-in slide-in-from-right-4 fade-in duration-300">
-                    <input 
-                        autoFocus
-                        type="text" 
-                        placeholder="Quick Search Name..." 
-                        value={searchTerm} 
-                        onChange={(e) => setSearchTerm(e.target.value)} 
-                        className="w-full bg-white/80 backdrop-blur-md border-2 border-indigo-500 rounded-2xl px-5 py-3 font-black text-sm shadow-2xl focus:ring-4 focus:ring-indigo-500/20 focus:outline-none placeholder:text-slate-400" 
-                    />
-                  </div>
-              )}
+          <div className={`flex items-center transition-all duration-500 ease-in-out ${isSearchExpanded ? 'w-full md:w-80' : 'w-auto'}`}>
               <button 
                   onClick={() => setIsSearchExpanded(!isSearchExpanded)}
                   className={`p-4 rounded-2xl border-2 flex items-center justify-center shrink-0 transition-all shadow-xl active:scale-95
-                      ${searchTerm || isSearchExpanded ? 'bg-indigo-600 border-indigo-700 text-white' : 'bg-white border-slate-100 text-slate-500 hover:text-indigo-600 hover:border-indigo-200'}`}
+                      ${searchTerm || isSearchExpanded ? 'bg-indigo-600 border-indigo-700 text-white' : 'bg-white border-slate-200 text-slate-500 hover:text-indigo-600 hover:border-indigo-200'}`}
                   title="Search Transaction"
               >
-                  {isSearchExpanded && !searchTerm ? <X className="w-6 h-6" /> : <Search className="w-6 h-6" />}
+                  {isSearchExpanded && !searchTerm ? <X className="w-5 h-5" /> : <Search className="w-5 h-5" />}
               </button>
+              
+              {isSearchExpanded && (
+                  <div className="ml-2 w-full animate-in slide-in-from-left-4 fade-in duration-300">
+                    <input 
+                        autoFocus
+                        type="text" 
+                        placeholder="Type to find..." 
+                        value={searchTerm} 
+                        onChange={(e) => setSearchTerm(e.target.value)} 
+                        className="w-full bg-white/95 backdrop-blur-md border-2 border-indigo-500 rounded-2xl px-5 py-3 font-black text-sm shadow-2xl focus:ring-4 focus:ring-indigo-500/20 focus:outline-none" 
+                    />
+                  </div>
+              )}
           </div>
           
-          {/* FILTER TRIGGER */}
+          {/* FILTER TRIGGER (Always Visible next to Search) */}
           <button 
               onClick={() => setShowFilters(!showFilters)}
-              className={`relative p-4 rounded-2xl border-2 transition-all flex items-center justify-center shadow-xl active:scale-95
-                  ${showFilters || isFilterActive ? 'bg-indigo-600 border-indigo-700 text-white' : 'bg-white border-slate-100 text-slate-500 hover:text-indigo-600 hover:border-indigo-200'}`}
+              className={`relative p-4 rounded-2xl border-2 transition-all flex items-center justify-center shadow-xl active:scale-95 shrink-0
+                  ${showFilters || isFilterActive ? 'bg-indigo-600 border-indigo-700 text-white' : 'bg-white border-slate-200 text-slate-500 hover:text-indigo-600 hover:border-indigo-200'}`}
               title="Filter Categories"
           >
-              <Filter className="w-6 h-6" />
+              <Filter className="w-5 h-5" />
               {isFilterActive && (
-                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-white animate-pulse" />
+                  <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-red-500 rounded-full border-2 border-white animate-pulse" />
               )}
           </button>
 
-          {/* EXPANDABLE FILTER PANEL (Overlays nicely below) */}
+          {/* EXPANDABLE FILTER PANEL */}
           {showFilters && (
-              <div className="absolute top-full right-0 mt-4 p-8 bg-white rounded-[2.5rem] shadow-[0_30px_60px_-12px_rgba(0,0,0,0.25)] border-2 border-indigo-100 animate-in zoom-in-95 duration-300 z-[50] w-full md:w-[450px]">
+              <div className="absolute top-full left-0 mt-4 p-8 bg-white rounded-[2.5rem] shadow-[0_30px_60px_-12px_rgba(0,0,0,0.25)] border-2 border-indigo-100 animate-in zoom-in-95 duration-300 z-[50] w-full md:w-[450px]">
                   <div className="flex items-center justify-between mb-8 pb-4 border-b border-slate-50">
-                      <h3 className="font-black text-slate-800 uppercase tracking-widest text-sm flex items-center">
-                          <Filter className="w-4 h-4 mr-2 text-indigo-600" /> Filter Options
-                      </h3>
-                      <button onClick={() => setShowFilters(false)} className="text-slate-400 hover:text-red-500 transition-colors"><X className="w-5 h-5" /></button>
+                      <h3 className="font-black text-slate-800 uppercase tracking-widest text-sm">Filter Options</h3>
+                      <button onClick={() => setShowFilters(false)} className="text-slate-400 hover:text-red-500"><X className="w-5 h-5" /></button>
                   </div>
-
                   <div className="space-y-6">
                       <div>
-                          <label className="block text-[10px] font-black uppercase text-slate-400 mb-2 ml-1 tracking-widest">Service Category</label>
-                          <div className="relative">
-                              <select 
-                                value={serviceFilter}
-                                onChange={(e) => setServiceFilter(e.target.value)}
-                                className="w-full appearance-none pl-5 pr-12 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-indigo-500 text-sm font-black text-slate-700 outline-none cursor-pointer"
-                              >
-                                  <option value="ALL">All Services</option>
-                                  <option value="NEW">New Patch</option>
-                                  <option value="SERVICE">Service</option>
-                                  <option value="WASHING">Washing</option>
-                                  <option value="DEMO">Demo</option>
-                                  <option value="MUNDAN">Mundan</option>
-                              </select>
-                              <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none" />
-                          </div>
+                          <label className="block text-[10px] font-black uppercase text-slate-400 mb-2 ml-1">Service Category</label>
+                          <select value={serviceFilter} onChange={(e) => setServiceFilter(e.target.value)} className="w-full appearance-none pl-5 pr-12 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-indigo-500 text-sm font-black outline-none">
+                              <option value="ALL">All Services</option>
+                              <option value="NEW">New Patch</option>
+                              <option value="SERVICE">Service</option>
+                              <option value="WASHING">Washing</option>
+                              <option value="DEMO">Demo</option>
+                              <option value="MUNDAN">Mundan</option>
+                          </select>
                       </div>
-
                       <div>
-                          <label className="block text-[10px] font-black uppercase text-slate-400 mb-2 ml-1 tracking-widest">Payment Status</label>
-                          <div className="relative">
-                              <select 
-                                value={paymentFilter}
-                                onChange={(e) => setPaymentFilter(e.target.value)}
-                                className="w-full appearance-none pl-5 pr-12 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-indigo-500 text-sm font-black text-slate-700 outline-none cursor-pointer"
-                              >
-                                  <option value="ALL">All Payments</option>
-                                  <option value="CASH">Cash</option>
-                                  <option value="UPI">UPI</option>
-                                  <option value="CARD">Card</option>
-                                  <option value="PENDING">Pending</option>
-                              </select>
-                              <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none" />
-                          </div>
+                          <label className="block text-[10px] font-black uppercase text-slate-400 mb-2 ml-1">Payment Status</label>
+                          <select value={paymentFilter} onChange={(e) => setPaymentFilter(e.target.value)} className="w-full appearance-none pl-5 pr-12 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-indigo-500 text-sm font-black outline-none">
+                              <option value="ALL">All Payments</option>
+                              <option value="CASH">Cash</option>
+                              <option value="UPI">UPI</option>
+                              <option value="CARD">Card</option>
+                              <option value="PENDING">Pending</option>
+                          </select>
                       </div>
-
                       <div className="pt-4 flex gap-3">
-                          <button 
-                              onClick={resetFilters}
-                              className="flex-1 py-4 bg-slate-100 hover:bg-red-50 text-slate-500 hover:text-red-600 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2 border border-slate-200"
-                          >
-                              <RotateCcw className="w-4 h-4" /> Reset
-                          </button>
-                          <button 
-                              onClick={() => setShowFilters(false)}
-                              className="flex-[2] py-4 bg-indigo-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-lg shadow-indigo-200 hover:bg-indigo-700"
-                          >
-                              Apply Filters
-                          </button>
+                          <button onClick={resetFilters} className="flex-1 py-4 bg-slate-100 rounded-2xl font-black text-[10px] uppercase tracking-widest">Reset</button>
+                          <button onClick={() => setShowFilters(false)} className="flex-[2] py-4 bg-indigo-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-indigo-200">Apply</button>
                       </div>
                   </div>
               </div>
@@ -312,9 +269,9 @@ const DailyReport: React.FC = () => {
                  </thead>
                  <tbody className="divide-y divide-slate-100">
                      {loading ? (
-                         <tr><td colSpan={6} className="text-center py-16 font-bold text-slate-400">Syncing with database...</td></tr>
+                         <tr><td colSpan={6} className="text-center py-16 font-bold text-slate-400 italic animate-pulse tracking-widest">Syncing with database...</td></tr>
                      ) : filteredData.length === 0 ? (
-                         <tr><td colSpan={6} className="text-center py-20 text-slate-400 font-black italic tracking-widest opacity-60 uppercase text-xs">No matching records found</td></tr>
+                         <tr><td colSpan={6} className="text-center py-20 text-slate-400 font-black italic opacity-60 uppercase text-xs">No matching records found</td></tr>
                      ) : (
                          filteredData.map((entry, idx) => (
                              <tr key={idx} className="hover:bg-indigo-50/30 transition-colors group">
@@ -379,11 +336,6 @@ const DailyReport: React.FC = () => {
                   
                   <form onSubmit={handleEditSubmit} className="p-10 space-y-8">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                          <div className="md:col-span-2 flex items-center gap-4">
-                              <span className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.4em] bg-indigo-50 px-4 py-1.5 rounded-full border border-indigo-100">Transaction Core</span>
-                              <div className="h-px bg-slate-100 flex-1"></div>
-                          </div>
-
                           <div>
                               <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">Staff Member</label>
                               <select 

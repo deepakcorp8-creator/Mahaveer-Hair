@@ -1,6 +1,6 @@
 
 // =====================================================================================
-// ⚠️ MAHAVEER WEB APP - BACKEND SCRIPT (V32 - FIX DELETE & 1899 TIME)
+// ⚠️ MAHAVEER WEB APP - BACKEND SCRIPT (V34 - PACKAGE PLAN UPDATES)
 // =====================================================================================
 
 function doGet(e) {
@@ -36,50 +36,29 @@ function createInvoice(data) {
     
     const date = data.date || new Date().toLocaleDateString();
     const html = `
-      <div style="font-family: Arial, sans-serif; padding: 40px; border: 1px solid #eee;">
-        <h1 style="color: #B51A2B; text-align: center;">MAHAVEER HAIR SOLUTION</h1>
-        <p style="text-align: center; font-size: 12px; color: #666;">Official Service Invoice</p>
-        <hr/>
-        <table style="width: 100%; margin-top: 20px;">
-          <tr>
-            <td><strong>Client:</strong> ${data.clientName}</td>
-            <td style="text-align: right;"><strong>Date:</strong> ${date}</td>
-          </tr>
-          <tr>
-            <td><strong>Contact:</strong> ${data.contactNo}</td>
-            <td style="text-align: right;"><strong>Branch:</strong> ${data.branch}</td>
-          </tr>
+      <div style="font-family: Arial, sans-serif; padding: 30px;">
+        <h1 style="color: #B51A2B; text-align: center; margin-bottom: 5px;">MAHAVEER HAIR SOLUTION</h1>
+        <p style="text-align: center; font-size: 10px; color: #666; margin-top: 0;">Official Service Invoice</p>
+        <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;"/>
+        <table style="width: 100%; font-size: 12px;">
+          <tr><td><strong>Client:</strong> ${data.clientName}</td><td style="text-align: right;"><strong>Date:</strong> ${date}</td></tr>
+          <tr><td><strong>Contact:</strong> ${data.contactNo}</td><td style="text-align: right;"><strong>Branch:</strong> ${data.branch || 'RPR'}</td></tr>
         </table>
-        <table style="width: 100%; margin-top: 30px; border-collapse: collapse;">
-          <tr style="background: #f8f8f8;">
-            <th style="padding: 10px; border: 1px solid #ddd; text-align: left;">Description</th>
-            <th style="padding: 10px; border: 1px solid #ddd; text-align: right;">Amount</th>
-          </tr>
-          <tr>
-            <td style="padding: 10px; border: 1px solid #ddd;">${data.serviceType} (${data.patchMethod})</td>
-            <td style="padding: 10px; border: 1px solid #ddd; text-align: right;">₹${data.amount}</td>
-          </tr>
-          <tr>
-            <td style="padding: 10px; border: 1px solid #ddd; text-align: right;"><strong>Total Paid</strong></td>
-            <td style="padding: 10px; border: 1px solid #ddd; text-align: right;"><strong>₹${data.amount - (data.pendingAmount || 0)}</strong></td>
-          </tr>
-          <tr>
-            <td style="padding: 10px; border: 1px solid #ddd; text-align: right; color: red;"><strong>Pending</strong></td>
-            <td style="padding: 10px; border: 1px solid #ddd; text-align: right; color: red;"><strong>₹${data.pendingAmount || 0}</strong></td>
-          </tr>
+        <table style="width: 100%; margin-top: 30px; border-collapse: collapse; font-size: 12px;">
+          <tr style="background: #f8f8f8;"><th style="padding: 10px; border: 1px solid #ddd; text-align: left;">Service Description</th><th style="padding: 10px; border: 1px solid #ddd; text-align: right;">Amount</th></tr>
+          <tr><td style="padding: 12px 10px; border: 1px solid #ddd;">${data.serviceType} (${data.patchMethod || 'Standard'})${data.patchSize ? '<br/><small>Size: ' + data.patchSize + '</small>' : ''}</td><td style="padding: 12px 10px; border: 1px solid #ddd; text-align: right;">₹${data.amount}</td></tr>
+          <tr><td style="padding: 10px; border: 1px solid #ddd; text-align: right;"><strong>Total Paid</strong></td><td style="padding: 10px; border: 1px solid #ddd; text-align: right;"><strong>₹${data.amount - (data.pendingAmount || 0)}</strong></td></tr>
+          ${(data.pendingAmount > 0) ? `<tr><td style="padding: 10px; border: 1px solid #ddd; text-align: right; color: #dc2626;"><strong>Outstanding Due</strong></td><td style="padding: 10px; border: 1px solid #ddd; text-align: right; color: #dc2626;"><strong>₹${data.pendingAmount}</strong></td></tr>` : ''}
         </table>
-        <p style="margin-top: 50px; font-size: 10px; color: #888; text-align: center;">This is a system-generated invoice. No signature required.</p>
+        <div style="margin-top: 50px; text-align: center;"><p style="font-size: 9px; color: #999;">This is a system generated invoice. No physical signature required.</p><p style="font-size: 10px; color: #333; font-weight: bold;">Thank you for choosing Mahaveer Hair Solution!</p></div>
       </div>
     `;
-    
-    const blob = Utilities.newBlob(html, 'text/html', `Invoice_${data.clientName}_${Date.now()}.html`);
-    const pdf = folder.createFile(blob.getAs('application/pdf'));
-    pdf.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-    
-    return "https://drive.google.com/uc?export=view&id=" + pdf.getId();
-  } catch (e) {
-    return "Error: " + e.toString();
-  }
+    const htmlBlob = Utilities.newBlob(html, 'text/html', `Inv_${data.clientName}.html`);
+    const pdfBlob = htmlBlob.getAs('application/pdf');
+    const file = folder.createFile(pdfBlob).setName(`Invoice_${data.clientName}_${Date.now()}.pdf`);
+    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    return "https://drive.google.com/uc?export=view&id=" + file.getId();
+  } catch (e) { return "Error generating PDF: " + e.toString(); }
 }
 
 function doPost(e) {
@@ -113,16 +92,14 @@ function doPost(e) {
   if (action == 'deleteEntry') {
       const dbSheet = getSheet(ss, "DATA BASE");
       try {
-          // Verify ID exists
           const targetIdString = String(data.id).trim();
           const rowId = parseInt(targetIdString.split('_')[1]);
-          
           if (!isNaN(rowId) && rowId > 1 && rowId <= dbSheet.getLastRow()) {
               dbSheet.deleteRow(rowId);
-              return response({status: "success", message: "Deleted row " + rowId});
+              return response({status: "success"});
           }
-          return response({error: "Invalid row index: " + rowId});
-      } catch(e) { return response({error: "Delete logic failed: " + e.message}); }
+          return response({error: "Invalid row index"});
+      } catch(e) { return response({error: e.message}); }
   }
 
   if (action == 'addAppointment') {
@@ -144,7 +121,7 @@ function doPost(e) {
           const values = range.getValues();
           for (let i = 1; i < values.length; i++) {
               if (String(values[i][0]).trim() === String(data.id).trim()) {
-                  apptSheet.getRange(i + 1, 7).setValue(data.status); // Column G is Status
+                  apptSheet.getRange(i + 1, 7).setValue(data.status);
                   return response({status: "success"});
               }
           }
@@ -156,21 +133,16 @@ function doPost(e) {
       const apptSheet = getSheet(ss, "APPOINTMENT");
       try {
           const targetId = String(data.id).trim();
-          if (!targetId) return response({error: "No ID provided for deletion"});
-          
           const lastRow = apptSheet.getLastRow();
-          if (lastRow < 2) return response({error: "Sheet is empty"});
-          
           const values = apptSheet.getRange(1, 1, lastRow, 1).getValues();
           for (let i = 1; i < values.length; i++) {
-              const currentCellId = String(values[i][0]).trim();
-              if (currentCellId === targetId) {
+              if (String(values[i][0]).trim() === targetId) {
                   apptSheet.deleteRow(i + 1);
-                  return response({status: "success", deletedId: targetId});
+                  return response({status: "success"});
               }
           }
-          return response({error: "Appointment ID [" + targetId + "] not found in sheet"});
-      } catch(e) { return response({error: "System Error: " + e.message}); }
+          return response({error: "ID not found"});
+      } catch(e) { return response({error: e.message}); }
   }
 
   if (action == 'addClient') {
@@ -182,23 +154,47 @@ function doPost(e) {
     return response({status: "success"});
   }
 
-  if (action == 'editClient') {
-      const clientSheet = getSheet(ss, "CLIENT MASTER");
-      const clients = clientSheet.getDataRange().getValues();
-      let rowIndex = -1;
-      for (let i = 1; i < clients.length; i++) {
-          if (clients[i][0] == data.originalName) {
-              rowIndex = i + 1;
-              break;
+  if (action == 'addPackage') {
+      const pkgSheet = getSheet(ss, "PACKAGE PLAN");
+      const newRow = [toSheetDate(data.startDate), data.clientName, data.packageName, data.totalCost, data.totalServices, data.status || 'PENDING', data.oldServiceNumber || 0, data.packageType || 'NEW'];
+      const nextRow = getSafeLastRow(pkgSheet, 2) + 1;
+      pkgSheet.getRange(nextRow, 1, 1, newRow.length).setValues([newRow]);
+      pkgSheet.getRange(nextRow, 1).setNumberFormat("dd/mm/yyyy");
+      return response({status: "success"});
+  }
+
+  if (action == 'editPackage') {
+      const pkgSheet = getSheet(ss, "PACKAGE PLAN");
+      try {
+          const rowId = parseInt(data.id.split('_')[1]);
+          if (rowId > 1) {
+              const updatedRow = [toSheetDate(data.startDate), data.clientName, data.packageName, data.totalCost, data.totalServices, data.status || 'PENDING', data.oldServiceNumber || 0, data.packageType || 'NEW'];
+              pkgSheet.getRange(rowId, 1, 1, updatedRow.length).setValues([updatedRow]);
+              return response({status: "success"});
           }
-      }
-      if (rowIndex !== -1) {
-          const updatedRow = [data.name, data.contact, data.address, data.gender, data.email, toSheetDate(data.dob)];
-          clientSheet.getRange(rowIndex, 1, 1, 6).setValues([updatedRow]);
-          clientSheet.getRange(rowIndex, 6).setNumberFormat("dd/mm/yyyy");
-          return response({status: "success"});
-      }
-      return response({error: "Client not found"});
+      } catch(e) { return response({error: e.message}); }
+  }
+
+  if (action == 'updatePackageStatus') {
+      const pkgSheet = getSheet(ss, "PACKAGE PLAN");
+      try {
+          const rowId = parseInt(data.id.split('_')[1]);
+          if (rowId > 1) {
+              pkgSheet.getRange(rowId, 6).setValue(data.status);
+              return response({status: "success"});
+          }
+      } catch(e) { return response({error: e.message}); }
+  }
+
+  if (action == 'deletePackage') {
+      const pkgSheet = getSheet(ss, "PACKAGE PLAN");
+      try {
+          const rowId = parseInt(data.id.split('_')[1]);
+          if (rowId > 1) {
+              pkgSheet.deleteRow(rowId);
+              return response({status: "success"});
+          }
+      } catch(e) { return response({error: e.message}); }
   }
 
   if (action == 'updatePaymentFollowUp') {
@@ -219,11 +215,9 @@ function doPost(e) {
               dbSheet.getRange(rowId, 16).setValue(data.pendingAmount);
               dbSheet.getRange(rowId, 11).setValue(data.paymentMethod);
               dbSheet.getRange(rowId, 12).setValue(String(data.remark || ""));
-              
               const today = getTodayInSheetFormat();
               const nextCall = toSheetDate(data.nextCallDate);
               const collectionRow = [data.id, today, data.clientName, data.contactNo || '', data.address || '', data.pendingAmount || 0, Number(data.paidAmount || 0), screenshotUrl, String(data.remark || ""), nextCall || '', new Date().toString()];
-
               const nextC = getSafeLastRow(collectionSheet, 3) + 1;
               collectionSheet.getRange(nextC, 1, 1, collectionRow.length).setValues([collectionRow]);
               return response({status: "success", screenshotUrl: screenshotUrl});
@@ -256,15 +250,9 @@ function fromSheetDate(val) {
 
 function fromSheetTime(val) {
     if (!val) return "";
-    if (Object.prototype.toString.call(val) === '[object Date]') {
-        return Utilities.formatDate(val, Session.getScriptTimeZone(), "hh:mm a");
-    }
+    if (Object.prototype.toString.call(val) === '[object Date]') return Utilities.formatDate(val, Session.getScriptTimeZone(), "hh:mm a");
     const strVal = String(val).trim();
-    if (strVal.includes("1899")) {
-        // If it was already converted to string but kept the date, try to extract time
-        const match = strVal.match(/\d{2}:\d{2}:\d{2}/);
-        return match ? match[0] : strVal;
-    }
+    if (strVal.includes("1899")) { const match = strVal.match(/\d{2}:\d{2}:\d{2}/); return match ? match[0] : strVal; }
     return strVal;
 }
 
@@ -294,6 +282,7 @@ function getSheet(ss, name) {
         sheet = ss.insertSheet(name);
         if (name === "DATA BASE") sheet.appendRow(["DATE","CLIENT NAME","CONTACT","ADDRESS","BRANCH","SERVICE","METHOD","TECH","STATUS","TOTAL BILL","MODE","REMARK","SRV_NO","INVOICE","SIZE","PENDING"]);
         if (name === "APPOINTMENT") sheet.appendRow(["S.No","Date","Name","Contacts","Address","Note","status","Branch","Time"]);
+        if (name === "PACKAGE PLAN") sheet.appendRow(["START DATE","CLIENT NAME","PACKAGE PLAN","TOTAL COST","TOTAL SERVICES","STATUS","OLD SERVICE NUMBER","PACKAGE TYPE"]);
     }
     return sheet;
 }
@@ -303,27 +292,26 @@ function getOptions(ss) {
     const techSheet = getSheet(ss, "EMPLOYEE DETAILS");
     const itemSheet = getSheet(ss, "ITEM MASTER");
     let clients = [], technicians = [], items = [];
-    if (clientSheet && clientSheet.getLastRow() > 1) {
-        clients = clientSheet.getRange(2, 1, clientSheet.getLastRow()-1, 6).getValues().filter(r => r[0])
-          .map(row => ({ name: row[0], contact: row[1], address: row[2], gender: row[3], email: row[4], dob: fromSheetDate(row[5]) }));
-    }
-    if (techSheet && techSheet.getLastRow() > 1) {
-        technicians = techSheet.getRange(2, 1, techSheet.getLastRow()-1, 2).getValues().filter(r => r[0])
-          .map(row => ({ name: row[0], contact: row[1] }));
-    }
-    if (itemSheet && itemSheet.getLastRow() > 1) {
-        items = itemSheet.getRange(2, 1, itemSheet.getLastRow()-1, 3).getValues().filter(r => r[0])
-          .map(row => ({ code: row[0], name: row[1], category: row[2] }));
-    }
+    if (clientSheet && clientSheet.getLastRow() > 1) { clients = clientSheet.getRange(2, 1, clientSheet.getLastRow()-1, 6).getValues().filter(r => r[0]).map(row => ({ name: row[0], contact: row[1], address: row[2], gender: row[3], email: row[4], dob: fromSheetDate(row[5]) })); }
+    if (techSheet && techSheet.getLastRow() > 1) { technicians = techSheet.getRange(2, 1, techSheet.getLastRow()-1, 2).getValues().filter(r => r[0]).map(row => ({ name: row[0], contact: row[1] })); }
+    if (itemSheet && itemSheet.getLastRow() > 1) { items = itemSheet.getRange(2, 1, itemSheet.getLastRow()-1, 3).getValues().filter(r => r[0]).map(row => ({ code: row[0], name: row[1], category: row[2] })); }
     return response({ clients, technicians, items });
 }
 
 function getPackages(ss) {
     const sheet = getSheet(ss, "PACKAGE PLAN");
     if (!sheet || sheet.getLastRow() <= 1) return response([]);
-    const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 6).getValues();
+    const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 8).getValues();
     return response(data.map((row, index) => ({
-      id: 'row_' + (index + 2), startDate: fromSheetDate(row[0]), clientName: row[1], packageName: row[2], totalCost: row[3], totalServices: row[4], status: row[5] || 'PENDING' 
+      id: 'row_' + (index + 2), 
+      startDate: fromSheetDate(row[0]), 
+      clientName: row[1], 
+      packageName: row[2], 
+      totalCost: row[3], 
+      totalServices: row[4], 
+      status: row[5] || 'PENDING',
+      oldServiceNumber: Number(row[6] || 0),
+      packageType: row[7] || 'NEW'
     })));
 }
 
@@ -331,26 +319,12 @@ function getAppointments(ss) {
     const sheet = getSheet(ss, "APPOINTMENT");
     if (!sheet || sheet.getLastRow() <= 1) return response([]);
     const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 9).getValues();
-    return response(data.map((row) => ({
-      id: String(row[0]), 
-      date: fromSheetDate(row[1]), 
-      clientName: row[2], 
-      contact: row[3], 
-      address: row[4], 
-      note: row[5], 
-      status: row[6] || 'PENDING', 
-      branch: row[7] || '', 
-      time: fromSheetTime(row[8]) 
-    })));
+    return response(data.map((row) => ({ id: String(row[0]), date: fromSheetDate(row[1]), clientName: row[2], contact: row[3], address: row[4], note: row[5], status: row[6] || 'PENDING', branch: row[7] || '', time: fromSheetTime(row[8]) })));
 }
 
 function getUsers(ss) {
     const sheet = getSheet(ss, "LOGIN");
     if (!sheet || sheet.getLastRow() <= 1) return response([]);
     const data = sheet.getDataRange().getValues();
-    return response(data.slice(1).map(row => ({ 
-      username: row[0], password: row[1], role: row[2], department: row[3], permissions: row[4], dpUrl: row[5], gender: row[6], 
-      dob: fromSheetDate(row[7]), 
-      address: row[8] 
-    })));
+    return response(data.slice(1).map(row => ({ username: row[0], password: row[1], role: row[2], department: row[3], permissions: row[4], dpUrl: row[5], gender: row[6], dob: fromSheetDate(row[7]), address: row[8] })));
 }

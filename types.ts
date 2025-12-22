@@ -89,4 +89,6 @@ export interface ServicePackage {
   totalServices: number;
   startDate: string;
   status: 'APPROVED' | 'ACTIVE' | 'EXPIRED' | 'COMPLETED' | 'PENDING' | 'REJECTED';
+  oldServiceNumber: number; // Col G
+  packageType: 'NEW' | 'OLD'; // Col H
 }

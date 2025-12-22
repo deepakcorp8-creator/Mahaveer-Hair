@@ -247,10 +247,7 @@ export const api = {
             const result = await res.json();
             if (result.error) throw new Error(result.error);
             DATA_CACHE.appointments = null; // Force reload
-        } catch (e) { 
-            console.error("Delete Appt Fail:", e); 
-            throw e; 
-        }
+        } catch (e) { console.error("Delete Appt Fail:", e); throw e; }
     } else {
         if (DATA_CACHE.appointments) {
             DATA_CACHE.appointments = DATA_CACHE.appointments.filter(a => a.id !== id);
@@ -267,7 +264,13 @@ export const api = {
               const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getPackages&t=${now}`);
               const data = await response.json();
               if (Array.isArray(data)) {
-                  const formattedData = data.map((pkg: any) => ({ ...pkg, startDate: normalizeToISO(pkg.startDate), status: pkg.status ? pkg.status : 'PENDING' }));
+                  const formattedData = data.map((pkg: any) => ({ 
+                      ...pkg, 
+                      startDate: normalizeToISO(pkg.startDate), 
+                      status: pkg.status ? pkg.status : 'PENDING',
+                      oldServiceNumber: Number(pkg.oldServiceNumber || 0),
+                      packageType: pkg.packageType || 'NEW'
+                  }));
                   DATA_CACHE.packages = formattedData;
                   DATA_CACHE.lastFetch['packages'] = now;
                   return formattedData;
@@ -315,11 +318,21 @@ export const api = {
       if (!pkg) return null;
       const entries = await api.getEntries();
       const pkgStartDate = new Date(pkg.startDate); pkgStartDate.setHours(0,0,0,0);
-      const usedCount = entries.filter((e: any) => {
+      
+      // Used Count = Old Services + Database Records since start
+      const dbUsedCount = entries.filter((e: any) => {
           const entryDate = new Date(e.date); entryDate.setHours(0,0,0,0);
           return (e.clientName.trim().toLowerCase() === normalizedName && entryDate >= pkgStartDate && (e.serviceType === 'SERVICE') && (e.workStatus === 'DONE' || e.workStatus === 'PENDING_APPROVAL'));
       }).length;
-      return { package: pkg, usedCount, currentServiceNumber: usedCount + 1, isExpired: usedCount + 1 > pkg.totalServices, remaining: Math.max(0, pkg.totalServices - usedCount) };
+
+      const totalUsedCount = (pkg.oldServiceNumber || 0) + dbUsedCount;
+      return { 
+          package: pkg, 
+          usedCount: totalUsedCount, 
+          currentServiceNumber: totalUsedCount + 1, 
+          isExpired: totalUsedCount + 1 > pkg.totalServices, 
+          remaining: Math.max(0, pkg.totalServices - totalUsedCount) 
+      };
   },
 
   getUsers: async () => {
