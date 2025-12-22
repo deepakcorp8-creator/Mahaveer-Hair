@@ -233,19 +233,23 @@ export const api = {
   deleteAppointment: async (id: string) => {
     if (isLive) {
         try {
-            const res = await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'deleteAppointment', id }) });
+            const res = await fetch(GOOGLE_SCRIPT_URL, { 
+                method: 'POST', 
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' }, 
+                body: JSON.stringify({ action: 'deleteAppointment', id: String(id) }) 
+            });
             const result = await res.json();
-            if (result.error) {
-                console.error("Server Error on Delete:", result.error);
-                throw new Error(result.error);
-            }
+            if (result.error) throw new Error(result.error);
+            // Clear cache to force reload
+            DATA_CACHE.appointments = null;
         } catch (e) { 
             console.error("Delete Appt Fail:", e); 
             throw e; 
         }
-    }
-    if (DATA_CACHE.appointments) {
-        DATA_CACHE.appointments = DATA_CACHE.appointments.filter(a => a.id !== id);
+    } else {
+        if (DATA_CACHE.appointments) {
+            DATA_CACHE.appointments = DATA_CACHE.appointments.filter(a => a.id !== id);
+        }
     }
     return true;
   },

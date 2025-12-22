@@ -1,6 +1,6 @@
 
 // =====================================================================================
-// ⚠️ MAHAVEER WEB APP - BACKEND SCRIPT (V30 - ROBUST DELETE SYNC)
+// ⚠️ MAHAVEER WEB APP - BACKEND SCRIPT (V31 - FIX DELETE & TIME)
 // =====================================================================================
 
 function doGet(e) {
@@ -153,17 +153,21 @@ function doPost(e) {
       const apptSheet = getSheet(ss, "APPOINTMENT");
       try {
           const targetId = String(data.id).trim();
-          const range = apptSheet.getDataRange();
-          const values = range.getValues();
+          if (!targetId) return response({error: "No ID provided for deletion"});
+          
+          const lastRow = apptSheet.getLastRow();
+          if (lastRow < 2) return response({error: "Sheet is empty"});
+          
+          const values = apptSheet.getRange(1, 1, lastRow, 1).getValues();
           for (let i = 1; i < values.length; i++) {
               const currentCellId = String(values[i][0]).trim();
               if (currentCellId === targetId) {
                   apptSheet.deleteRow(i + 1);
-                  return response({status: "success"});
+                  return response({status: "success", deletedId: targetId});
               }
           }
-          return response({error: "Appointment ID " + targetId + " not found in sheet"});
-      } catch(e) { return response({error: e.message}); }
+          return response({error: "Appointment ID [" + targetId + "] not found in sheet"});
+      } catch(e) { return response({error: "System Error: " + e.message}); }
   }
 
   if (action == 'addClient') {
@@ -241,9 +245,20 @@ function fromSheetDate(val) {
   if (!val) return "";
   if (Object.prototype.toString.call(val) === '[object Date]') {
      const d = new Date(val);
+     // Handle Google Sheets special dates starting at 1899
+     if (d.getFullYear() < 1900) return "";
      return ("0" + d.getDate()).slice(-2) + "/" + ("0" + (d.getMonth() + 1)).slice(-2) + "/" + d.getFullYear();
   }
   return String(val).trim();
+}
+
+function fromSheetTime(val) {
+    if (!val) return "";
+    if (Object.prototype.toString.call(val) === '[object Date]') {
+        // Correctly format time even if year is 1899
+        return Utilities.formatDate(val, Session.getScriptTimeZone(), "hh:mm a");
+    }
+    return String(val).trim();
 }
 
 function getTodayInSheetFormat() {
@@ -310,7 +325,15 @@ function getAppointments(ss) {
     if (!sheet || sheet.getLastRow() <= 1) return response([]);
     const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 9).getValues();
     return response(data.map((row) => ({
-      id: row[0], date: fromSheetDate(row[1]), clientName: row[2], contact: row[3], address: row[4], note: row[5], status: row[6] || 'PENDING', branch: row[7] || '', time: row[8] ? String(row[8]) : '' 
+      id: String(row[0]), 
+      date: fromSheetDate(row[1]), 
+      clientName: row[2], 
+      contact: row[3], 
+      address: row[4], 
+      note: row[5], 
+      status: row[6] || 'PENDING', 
+      branch: row[7] || '', 
+      time: fromSheetTime(row[8]) 
     })));
 }
 
