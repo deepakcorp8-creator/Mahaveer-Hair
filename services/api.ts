@@ -283,26 +283,54 @@ export const api = {
   addPackage: async (pkg: Omit<ServicePackage, 'id'>) => {
       DATA_CACHE.packages = null;
       const formatted = { ...pkg, startDate: toDDMMYYYY(pkg.startDate) };
-      if (isLive) await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'addPackage', ...formatted, status: 'PENDING' }) });
+      if (isLive) {
+        const res = await fetch(GOOGLE_SCRIPT_URL, { 
+            method: 'POST', 
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' }, 
+            body: JSON.stringify({ action: 'addPackage', ...formatted, status: 'PENDING' }) 
+        });
+        return await res.json();
+      }
       return true;
   },
 
   updatePackageStatus: async (id: string, status: ServicePackage['status']) => {
       DATA_CACHE.packages = null;
-      if (isLive) await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'updatePackageStatus', id, status }) });
+      if (isLive) {
+          const res = await fetch(GOOGLE_SCRIPT_URL, { 
+            method: 'POST', 
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' }, 
+            body: JSON.stringify({ action: 'updatePackageStatus', id, status }) 
+          });
+          return await res.json();
+      }
       return true;
   },
   
   deletePackage: async (id: string) => {
       DATA_CACHE.packages = null;
-      if (isLive) await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'deletePackage', id }) });
+      if (isLive) {
+          const res = await fetch(GOOGLE_SCRIPT_URL, { 
+            method: 'POST', 
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' }, 
+            body: JSON.stringify({ action: 'deletePackage', id }) 
+          });
+          return await res.json();
+      }
       return true;
   },
 
   editPackage: async (pkg: ServicePackage) => {
       DATA_CACHE.packages = null;
       const formatted = { ...pkg, startDate: toDDMMYYYY(pkg.startDate) };
-      if (isLive) await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'editPackage', ...formatted }) });
+      if (isLive) {
+        const res = await fetch(GOOGLE_SCRIPT_URL, { 
+            method: 'POST', 
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' }, 
+            body: JSON.stringify({ action: 'editPackage', ...formatted }) 
+        });
+        return await res.json();
+      }
       return true;
   },
 
@@ -319,7 +347,6 @@ export const api = {
       const entries = await api.getEntries();
       const pkgStartDate = new Date(pkg.startDate); pkgStartDate.setHours(0,0,0,0);
       
-      // Used Count = Old Services + Database Records since start
       const dbUsedCount = entries.filter((e: any) => {
           const entryDate = new Date(e.date); entryDate.setHours(0,0,0,0);
           return (e.clientName.trim().toLowerCase() === normalizedName && entryDate >= pkgStartDate && (e.serviceType === 'SERVICE') && (e.workStatus === 'DONE' || e.workStatus === 'PENDING_APPROVAL'));
