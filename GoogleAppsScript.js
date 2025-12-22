@@ -1,6 +1,6 @@
 
 // =====================================================================================
-// ⚠️ MAHAVEER WEB APP - BACKEND SCRIPT (V29 - APPOINTMENT SYNC FIX)
+// ⚠️ MAHAVEER WEB APP - BACKEND SCRIPT (V30 - ROBUST DELETE SYNC)
 // =====================================================================================
 
 function doGet(e) {
@@ -140,7 +140,7 @@ function doPost(e) {
           const range = apptSheet.getDataRange();
           const values = range.getValues();
           for (let i = 1; i < values.length; i++) {
-              if (values[i][0] == data.id) {
+              if (String(values[i][0]).trim() === String(data.id).trim()) {
                   apptSheet.getRange(i + 1, 7).setValue(data.status); // Column G is Status
                   return response({status: "success"});
               }
@@ -152,16 +152,17 @@ function doPost(e) {
   if (action == 'deleteAppointment') {
       const apptSheet = getSheet(ss, "APPOINTMENT");
       try {
-          const id = data.id;
+          const targetId = String(data.id).trim();
           const range = apptSheet.getDataRange();
           const values = range.getValues();
           for (let i = 1; i < values.length; i++) {
-              if (values[i][0] == id) {
+              const currentCellId = String(values[i][0]).trim();
+              if (currentCellId === targetId) {
                   apptSheet.deleteRow(i + 1);
                   return response({status: "success"});
               }
           }
-          return response({error: "Appointment not found"});
+          return response({error: "Appointment ID " + targetId + " not found in sheet"});
       } catch(e) { return response({error: e.message}); }
   }
 

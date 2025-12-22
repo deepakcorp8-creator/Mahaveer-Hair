@@ -145,7 +145,9 @@ export const api = {
   deleteEntry: async (id: string) => {
       if (isLive) {
           try {
-              await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'deleteEntry', id }) });
+              const res = await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'deleteEntry', id }) });
+              const result = await res.json();
+              if (result.error) throw new Error(result.error);
           } catch (e) { console.error("Delete Fail", e); throw e; }
       }
       if (DATA_CACHE.entries) {
@@ -220,7 +222,9 @@ export const api = {
     }
     if (isLive) {
         try {
-            await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'updateAppointmentStatus', id, status }) });
+            const res = await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'updateAppointmentStatus', id, status }) });
+            const result = await res.json();
+            if (result.error) throw new Error(result.error);
         } catch (e) { console.error("Update Status Fail", e); throw e; }
     }
     return true;
@@ -229,8 +233,16 @@ export const api = {
   deleteAppointment: async (id: string) => {
     if (isLive) {
         try {
-            await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'deleteAppointment', id }) });
-        } catch (e) { console.error("Delete Appt Fail", e); throw e; }
+            const res = await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'deleteAppointment', id }) });
+            const result = await res.json();
+            if (result.error) {
+                console.error("Server Error on Delete:", result.error);
+                throw new Error(result.error);
+            }
+        } catch (e) { 
+            console.error("Delete Appt Fail:", e); 
+            throw e; 
+        }
     }
     if (DATA_CACHE.appointments) {
         DATA_CACHE.appointments = DATA_CACHE.appointments.filter(a => a.id !== id);
