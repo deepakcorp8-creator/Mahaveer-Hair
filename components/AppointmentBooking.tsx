@@ -128,8 +128,11 @@ const AppointmentBooking: React.FC = () => {
       if (window.confirm(`Are you sure you want to DELETE the appointment for "${name}"? This action cannot be undone.`)) {
           setLoading(true);
           try {
-              await api.deleteAppointment(id);
-              await loadData();
+              const success = await api.deleteAppointment(id);
+              if (success) {
+                  alert(`SUCCESS: Appointment for "${name}" has been deleted from the database.`);
+                  await loadData();
+              }
           } catch (e) {
               alert("Failed to delete appointment.");
               setLoading(false);

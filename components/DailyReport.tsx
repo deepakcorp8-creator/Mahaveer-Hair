@@ -92,8 +92,11 @@ const DailyReport: React.FC = () => {
       if (window.confirm(`Are you sure you want to DELETE the entry for "${name}"? This action cannot be undone.`)) {
           setLoading(true);
           try {
-              await api.deleteEntry(id);
-              await loadData();
+              const success = await api.deleteEntry(id);
+              if (success) {
+                  alert(`SUCCESS: Entry for "${name}" has been permanently removed from the Database.`);
+                  await loadData();
+              }
           } catch (err) {
               alert("Failed to delete entry.");
               setLoading(false);
@@ -264,7 +267,7 @@ const DailyReport: React.FC = () => {
               </div>
           </div>
           <div className="bg-white border-2 border-slate-100 p-4 rounded-2xl shadow-sm flex items-center gap-4 hover:shadow-md transition-shadow hover:border-red-200">
-              <div className="p-3 rounded-full bg-red-100 text-red-600 shadow-sm border border-red-200"><AlertCircle className="w-5 h-5"/></div>
+              <div className="p-3 rounded-full bg-red-100 text-red-600 shadow-sm border border-red-100"><AlertCircle className="w-5 h-5"/></div>
               <div>
                   <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Pending</p>
                   <p className="font-black text-slate-800 text-lg">₹{paymentStats.PENDING.toLocaleString()}</p>
