@@ -1,6 +1,6 @@
 
 // =====================================================================================
-// ⚠️ MAHAVEER WEB APP - BACKEND SCRIPT (V26 - CLIENT EDIT CAPABILITY)
+// ⚠️ MAHAVEER WEB APP - BACKEND SCRIPT (V27 - ENTRY DELETE CAPABILITY)
 // =====================================================================================
 
 function doGet(e) {
@@ -98,6 +98,29 @@ function doPost(e) {
     return response({status: "success", invoiceUrl: invoiceUrl, id: 'row_' + nextRow});
   }
 
+  if (action == 'editEntry') {
+      const dbSheet = getSheet(ss, "DATA BASE");
+      try {
+          const rowId = parseInt(data.id.split('_')[1]);
+          if (rowId > 1) {
+              const updatedRow = [toSheetDate(data.date), data.clientName, data.contactNo, data.address, data.branch, data.serviceType, data.patchMethod, data.technician, data.workStatus, data.amount, data.paymentMethod, String(data.remark || ""), data.numberOfService, data.invoiceUrl || "", data.patchSize || '', data.pendingAmount || 0];
+              dbSheet.getRange(rowId, 1, 1, updatedRow.length).setValues([updatedRow]);
+              return response({status: "success"});
+          }
+      } catch(e) { return response({error: e.message}); }
+  }
+
+  if (action == 'deleteEntry') {
+      const dbSheet = getSheet(ss, "DATA BASE");
+      try {
+          const rowId = parseInt(data.id.split('_')[1]);
+          if (rowId > 1) {
+              dbSheet.deleteRow(rowId);
+              return response({status: "success"});
+          }
+      } catch(e) { return response({error: e.message}); }
+  }
+
   if (action == 'addClient') {
     const clientSheet = getSheet(ss, "CLIENT MASTER");
     const clientRow = [data.name, data.contact, data.address, data.gender, data.email, toSheetDate(data.dob)];
@@ -107,7 +130,6 @@ function doPost(e) {
     return response({status: "success"});
   }
 
-  // NEW ACTION: EDIT CLIENT
   if (action == 'editClient') {
       const clientSheet = getSheet(ss, "CLIENT MASTER");
       const clients = clientSheet.getDataRange().getValues();

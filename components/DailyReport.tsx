@@ -5,7 +5,7 @@ import { Entry, Technician } from '../types';
 import { 
   Calendar, Filter, FileText, UserPlus, Scissors, CreditCard, Search, Wallet, 
   Smartphone, Landmark, AlertCircle, RefreshCw, Eye, FileDown, Printer, User, 
-  Ruler, Sparkles, Layers, Pencil, X, Save, Droplets, Zap, UserCheck
+  Ruler, Sparkles, Layers, Pencil, X, Save, Droplets, Zap, UserCheck, Trash2
 } from 'lucide-react';
 import { generateInvoice } from '../utils/invoiceGenerator';
 
@@ -85,6 +85,19 @@ const DailyReport: React.FC = () => {
           alert("Failed to update entry.");
       } finally {
           setSubmitting(false);
+      }
+  };
+
+  const handleDelete = async (id: string, name: string) => {
+      if (window.confirm(`Are you sure you want to DELETE the entry for "${name}"? This action cannot be undone.`)) {
+          setLoading(true);
+          try {
+              await api.deleteEntry(id);
+              await loadData();
+          } catch (err) {
+              alert("Failed to delete entry.");
+              setLoading(false);
+          }
       }
   };
 
@@ -385,6 +398,14 @@ const DailyReport: React.FC = () => {
                                             title="Edit Transaction"
                                          >
                                              <Pencil className="w-4 h-4" />
+                                         </button>
+
+                                         <button 
+                                            onClick={() => handleDelete(entry.id, entry.clientName)}
+                                            className="inline-flex items-center justify-center p-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-600 hover:text-white border border-red-200 transition-colors shadow-sm"
+                                            title="Delete Transaction"
+                                         >
+                                             <Trash2 className="w-4 h-4" />
                                          </button>
 
                                          {entry.invoiceUrl && entry.invoiceUrl.startsWith('http') && (

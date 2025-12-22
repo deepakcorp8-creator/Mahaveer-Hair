@@ -142,6 +142,18 @@ export const api = {
     return true;
   },
 
+  deleteEntry: async (id: string) => {
+      if (isLive) {
+          try {
+              await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'deleteEntry', id }) });
+          } catch (e) { console.error("Delete Fail", e); throw e; }
+      }
+      if (DATA_CACHE.entries) {
+          DATA_CACHE.entries = DATA_CACHE.entries.filter(e => e.id !== id);
+      }
+      return true;
+  },
+
   updatePaymentFollowUp: async (payload: any) => {
       const formattedPayload = { ...payload, nextCallDate: toDDMMYYYY(payload.nextCallDate) };
       if (isLive) {
