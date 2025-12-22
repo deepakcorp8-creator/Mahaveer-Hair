@@ -44,6 +44,34 @@ const normalizeToISO = (dateStr: string) => {
     return dateStr;
 };
 
+// Helper for Google Apps Script fetch (POST)
+const gasPost = async (payload: any) => {
+    try {
+        const res = await fetch(GOOGLE_SCRIPT_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify(payload)
+        });
+        
+        if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
+        
+        const text = await res.text();
+        try {
+            const json = JSON.parse(text);
+            if (json.error) throw new Error(json.error);
+            return json;
+        } catch (e) {
+            console.error("Non-JSON response from GAS:", text);
+            // If it starts with status:success, we can assume it worked even if JSON parse failed
+            if (text.includes('"status":"success"')) return { status: "success" };
+            throw new Error("Invalid response format from server");
+        }
+    } catch (err) {
+        console.error("GAS POST Error:", err);
+        throw err;
+    }
+};
+
 export const api = {
   getOptions: async (forceRefresh = false) => {
     const now = Date.now();
@@ -84,7 +112,6 @@ export const api = {
 
   getPackages: async (forceRefresh = false) => {
       const now = Date.now();
-      // Use random salt for force refresh to bypass any proxy/CDN caching
       if (!forceRefresh && DATA_CACHE.packages && (now - (DATA_CACHE.lastFetch['packages'] || 0) < CACHE_DURATION)) return DATA_CACHE.packages;
       if (isLive) {
           try {
@@ -111,12 +138,7 @@ export const api = {
       DATA_CACHE.packages = null;
       const formatted = { ...pkg, startDate: toDDMMYYYY(pkg.startDate) };
       if (isLive) {
-        const res = await fetch(GOOGLE_SCRIPT_URL, { 
-            method: 'POST', 
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' }, 
-            body: JSON.stringify({ action: 'addPackage', ...formatted, status: 'PENDING' }) 
-        });
-        return await res.json();
+        return await gasPost({ action: 'addPackage', ...formatted, status: 'PENDING' });
       }
       return true;
   },
@@ -124,16 +146,7 @@ export const api = {
   updatePackageStatus: async (id: string, status: ServicePackage['status']) => {
       DATA_CACHE.packages = null;
       if (isLive) {
-          try {
-              const res = await fetch(GOOGLE_SCRIPT_URL, { 
-                method: 'POST', 
-                headers: { 'Content-Type': 'text/plain;charset=utf-8' }, 
-                body: JSON.stringify({ action: 'updatePackageStatus', id, status: status.toUpperCase() }) 
-              });
-              const result = await res.json();
-              if (result.error) throw new Error(result.error);
-              return result;
-          } catch (e) { throw e; }
+          return await gasPost({ action: 'updatePackageStatus', id, status: status.toUpperCase() });
       }
       return { status: "success" };
   },
@@ -141,16 +154,7 @@ export const api = {
   deletePackage: async (id: string) => {
       DATA_CACHE.packages = null;
       if (isLive) {
-          try {
-              const res = await fetch(GOOGLE_SCRIPT_URL, { 
-                method: 'POST', 
-                headers: { 'Content-Type': 'text/plain;charset=utf-8' }, 
-                body: JSON.stringify({ action: 'deletePackage', id }) 
-              });
-              const result = await res.json();
-              if (result.error) throw new Error(result.error);
-              return result;
-          } catch (e) { throw e; }
+          return await gasPost({ action: 'deletePackage', id });
       }
       return { status: "success" };
   },
@@ -159,12 +163,7 @@ export const api = {
       DATA_CACHE.packages = null;
       const formatted = { ...pkg, startDate: toDDMMYYYY(pkg.startDate) };
       if (isLive) {
-        const res = await fetch(GOOGLE_SCRIPT_URL, { 
-            method: 'POST', 
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' }, 
-            body: JSON.stringify({ action: 'editPackage', ...formatted }) 
-        });
-        return await res.json();
+        return await gasPost({ action: 'editPackage', ...formatted });
       }
       return true;
   },
@@ -172,59 +171,37 @@ export const api = {
   addClient: async (client: Client) => {
     DATA_CACHE.options = null;
     const formattedClient = { ...client, dob: toDDMMYYYY(client.dob) };
-    if (isLive) {
-        const res = await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'addClient', ...formattedClient }) });
-        return await res.json();
-    }
+    if (isLive) return await gasPost({ action: 'addClient', ...formattedClient });
     return formattedClient;
   },
 
   updateClient: async (client: Client, originalName: string) => {
       DATA_CACHE.options = null;
       const formattedClient = { ...client, dob: toDDMMYYYY(client.dob) };
-      if (isLive) {
-          const res = await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'editClient', originalName, ...formattedClient }) });
-          return await res.json();
-      }
+      if (isLive) return await gasPost({ action: 'editClient', originalName, ...formattedClient });
       return { status: "success" };
   },
 
   addEntry: async (entry: Omit<Entry, 'id'>) => {
-    const entryWithFormattedDate = { ...entry, date: toDDMMYYYY(entry.date) };
-    if (isLive) {
-      const res = await fetch(GOOGLE_SCRIPT_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: 'addEntry', ...entryWithFormattedDate })
-      });
-      return await res.json();
-    }
+    const formatted = { ...entry, date: toDDMMYYYY(entry.date) };
+    if (isLive) return await gasPost({ action: 'addEntry', ...formatted });
     return { ...entry, id: 'temp_' + Date.now() };
   },
 
   updateEntry: async (entry: Entry) => {
     const formatted = { ...entry, date: toDDMMYYYY(entry.date) };
-    if (isLive) {
-        const res = await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'editEntry', ...formatted }) });
-        return await res.json();
-    }
+    if (isLive) return await gasPost({ action: 'editEntry', ...formatted });
     return true;
   },
 
   deleteEntry: async (id: string) => {
-      if (isLive) {
-          const res = await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'deleteEntry', id }) });
-          return await res.json();
-      }
+      if (isLive) return await gasPost({ action: 'deleteEntry', id });
       return true;
   },
 
   updatePaymentFollowUp: async (payload: any) => {
       const formattedPayload = { ...payload, nextCallDate: toDDMMYYYY(payload.nextCallDate) };
-      if (isLive) {
-          const res = await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'updatePaymentFollowUp', ...formattedPayload }) });
-          return await res.json();
-      }
+      if (isLive) return await gasPost({ action: 'updatePaymentFollowUp', ...formattedPayload });
       return { status: "success" };
   },
 
@@ -249,26 +226,17 @@ export const api = {
 
   addAppointment: async (appt: Omit<Appointment, 'id'>) => {
     const formatted = { ...appt, date: toDDMMYYYY(appt.date) };
-    if (isLive) {
-        const res = await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'addAppointment', ...formatted }) });
-        return await res.json();
-    }
+    if (isLive) return await gasPost({ action: 'addAppointment', ...formatted });
     return { ...formatted, id: 'temp_' + Date.now() };
   },
   
   updateAppointmentStatus: async (id: string, status: Appointment['status']) => {
-    if (isLive) {
-        const res = await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'updateAppointmentStatus', id, status }) });
-        return await res.json();
-    }
+    if (isLive) return await gasPost({ action: 'updateAppointmentStatus', id, status });
     return true;
   },
 
   deleteAppointment: async (id: string) => {
-    if (isLive) {
-        const res = await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'deleteAppointment', id }) });
-        return await res.json();
-    }
+    if (isLive) return await gasPost({ action: 'deleteAppointment', id });
     return true;
   },
 
@@ -306,28 +274,23 @@ export const api = {
   },
 
   addUser: async (user: User & { password: string }) => {
-      if (isLive) await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'addUser', ...user, permissions: user.permissions ? user.permissions.join(',') : '' }) });
+      if (isLive) return await gasPost({ action: 'addUser', ...user, permissions: user.permissions ? user.permissions.join(',') : '' });
       return true;
   },
 
   updateUser: async (user: User & { password?: string }) => {
-      if (isLive) await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'editUser', ...user, permissions: user.permissions ? user.permissions.join(',') : '' }) });
+      if (isLive) return await gasPost({ action: 'editUser', ...user, permissions: user.permissions ? user.permissions.join(',') : '' });
       return true;
   },
   
   deleteUser: async (username: string) => {
-       if (isLive) await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'deleteUser', username }) });
+       if (isLive) return await gasPost({ action: 'deleteUser', username });
        return true;
   },
 
   updateUserProfile: async (payload: any) => {
       const formatted = { ...payload, dob: toDDMMYYYY(payload.dob) };
-      if (isLive) {
-          try {
-              const res = await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'updateUserProfile', ...formatted }) });
-              return await res.json();
-          } catch (e) { console.error("Failed to update profile", e); throw e; }
-      }
+      if (isLive) return await gasPost({ action: 'updateUserProfile', ...formatted });
       return { status: "success" };
   },
 

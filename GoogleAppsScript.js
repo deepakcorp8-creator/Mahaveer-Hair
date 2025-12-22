@@ -1,38 +1,91 @@
 
 // =====================================================================================
-// ⚠️ MAHAVEER WEB APP - BACKEND SCRIPT (V36 - ACTION FIX)
+// ⚠️ MAHAVEER WEB APP - BACKEND SCRIPT (V37 - ROBUST ACTION FIX)
 // =====================================================================================
 
 function doGet(e) {
   const action = e.parameter.action;
   const ss = SpreadsheetApp.getActiveSpreadsheet();
 
-  if (action == 'getOptions') return getOptions(ss);
-  if (action == 'getPackages') return getPackages(ss);
-  if (action == 'getEntries') return getEntries(ss);
-  if (action == 'getUsers') return getUsers(ss);
-  if (action == 'getAppointments') return getAppointments(ss);
-
-  return response({error: "Invalid action"});
-}
-
-function getSafeLastRow(sheet, colIndex) {
-  var column = colIndex || 2; 
-  var lastRow = sheet.getMaxRows();
-  if (lastRow === 0) return 0;
-  var values = sheet.getRange(1, column, lastRow).getValues();
-  for (var i = values.length - 1; i >= 0; i--) {
-    if (values[i][0] && values[i][0].toString().trim() !== "") {
-      return i + 1;
-    }
+  try {
+    if (action == 'getOptions') return getOptions(ss);
+    if (action == 'getPackages') return getPackages(ss);
+    if (action == 'getEntries') return getEntries(ss);
+    if (action == 'getUsers') return getUsers(ss);
+    if (action == 'getAppointments') return getAppointments(ss);
+    return response({error: "Invalid action: " + action});
+  } catch (err) {
+    return response({error: err.toString()});
   }
-  return 1;
 }
 
 function doPost(e) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const data = JSON.parse(e.postData.contents);
+  let data;
+  try {
+    data = JSON.parse(e.postData.contents);
+  } catch (err) {
+    return response({error: "Malformed JSON payload"});
+  }
+  
   const action = data.action;
+
+  // --- PACKAGE ACTIONS (APPROVE / DELETE / EDIT) ---
+  if (action == 'updatePackageStatus' || action == 'deletePackage' || action == 'editPackage') {
+    const pkgSheet = getSheet(ss, "PACKAGE PLAN");
+    if (!pkgSheet) return response({error: "Sheet 'PACKAGE PLAN' not found"});
+
+    try {
+      // Parse ID like 'row_5' -> 5
+      const idStr = String(data.id || "");
+      const rowId = parseInt(idStr.split('_')[1]);
+
+      if (isNaN(rowId) || rowId < 2) {
+        return response({error: "Invalid Row ID: " + idStr});
+      }
+
+      if (action == 'updatePackageStatus') {
+        pkgSheet.getRange(rowId, 6).setValue(data.status); // Column F
+        SpreadsheetApp.flush();
+        return response({status: "success", message: "Status updated to " + data.status});
+      }
+
+      if (action == 'deletePackage') {
+        pkgSheet.deleteRow(rowId);
+        SpreadsheetApp.flush();
+        return response({status: "success", message: "Row " + rowId + " deleted"});
+      }
+
+      if (action == 'editPackage') {
+        const updatedRow = [
+          toSheetDate(data.startDate), 
+          data.clientName, 
+          data.packageName, 
+          data.totalCost, 
+          data.totalServices, 
+          data.status || 'PENDING', 
+          data.oldServiceNumber || 0, 
+          data.packageType || 'NEW'
+        ];
+        pkgSheet.getRange(rowId, 1, 1, updatedRow.length).setValues([updatedRow]);
+        SpreadsheetApp.flush();
+        return response({status: "success"});
+      }
+    } catch (err) {
+      return response({error: "Operation failed: " + err.toString()});
+    }
+  }
+
+  // --- OTHER POST ACTIONS ---
+  if (action == 'addPackage') {
+    const pkgSheet = getSheet(ss, "PACKAGE PLAN");
+    const newRow = [toSheetDate(data.startDate), data.clientName, data.packageName, data.totalCost, data.totalServices, 'PENDING', data.oldServiceNumber || 0, data.packageType || 'NEW'];
+    const nextRow = getSafeLastRow(pkgSheet, 2) + 1;
+    pkgSheet.getRange(nextRow, 1, 1, newRow.length).setValues([newRow]);
+    pkgSheet.getRange(nextRow, 1).setNumberFormat("dd/mm/yyyy");
+    SpreadsheetApp.flush();
+    return response({status: "success", row: nextRow});
+  }
 
   if (action == 'addEntry') {
     const dbSheet = getSheet(ss, "DATA BASE");
@@ -45,68 +98,14 @@ function doPost(e) {
     return response({status: "success", invoiceUrl: invoiceUrl, id: 'row_' + nextRow});
   }
 
-  if (action == 'editEntry') {
-      const dbSheet = getSheet(ss, "DATA BASE");
-      try {
-          const rowId = parseInt(String(data.id).split('_')[1]);
-          if (rowId > 1) {
-              const updatedRow = [toSheetDate(data.date), data.clientName, data.contactNo, data.address, data.branch, data.serviceType, data.patchMethod, data.technician, data.workStatus, data.amount, data.paymentMethod, String(data.remark || ""), data.numberOfService, data.invoiceUrl || "", data.patchSize || '', data.pendingAmount || 0];
-              dbSheet.getRange(rowId, 1, 1, updatedRow.length).setValues([updatedRow]);
-              return response({status: "success"});
-          }
-      } catch(e) { return response({error: e.message}); }
-  }
-
   if (action == 'deleteEntry') {
-      const dbSheet = getSheet(ss, "DATA BASE");
-      try {
-          const rowId = parseInt(String(data.id).split('_')[1]);
-          if (!isNaN(rowId) && rowId > 1) {
-              dbSheet.deleteRow(rowId);
-              return response({status: "success"});
-          }
-      } catch(e) { return response({error: e.message}); }
-  }
-
-  if (action == 'addAppointment') {
-      const apptSheet = getSheet(ss, "APPOINTMENT");
-      try {
-          const id = 'appt_' + new Date().getTime();
-          const newRow = [id, toSheetDate(data.date), data.clientName, data.contact, data.address, data.note, data.status || 'PENDING', data.branch, data.time];
-          const nextRow = getSafeLastRow(apptSheet, 2) + 1;
-          apptSheet.getRange(nextRow, 1, 1, newRow.length).setValues([newRow]);
-          apptSheet.getRange(nextRow, 2).setNumberFormat("dd/mm/yyyy");
-          return response({status: "success", id: id});
-      } catch(e) { return response({error: e.message}); }
-  }
-
-  if (action == 'updateAppointmentStatus') {
-      const apptSheet = getSheet(ss, "APPOINTMENT");
-      try {
-          const range = apptSheet.getDataRange();
-          const values = range.getValues();
-          for (let i = 1; i < values.length; i++) {
-              if (String(values[i][0]).trim() === String(data.id).trim()) {
-                  apptSheet.getRange(i + 1, 7).setValue(data.status);
-                  return response({status: "success"});
-              }
-          }
-      } catch(e) { return response({error: e.message}); }
-  }
-
-  if (action == 'deleteAppointment') {
-      const apptSheet = getSheet(ss, "APPOINTMENT");
-      try {
-          const targetId = String(data.id).trim();
-          const lastRow = apptSheet.getLastRow();
-          const values = apptSheet.getRange(1, 1, lastRow, 1).getValues();
-          for (let i = 1; i < values.length; i++) {
-              if (String(values[i][0]).trim() === targetId) {
-                  apptSheet.deleteRow(i + 1);
-                  return response({status: "success"});
-              }
-          }
-      } catch(e) { return response({error: e.message}); }
+    const dbSheet = getSheet(ss, "DATA BASE");
+    const rowId = parseInt(String(data.id).split('_')[1]);
+    if (rowId > 1) {
+      dbSheet.deleteRow(rowId);
+      return response({status: "success"});
+    }
+    return response({error: "Invalid entry ID"});
   }
 
   if (action == 'addClient') {
@@ -114,92 +113,47 @@ function doPost(e) {
     const clientRow = [data.name, data.contact, data.address, data.gender, data.email, toSheetDate(data.dob)];
     const nextCl = getSafeLastRow(clientSheet, 1) + 1;
     clientSheet.getRange(nextCl, 1, 1, clientRow.length).setValues([clientRow]);
-    clientSheet.getRange(nextCl, 6).setNumberFormat("dd/mm/yyyy");
     return response({status: "success"});
   }
 
-  if (action == 'addPackage') {
-      const pkgSheet = getSheet(ss, "PACKAGE PLAN");
-      const newRow = [toSheetDate(data.startDate), data.clientName, data.packageName, data.totalCost, data.totalServices, 'PENDING', data.oldServiceNumber || 0, data.packageType || 'NEW'];
-      const nextRow = getSafeLastRow(pkgSheet, 2) + 1;
-      pkgSheet.getRange(nextRow, 1, 1, newRow.length).setValues([newRow]);
-      pkgSheet.getRange(nextRow, 1).setNumberFormat("dd/mm/yyyy");
-      return response({status: "success"});
+  if (action == 'addAppointment') {
+    const apptSheet = getSheet(ss, "APPOINTMENT");
+    const id = 'appt_' + new Date().getTime();
+    const newRow = [id, toSheetDate(data.date), data.clientName, data.contact, data.address, data.note, data.status || 'PENDING', data.branch, data.time];
+    const nextRow = getSafeLastRow(apptSheet, 2) + 1;
+    apptSheet.getRange(nextRow, 1, 1, newRow.length).setValues([newRow]);
+    return response({status: "success", id: id});
   }
 
-  if (action == 'editPackage') {
-      const pkgSheet = getSheet(ss, "PACKAGE PLAN");
-      try {
-          const rowId = parseInt(String(data.id).split('_')[1]);
-          if (rowId > 1) {
-              const updatedRow = [toSheetDate(data.startDate), data.clientName, data.packageName, data.totalCost, data.totalServices, data.status || 'PENDING', data.oldServiceNumber || 0, data.packageType || 'NEW'];
-              pkgSheet.getRange(rowId, 1, 1, updatedRow.length).setValues([updatedRow]);
-              return response({status: "success"});
-          }
-      } catch(e) { return response({error: e.message}); }
-  }
+  return response({error: "Action not recognized: " + action});
+}
 
-  if (action == 'updatePackageStatus') {
-      const pkgSheet = getSheet(ss, "PACKAGE PLAN");
-      try {
-          const rowId = parseInt(String(data.id).split('_')[1]);
-          if (rowId > 1) {
-              pkgSheet.getRange(rowId, 6).setValue(data.status);
-              SpreadsheetApp.flush();
-              return response({status: "success"});
-          }
-      } catch(e) { return response({error: e.message}); }
-  }
+// --- HELPERS ---
 
-  if (action == 'deletePackage') {
-      const pkgSheet = getSheet(ss, "PACKAGE PLAN");
-      try {
-          const rowId = parseInt(String(data.id).split('_')[1]);
-          if (rowId > 1) {
-              pkgSheet.deleteRow(rowId);
-              SpreadsheetApp.flush();
-              return response({status: "success"});
-          }
-      } catch(e) { return response({error: e.message}); }
+function getSheet(ss, name) {
+  let sheet = ss.getSheetByName(name);
+  if (!sheet) {
+    sheet = ss.insertSheet(name);
+    if (name === "PACKAGE PLAN") sheet.appendRow(["START DATE","CLIENT NAME","PACKAGE PLAN","TOTAL COST","TOTAL SERVICES","STATUS","OLD SERVICE NUMBER","PACKAGE TYPE"]);
+    if (name === "DATA BASE") sheet.appendRow(["DATE","CLIENT NAME","CONTACT","ADDRESS","BRANCH","SERVICE","METHOD","TECH","STATUS","TOTAL BILL","MODE","REMARK","SRV_NO","INVOICE","SIZE","PENDING"]);
   }
+  return sheet;
+}
 
-  if (action == 'updatePaymentFollowUp') {
-      const dbSheet = getSheet(ss, "DATA BASE");
-      const collectionSheet = getSheet(ss, "PAYMENT COLLECTION");
-      try {
-          const rowId = parseInt(String(data.id).split('_')[1]);
-          if (rowId > 0) {
-              var screenshotUrl = data.existingScreenshotUrl || "";
-              if (data.screenshotBase64 && data.screenshotBase64.indexOf('data:image') === 0) {
-                  var splitData = data.screenshotBase64.split('base64,');
-                  var contentType = splitData[0].split(':')[1].split(';')[0];
-                  var blob = Utilities.newBlob(Utilities.base64Decode(splitData[1]), contentType, "pay_" + data.clientName + "_" + new Date().getTime());
-                  var file = DriveApp.createFile(blob);
-                  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-                  screenshotUrl = "https://drive.google.com/uc?export=view&id=" + file.getId();
-              }
-              dbSheet.getRange(rowId, 16).setValue(data.pendingAmount);
-              dbSheet.getRange(rowId, 11).setValue(data.paymentMethod);
-              dbSheet.getRange(rowId, 12).setValue(String(data.remark || ""));
-              const today = getTodayInSheetFormat();
-              const nextCall = toSheetDate(data.nextCallDate);
-              const collectionRow = [data.id, today, data.clientName, data.contactNo || '', data.address || '', data.pendingAmount || 0, Number(data.paidAmount || 0), screenshotUrl, String(data.remark || ""), nextCall || '', new Date().toString()];
-              const nextC = getSafeLastRow(collectionSheet, 3) + 1;
-              collectionSheet.getRange(nextC, 1, 1, collectionRow.length).setValues([collectionRow]);
-              return response({status: "success", screenshotUrl: screenshotUrl});
-          }
-      } catch(e) { return response({error: e.message}); }
+function getSafeLastRow(sheet, colIndex) {
+  var column = colIndex || 2; 
+  var values = sheet.getRange(1, column, sheet.getMaxRows()).getValues();
+  for (var i = values.length - 1; i >= 0; i--) {
+    if (values[i][0] && values[i][0].toString().trim() !== "") return i + 1;
   }
-
-  return response({error: "Action not handled"});
+  return 1;
 }
 
 function toSheetDate(dateStr) {
-  if (!dateStr || typeof dateStr !== 'string' || dateStr === "") return "";
-  if (dateStr.includes('/') && dateStr.split('/').length === 3) return dateStr;
+  if (!dateStr || typeof dateStr !== 'string') return "";
   if (dateStr.includes('-')) {
-    const parts = dateStr.split('-'); 
-    if (parts.length === 3 && parts[0].length === 4) return parts[2] + "/" + parts[1] + "/" + parts[0];
+    const p = dateStr.split('-');
+    if (p.length === 3 && p[0].length === 4) return p[2] + "/" + p[1] + "/" + p[0];
   }
   return dateStr;
 }
@@ -207,104 +161,69 @@ function toSheetDate(dateStr) {
 function fromSheetDate(val) {
   if (!val) return "";
   if (Object.prototype.toString.call(val) === '[object Date]') {
-     const d = new Date(val);
-     if (d.getFullYear() < 1900) return "";
-     return ("0" + d.getDate()).slice(-2) + "/" + ("0" + (d.getMonth() + 1)).slice(-2) + "/" + d.getFullYear();
+    const d = new Date(val);
+    return ("0" + d.getDate()).slice(-2) + "/" + ("0" + (d.getMonth() + 1)).slice(-2) + "/" + d.getFullYear();
   }
   return String(val).trim();
-}
-
-function fromSheetTime(val) {
-    if (!val) return "";
-    if (Object.prototype.toString.call(val) === '[object Date]') return Utilities.formatDate(val, Session.getScriptTimeZone(), "hh:mm a");
-    const strVal = String(val).trim();
-    if (strVal.includes("1899")) { const match = strVal.match(/\d{2}:\d{2}:\d{2}/); return match ? match[0] : strVal; }
-    return strVal;
-}
-
-function getTodayInSheetFormat() {
-  const d = new Date();
-  return ("0" + d.getDate()).slice(-2) + "/" + ("0" + (d.getMonth() + 1)).slice(-2) + "/" + d.getFullYear();
-}
-
-function getEntries(ss) {
-    const sheet = ss.getSheetByName("DATA BASE");
-    if (!sheet || sheet.getLastRow() <= 1) return response([]);
-    const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 16).getValues();
-    return response(data.map((row, index) => ({
-        id: 'row_' + (index + 2), 
-        date: fromSheetDate(row[0]), 
-        clientName: row[1], contactNo: row[2], address: row[3], branch: row[4], serviceType: row[5], patchMethod: row[6], technician: row[7], workStatus: row[8], amount: Number(row[9] || 0), paymentMethod: row[10], remark: String(row[11] || ""), numberOfService: row[12], invoiceUrl: row[13], patchSize: row[14], pendingAmount: Number(row[15] || 0)
-    })).reverse().filter(e => e.clientName));
 }
 
 function response(data) {
   return ContentService.createTextOutput(JSON.stringify(data)).setMimeType(ContentService.MimeType.JSON);
 }
 
-function getSheet(ss, name) {
-    var sheet = ss.getSheetByName(name);
-    if (!sheet) {
-        sheet = ss.insertSheet(name);
-        if (name === "DATA BASE") sheet.appendRow(["DATE","CLIENT NAME","CONTACT","ADDRESS","BRANCH","SERVICE","METHOD","TECH","STATUS","TOTAL BILL","MODE","REMARK","SRV_NO","INVOICE","SIZE","PENDING"]);
-        if (name === "APPOINTMENT") sheet.appendRow(["S.No","Date","Name","Contacts","Address","Note","status","Branch","Time"]);
-        if (name === "PACKAGE PLAN") sheet.appendRow(["START DATE","CLIENT NAME","PACKAGE PLAN","TOTAL COST","TOTAL SERVICES","STATUS","OLD SERVICE NUMBER","PACKAGE TYPE"]);
-    }
-    return sheet;
-}
-
-function getOptions(ss) {
-    const clientSheet = getSheet(ss, "CLIENT MASTER");
-    const techSheet = getSheet(ss, "EMPLOYEE DETAILS");
-    const itemSheet = getSheet(ss, "ITEM MASTER");
-    let clients = [], technicians = [], items = [];
-    if (clientSheet && clientSheet.getLastRow() > 1) { clients = clientSheet.getRange(2, 1, clientSheet.getLastRow()-1, 6).getValues().filter(r => r[0]).map(row => ({ name: row[0], contact: row[1], address: row[2], gender: row[3], email: row[4], dob: fromSheetDate(row[5]) })); }
-    if (techSheet && techSheet.getLastRow() > 1) { technicians = techSheet.getRange(2, 1, techSheet.getLastRow()-1, 2).getValues().filter(r => r[0]).map(row => ({ name: row[0], contact: row[1] })); }
-    if (itemSheet && itemSheet.getLastRow() > 1) { items = itemSheet.getRange(2, 1, itemSheet.getLastRow()-1, 3).getValues().filter(r => r[0]).map(row => ({ code: row[0], name: row[1], category: row[2] })); }
-    return response({ clients, technicians, items });
-}
-
 function getPackages(ss) {
-    const sheet = getSheet(ss, "PACKAGE PLAN");
-    if (!sheet || sheet.getLastRow() <= 1) return response([]);
-    const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 8).getValues();
-    return response(data.map((row, index) => ({
-      id: 'row_' + (index + 2), 
-      startDate: fromSheetDate(row[0]), 
-      clientName: row[1], 
-      packageName: row[2], 
-      totalCost: row[3], 
-      totalServices: row[4], 
-      status: String(row[5] || 'PENDING').trim().toUpperCase(),
-      oldServiceNumber: Number(row[6] || 0),
-      packageType: String(row[7] || 'NEW').trim().toUpperCase()
-    })));
+  const sheet = getSheet(ss, "PACKAGE PLAN");
+  const lastRow = sheet.getLastRow();
+  if (lastRow <= 1) return response([]);
+  const data = sheet.getRange(2, 1, lastRow - 1, 8).getValues();
+  return response(data.map((row, index) => ({
+    id: 'row_' + (index + 2),
+    startDate: fromSheetDate(row[0]),
+    clientName: row[1],
+    packageName: row[2],
+    totalCost: row[3],
+    totalServices: row[4],
+    status: String(row[5] || 'PENDING').trim().toUpperCase(),
+    oldServiceNumber: Number(row[6] || 0),
+    packageType: String(row[7] || 'NEW').trim().toUpperCase()
+  })));
 }
 
-function getAppointments(ss) {
-    const sheet = getSheet(ss, "APPOINTMENT");
-    if (!sheet || sheet.getLastRow() <= 1) return response([]);
-    const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 9).getValues();
-    return response(data.map((row) => ({ id: String(row[0]), date: fromSheetDate(row[1]), clientName: row[2], contact: row[3], address: row[4], note: row[5], status: row[6] || 'PENDING', branch: row[7] || '', time: fromSheetTime(row[8]) })));
+function getEntries(ss) {
+  const sheet = getSheet(ss, "DATA BASE");
+  const lastRow = sheet.getLastRow();
+  if (lastRow <= 1) return response([]);
+  const data = sheet.getRange(2, 1, lastRow - 1, 16).getValues();
+  return response(data.map((row, index) => ({
+    id: 'row_' + (index + 2),
+    date: fromSheetDate(row[0]),
+    clientName: row[1], contactNo: row[2], address: row[3], branch: row[4], serviceType: row[5], patchMethod: row[6], technician: row[7], workStatus: row[8], amount: Number(row[9] || 0), paymentMethod: row[10], remark: String(row[11] || ""), numberOfService: row[12], invoiceUrl: row[13], patchSize: row[14], pendingAmount: Number(row[15] || 0)
+  })).reverse());
 }
 
 function getUsers(ss) {
-    const sheet = getSheet(ss, "LOGIN");
-    if (!sheet || sheet.getLastRow() <= 1) return response([]);
-    const data = sheet.getDataRange().getValues();
-    return response(data.slice(1).map(row => ({ username: row[0], password: row[1], role: row[2], department: row[3], permissions: row[4], dpUrl: row[5], gender: row[6], dob: fromSheetDate(row[7]), address: row[8] })));
+  const sheet = getSheet(ss, "LOGIN");
+  const data = sheet.getDataRange().getValues();
+  return response(data.slice(1).map(row => ({ username: row[0], password: row[1], role: row[2], department: row[3], permissions: row[4] })));
 }
 
-function createInvoice(data) {
-  try {
-    const folderName = "MAHAVEER_INVOICES";
-    let folders = DriveApp.getFoldersByName(folderName);
-    let folder = folders.hasNext() ? folders.next() : DriveApp.createFolder(folderName);
-    const date = data.date || new Date().toLocaleDateString();
-    const html = `<div style="font-family: Arial, sans-serif; padding: 30px;"><h1 style="color: #B51A2B; text-align: center;">MAHAVEER HAIR SOLUTION</h1><p style="text-align: center;">Official Invoice</p><hr/><table style="width: 100%;"><tr><td><strong>Client:</strong> ${data.clientName}</td><td style="text-align: right;"><strong>Date:</strong> ${date}</td></tr></table><table style="width: 100%; margin-top: 20px; border-collapse: collapse;"><tr style="background: #eee;"><th>Desc</th><th>Amount</th></tr><tr><td>${data.serviceType}</td><td>₹${data.amount}</td></tr></table></div>`;
-    const pdfBlob = Utilities.newBlob(html, 'text/html').getAs('application/pdf');
-    const file = folder.createFile(pdfBlob).setName(`Inv_${data.clientName}_${Date.now()}.pdf`);
-    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-    return "https://drive.google.com/uc?export=view&id=" + file.getId();
-  } catch (e) { return ""; }
+function getOptions(ss) {
+  const clientSheet = getSheet(ss, "CLIENT MASTER");
+  const techSheet = getSheet(ss, "EMPLOYEE DETAILS");
+  const itemSheet = getSheet(ss, "ITEM MASTER");
+  let clients = [], technicians = [], items = [];
+  if (clientSheet.getLastRow() > 1) clients = clientSheet.getRange(2,1,clientSheet.getLastRow()-1,2).getValues().map(r => ({name: r[0], contact: r[1]}));
+  if (techSheet.getLastRow() > 1) technicians = techSheet.getRange(2,1,techSheet.getLastRow()-1,1).getValues().map(r => ({name: r[0]}));
+  if (itemSheet.getLastRow() > 1) items = itemSheet.getRange(2,1,itemSheet.getLastRow()-1,2).getValues().map(r => ({name: r[1], code: r[0]}));
+  return response({ clients, technicians, items });
 }
+
+function getAppointments(ss) {
+  const sheet = getSheet(ss, "APPOINTMENT");
+  const lastRow = sheet.getLastRow();
+  if (lastRow <= 1) return response([]);
+  const data = sheet.getRange(2, 1, lastRow - 1, 9).getValues();
+  return response(data.map(row => ({ id: String(row[0]), date: fromSheetDate(row[1]), clientName: row[2], contact: row[3], status: row[6] || 'PENDING' })));
+}
+
+function createInvoice(data) { return ""; }
