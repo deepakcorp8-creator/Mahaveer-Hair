@@ -5,7 +5,7 @@ import { Entry, Technician } from '../types';
 import { 
   Calendar, Filter, FileText, UserPlus, Scissors, CreditCard, Search, Wallet, 
   Smartphone, Landmark, AlertCircle, RefreshCw, Eye, FileDown, Printer, User, 
-  Ruler, Sparkles, Layers, Pencil, X, Save, Droplets, Zap, UserCheck
+  Ruler, Sparkles, Layers, Pencil, X, Save, Droplets, Zap, UserCheck, Trash2, AlertTriangle
 } from 'lucide-react';
 import { generateInvoice } from '../utils/invoiceGenerator';
 
@@ -25,6 +25,9 @@ const DailyReport: React.FC = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<Entry | null>(null);
   const [editForm, setEditForm] = useState<Partial<Entry>>({});
+
+  // Delete State
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     loadData();
@@ -88,6 +91,20 @@ const DailyReport: React.FC = () => {
       }
   };
 
+  const handleDeleteConfirm = async () => {
+      if (!deletingId) return;
+      setSubmitting(true);
+      try {
+          await api.deleteEntry(deletingId);
+          await loadData();
+          setDeletingId(null);
+      } catch (e) {
+          alert("Failed to delete record.");
+      } finally {
+          setSubmitting(false);
+      }
+  };
+
   const filteredData = entries.filter(entry => {
     if (entry.date !== selectedDate) return false;
     if (serviceFilter !== 'ALL' && entry.serviceType !== serviceFilter) return false;
@@ -127,6 +144,39 @@ const DailyReport: React.FC = () => {
   return (
     <div className="space-y-8 animate-in fade-in duration-500 pb-10">
       
+      {/* DELETE CONFIRMATION MODAL */}
+      {deletingId && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in">
+              <div className="bg-white rounded-[2rem] p-8 max-w-sm w-full shadow-2xl animate-in zoom-in-95 border-2 border-red-100 relative overflow-hidden">
+                  <div className="absolute top-0 left-0 w-full h-2 bg-red-500"></div>
+                  <div className="flex flex-col items-center text-center">
+                      <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mb-4 shadow-sm">
+                          <AlertTriangle className="w-8 h-8" />
+                      </div>
+                      <h3 className="text-xl font-black text-slate-800 mb-2">Confirm Deletion</h3>
+                      <p className="text-sm text-slate-500 font-medium mb-6">
+                          Are you sure you want to remove this record? This action cannot be undone.
+                      </p>
+                      <div className="flex gap-3 w-full">
+                          <button 
+                            onClick={() => setDeletingId(null)}
+                            className="flex-1 py-3.5 rounded-xl border-2 border-slate-100 font-bold text-slate-500 hover:bg-slate-50 transition-colors"
+                          >
+                              Cancel
+                          </button>
+                          <button 
+                            onClick={handleDeleteConfirm}
+                            disabled={submitting}
+                            className="flex-1 py-3.5 rounded-xl bg-red-500 text-white font-bold hover:bg-red-600 shadow-lg shadow-red-200/50 transition-all active:scale-95 flex items-center justify-center"
+                          >
+                              {submitting ? <RefreshCw className="w-5 h-5 animate-spin" /> : 'Yes, Delete'}
+                          </button>
+                      </div>
+                  </div>
+              </div>
+          </div>
+      )}
+
       <div className="flex flex-col md:flex-row justify-between items-center bg-white p-6 rounded-3xl shadow-[0_15px_35px_-10px_rgba(0,0,0,0.08)] border border-slate-200 backdrop-blur-sm">
         <div>
            <div className="flex items-center gap-2">
@@ -385,6 +435,14 @@ const DailyReport: React.FC = () => {
                                             title="Edit Transaction"
                                          >
                                              <Pencil className="w-4 h-4" />
+                                         </button>
+
+                                         <button 
+                                            onClick={() => setDeletingId(entry.id)}
+                                            className="inline-flex items-center justify-center p-2 rounded-lg bg-white text-red-500 hover:bg-red-50 border border-red-200 transition-colors shadow-sm"
+                                            title="Delete Record"
+                                         >
+                                             <Trash2 className="w-4 h-4" />
                                          </button>
 
                                          {entry.invoiceUrl && entry.invoiceUrl.startsWith('http') && (
