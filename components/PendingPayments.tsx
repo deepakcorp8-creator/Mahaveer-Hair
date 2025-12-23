@@ -6,7 +6,7 @@ import {
   Wallet, CheckCircle2, Search, X, RefreshCw, Calendar, Phone, UploadCloud, 
   Check, ArrowRight, Clock, AlertTriangle, UserCheck, IndianRupee, Megaphone, 
   MapPin, Scissors, User, MessageCircle, Filter, ChevronDown, Copy, CheckSquare, 
-  Trash2, Send, MessageSquare, RotateCcw
+  Trash2, Send, MessageSquare
 } from 'lucide-react';
 
 const PendingPayments: React.FC = () => {
@@ -17,10 +17,7 @@ const PendingPayments: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterDate, setFilterDate] = useState<string>(''); 
   const [sortBy, setSortBy] = useState<'AMOUNT_DESC' | 'DATE_ASC' | 'DATE_DESC'>('DATE_ASC');
-  const [showFilters, setShowFilters] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  
-  // Modal States
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState<Entry | null>(null);
   const [modalMode, setModalMode] = useState<'BOTH' | 'PAY' | 'FOLLOWUP'>('BOTH');
@@ -95,6 +92,11 @@ const PendingPayments: React.FC = () => {
       return { totalOutstanding, overdueCount, criticalAmount, dueTodayCount };
   }, [entries, todayStr]);
 
+  const handleSelectAll = () => {
+      if (selectedIds.size === processedEntries.length) setSelectedIds(new Set());
+      else setSelectedIds(new Set(processedEntries.map(e => e.id)));
+  };
+
   const toggleSelection = (id: string) => {
       const newSet = new Set(selectedIds);
       if (newSet.has(id)) newSet.delete(id);
@@ -156,12 +158,6 @@ const PendingPayments: React.FC = () => {
       } catch (err) { alert("Failed to update."); } finally { setSubmitting(false); }
   };
 
-  const resetFilters = () => {
-      setSearchTerm('');
-      setFilterDate('');
-      setSortBy('DATE_ASC');
-  };
-
   return (
     <div className="max-w-7xl mx-auto pb-40 animate-in fade-in duration-500 relative min-h-screen">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8">
@@ -170,81 +166,42 @@ const PendingPayments: React.FC = () => {
             <div className="bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-3xl p-6 text-white shadow-xl shadow-emerald-200 flex items-center justify-between group hover:-translate-y-1 transition-transform"><div><div className="flex items-center gap-2 mb-2"><span className="bg-white/20 p-1.5 rounded-lg backdrop-blur-sm"><IndianRupee className="w-4 h-4 text-white" /></span><p className="text-emerald-100 text-xs font-black uppercase tracking-widest">Today Collection</p></div><h3 className="text-3xl font-black">₹{sessionCollected.toLocaleString()}</h3><p className="text-xs font-bold text-emerald-100 mt-1 opacity-80">Session Total</p></div></div>
         </div>
 
-        {/* REFACTORED FILTER BAR: SEARCH + TOGGLE ICON */}
-        <div className="sticky top-[70px] lg:top-4 z-[45] mb-6">
-            <div className="bg-white p-3 rounded-2xl shadow-xl border-2 border-slate-200 flex items-center gap-3">
-                <div className="relative flex-1">
+        {/* FIXED FILTER BAR: Adjusted sticky top for mobile and added z-index for visibility */}
+        <div className="sticky top-[70px] lg:top-4 z-[40] mb-6">
+            <div className="bg-white p-4 rounded-2xl shadow-xl border-2 border-slate-200 flex flex-col sm:flex-row gap-4 items-center">
+                <div className="relative flex-1 w-full">
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                     <input 
                         type="text" 
                         placeholder="Search Client Name, Phone..." 
                         value={searchTerm} 
                         onChange={(e) => setSearchTerm(e.target.value)} 
-                        className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-bold text-sm" 
+                        className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-bold text-sm" 
                     />
                 </div>
-                
-                {/* FILTER TOGGLE BUTTON */}
-                <button 
-                    onClick={() => setShowFilters(!showFilters)}
-                    className={`p-3 rounded-xl border-2 transition-all flex items-center gap-2 
-                        ${showFilters || filterDate ? 'bg-indigo-600 border-indigo-700 text-white shadow-lg' : 'bg-white border-slate-200 text-slate-500 hover:border-indigo-300'}`}
-                >
-                    <Filter className="w-5 h-5" />
-                    <span className="hidden sm:inline font-bold text-xs">Filters</span>
-                    {filterDate && <span className="w-2 h-2 bg-red-400 rounded-full animate-pulse" />}
-                </button>
-            </div>
-
-            {/* EXPANDABLE FILTER PANEL */}
-            {showFilters && (
-                <div className="absolute top-full left-0 right-0 mt-3 p-5 bg-white rounded-3xl shadow-2xl border-2 border-indigo-100 animate-in slide-in-from-top-4 duration-300 z-[50]">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                        <div>
-                            <label className="block text-[10px] font-black uppercase text-slate-400 mb-2 ml-1 tracking-widest">Filter by Due Date</label>
-                            <div className="relative">
-                                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-indigo-400" />
-                                <input 
-                                    type="date" 
-                                    value={filterDate} 
-                                    onChange={(e) => setFilterDate(e.target.value)} 
-                                    className="w-full pl-10 pr-3 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl focus:border-indigo-500 text-sm font-bold text-slate-700 outline-none" 
-                                />
-                            </div>
-                        </div>
-                        
-                        <div>
-                            <label className="block text-[10px] font-black uppercase text-slate-400 mb-2 ml-1 tracking-widest">Sort Priority</label>
-                            <div className="relative">
-                                <select 
-                                    value={sortBy} 
-                                    onChange={(e) => setSortBy(e.target.value as any)} 
-                                    className="w-full appearance-none pl-4 pr-10 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl focus:border-indigo-500 text-sm font-bold text-slate-700 outline-none cursor-pointer"
-                                >
-                                    <option value="DATE_ASC">📅 Due Date (Oldest First)</option>
-                                    <option value="DATE_DESC">📅 Due Date (Newest First)</option>
-                                    <option value="AMOUNT_DESC">💰 Highest Outstanding</option>
-                                </select>
-                                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-                            </div>
-                        </div>
-
-                        <div className="flex items-end">
-                            <button 
-                                onClick={resetFilters}
-                                className="w-full py-3 bg-slate-100 hover:bg-red-50 text-slate-500 hover:text-red-600 rounded-xl font-black text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 border border-slate-200"
-                            >
-                                <RotateCcw className="w-4 h-4" /> Reset All
-                            </button>
-                        </div>
+                <div className="flex flex-row gap-3 w-full sm:w-auto">
+                    <div className="relative flex-1 sm:flex-none">
+                        <input 
+                            type="date" 
+                            value={filterDate} 
+                            onChange={(e) => setFilterDate(e.target.value)} 
+                            className="w-full pl-4 pr-3 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 text-sm font-bold text-slate-600" 
+                        />
                     </div>
-                    
-                    <div className="mt-5 pt-4 border-t border-slate-50 flex justify-between items-center">
-                        <p className="text-[10px] font-bold text-slate-400 italic">Showing {processedEntries.length} results</p>
-                        <button onClick={() => setShowFilters(false)} className="text-xs font-black text-indigo-600 hover:underline">Close Menu</button>
+                    <div className="relative flex-1 sm:flex-none group">
+                        <select 
+                            value={sortBy} 
+                            onChange={(e) => setSortBy(e.target.value as any)} 
+                            className="w-full appearance-none pl-4 pr-10 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 text-sm font-bold text-slate-600 cursor-pointer"
+                        >
+                            <option value="DATE_ASC">📅 Due (Old)</option>
+                            <option value="DATE_DESC">📅 Due (New)</option>
+                            <option value="AMOUNT_DESC">💰 Amount</option>
+                        </select>
+                        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                     </div>
                 </div>
-            )}
+            </div>
         </div>
 
         <div className="space-y-4">
@@ -268,9 +225,18 @@ const PendingPayments: React.FC = () => {
                             <div className="flex-1 w-full grid grid-cols-1 md:grid-cols-3 gap-3">
                                 <div className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 flex flex-col justify-center"><span className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-0.5">Service Date</span><span className="text-xs font-bold text-slate-700 flex items-center"><Calendar className="w-3 h-3 mr-1.5" />{formatDateDisplay(entry.date)}</span></div>
                                 <div className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 flex flex-col justify-center"><span className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-0.5">Next Follow-up</span><span className={`text-xs font-bold flex items-center ${isOverdue ? 'text-red-600' : isToday ? 'text-amber-600' : 'text-slate-700'}`}><Clock className="w-3 h-3 mr-1.5" />{entry.nextCallDate ? formatDateDisplay(entry.nextCallDate) : 'Not Scheduled'}</span></div>
-                                <div className="bg-amber-50 border border-amber-200 rounded-xl p-2.5 flex flex-col justify-center transition-all duration-300 hover:border-amber-400 group/rem relative cursor-help" title={entry.remark || 'No remarks'}>
+                                
+                                {/* REMARK BOX - ENHANCED WITH POPOVER REVEAL */}
+                                <div 
+                                    className="bg-amber-50 border border-amber-200 rounded-xl p-2.5 flex flex-col justify-center transition-all duration-300 hover:border-amber-400 group/rem relative cursor-help"
+                                    title={entry.remark || 'No remarks'}
+                                >
                                     <span className="text-[10px] font-black text-amber-600 uppercase tracking-wider mb-0.5">Last Remark</span>
-                                    <span className="text-xs font-bold text-slate-700 truncate block">{entry.remark || 'No remarks'}</span>
+                                    <span className="text-xs font-bold text-slate-700 truncate block">
+                                        {entry.remark || 'No remarks'}
+                                    </span>
+                                    
+                                    {/* FULL REMARK POPOVER ON HOVER */}
                                     {entry.remark && entry.remark.length > 20 && (
                                         <div className="absolute left-0 bottom-full mb-2 hidden group-hover/rem:block z-[100] animate-in fade-in zoom-in-95 slide-in-from-bottom-2 duration-200">
                                             <div className="bg-slate-900 text-white text-xs font-medium p-4 rounded-2xl shadow-2xl min-w-[200px] max-w-[300px] border border-slate-700 leading-relaxed whitespace-normal break-words">

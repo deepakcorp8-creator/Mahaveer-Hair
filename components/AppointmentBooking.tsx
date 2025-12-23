@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { Appointment, Client } from '../types';
-import { Calendar, CheckCircle, Clock, Filter, Activity, CheckSquare, Plus, Search, Phone, MessageCircle, RefreshCw, CalendarClock, History, ArrowRightCircle, Megaphone, UserCheck, XCircle, MapPin, Trash2 } from 'lucide-react';
+import { Calendar, CheckCircle, Clock, Filter, Activity, CheckSquare, Plus, Search, Phone, MessageCircle, RefreshCw, CalendarClock, History, ArrowRightCircle, Megaphone, UserCheck, XCircle, MapPin, Trash2, AlertTriangle } from 'lucide-react';
 
 const AppointmentBooking: React.FC = () => {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -12,6 +12,7 @@ const AppointmentBooking: React.FC = () => {
   // Tabs: 'SCHEDULE' (Pending), 'LEADS' (Followup), 'HISTORY' (Closed)
   const [activeTab, setActiveTab] = useState<'SCHEDULE' | 'LEADS' | 'HISTORY'>('SCHEDULE');
   const [searchFilter, setSearchFilter] = useState('');
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   
   // Time Parts State for 12H Format
   const [timeParts, setTimeParts] = useState({
@@ -46,25 +47,18 @@ const AppointmentBooking: React.FC = () => {
   }, [timeParts]);
 
   const loadData = async () => {
-    setLoading(true);
-    try {
-        const [apptData, options] = await Promise.all([
-          api.getAppointments(true),
-          api.getOptions(true)
-        ]);
-        // Sort: Today first, then Pending, then Future date
-        const sorted = apptData.sort((a, b) => {
-            if (a.date === todayStr && b.date !== todayStr) return -1;
-            if (a.date !== todayStr && b.date === todayStr) return 1;
-            return new Date(a.date).getTime() - new Date(b.date).getTime();
-        });
-        setAppointments(sorted);
-        setClients(options.clients);
-    } catch (e) {
-        console.error(e);
-    } finally {
-        setLoading(false);
-    }
+    const [apptData, options] = await Promise.all([
+      api.getAppointments(),
+      api.getOptions()
+    ]);
+    // Sort: Today first, then Pending, then Future date
+    const sorted = apptData.sort((a, b) => {
+        if (a.date === todayStr && b.date !== todayStr) return -1;
+        if (a.date !== todayStr && b.date === todayStr) return 1;
+        return new Date(a.date).getTime() - new Date(b.date).getTime();
+    });
+    setAppointments(sorted);
+    setClients(options.clients);
   };
 
   const handleRecall = (appt: Appointment) => {
@@ -86,7 +80,7 @@ const AppointmentBooking: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (loading) return; 
+    if (loading) return; // Prevent double submission
 
     setLoading(true);
     try {
@@ -102,16 +96,11 @@ const AppointmentBooking: React.FC = () => {
             time: '10:00 AM'
         }); 
         setTimeParts({ hour: '10', minute: '00', period: 'AM' });
-        
-        // POPUP ALERT AS REQUESTED
-        alert("✅ Booking Confirmed! Data saved to Sheet.");
-        
         await loadData();
         // Scroll to top of main container after successful booking
         document.querySelector('main')?.scrollTo({ top: 0, behavior: 'smooth' });
       }
     } catch (err) {
-      alert("Failed to sync booking. Please check connection.");
       console.error(err);
     } finally {
       setLoading(false);
@@ -119,31 +108,18 @@ const AppointmentBooking: React.FC = () => {
   };
 
   const updateStatus = async (id: string, status: Appointment['status']) => {
-    setLoading(true);
-    try {
-        await api.updateAppointmentStatus(id, status);
-        await loadData();
-    } catch (e) {
-        console.error(e);
-        setLoading(false);
-    }
+    await api.updateAppointmentStatus(id, status);
+    loadData();
   };
 
-  const handleDelete = async (id: string, name: string) => {
-      // ONE CONFIRMATION ONLY
-      if (window.confirm(`Are you sure you want to DELETE the appointment for "${name}"? This action cannot be undone.`)) {
-          setLoading(true);
-          try {
-              const success = await api.deleteAppointment(id);
-              if (success) {
-                  // No success alert here, just reload data
-                  await loadData();
-              }
-          } catch (e: any) {
-              // Show actual server error if deletion fails
-              alert(`❌ Error: ${e.message || "Failed to delete appointment from sheet."}`);
-              setLoading(false);
-          }
+  const handleDeleteConfirm = async () => {
+      if (!deletingId) return;
+      try {
+          await api.deleteAppointment(deletingId);
+          await loadData();
+          setDeletingId(null);
+      } catch (e) {
+          alert("Failed to delete appointment.");
       }
   };
 
@@ -315,10 +291,10 @@ const AppointmentBooking: React.FC = () => {
                         </button>
                     )}
 
-                    {/* DELETE BUTTON (Added for all cards) */}
+                    {/* DELETE ACTION (Generic) */}
                     <button 
-                        onClick={() => handleDelete(appt.id, appt.clientName)}
-                        className="p-2.5 rounded-xl bg-red-50 text-red-500 hover:bg-red-500 hover:text-white transition-all border border-red-100 hover:border-red-600 shadow-sm"
+                        onClick={() => setDeletingId(appt.id)}
+                        className="p-2.5 rounded-xl bg-white text-slate-400 hover:text-red-500 border border-slate-200 hover:border-red-200 hover:bg-red-50 transition-all shadow-sm"
                         title="Delete Appointment"
                     >
                         <Trash2 className="w-4 h-4" />
@@ -334,8 +310,39 @@ const AppointmentBooking: React.FC = () => {
   const minutes = Array.from({ length: 12 }, (_, i) => String(i * 5).padStart(2, '0')); // 00, 05, 10...
 
   return (
-    <div className="flex flex-col gap-8 animate-in fade-in duration-500 pb-20">
+    <div className="flex flex-col gap-8 animate-in fade-in duration-500 pb-20 relative">
         
+        {/* DELETE CONFIRMATION MODAL */}
+        {deletingId && (
+            <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in">
+                <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl animate-in zoom-in-95 border-2 border-red-100">
+                    <div className="flex flex-col items-center text-center">
+                        <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mb-4">
+                            <AlertTriangle className="w-8 h-8" />
+                        </div>
+                        <h3 className="text-xl font-black text-slate-800 mb-2">Delete Appointment?</h3>
+                        <p className="text-sm text-slate-500 font-medium mb-6">
+                            This action cannot be undone. Remove this appointment from the schedule?
+                        </p>
+                        <div className="flex gap-3 w-full">
+                            <button 
+                                onClick={() => setDeletingId(null)}
+                                className="flex-1 py-3 rounded-xl border border-slate-200 font-bold text-slate-600 hover:bg-slate-50 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button 
+                                onClick={handleDeleteConfirm}
+                                className="flex-1 py-3 rounded-xl bg-red-500 text-white font-bold hover:bg-red-600 shadow-lg shadow-red-200 transition-colors flex items-center justify-center gap-2"
+                            >
+                                Delete
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        )}
+
         {/* Top Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="relative rounded-3xl p-6 bg-gradient-to-br from-indigo-600 to-indigo-800 text-white shadow-xl shadow-indigo-500/30 border border-indigo-500 overflow-hidden transform hover:-translate-y-1 transition-transform duration-300">
