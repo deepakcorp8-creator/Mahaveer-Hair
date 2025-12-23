@@ -1,6 +1,6 @@
 
 // =====================================================================================
-// ⚠️ MAHAVEER WEB APP - BACKEND SCRIPT (FIXED: DELETE & INVOICE)
+// ⚠️ MAHAVEER WEB APP - BACKEND SCRIPT (FIXED: PACKAGE STORAGE & TYPES)
 // =====================================================================================
 
 function doGet(e) {
@@ -151,16 +151,10 @@ function doPost(e) {
     return response({status: "success", invoiceUrl: invoiceUrl, id: 'row_' + nextRow});
   }
 
-  if (action == 'updateEntry') { // Changed from editEntry to updateEntry to match frontend
+  if (action == 'updateEntry') { 
       const dbSheet = getSheet(ss, "DATA BASE");
-      // ID format is 'row_X'
       const rowId = parseInt(data.id.split('_')[1]);
       if (rowId > 0 && rowId <= dbSheet.getMaxRows()) {
-          // Columns: 5=Branch, 6=Service, 7=Method, 8=Tech, 10=Amount, 11=Payment, 12=Remark, 16=Pending
-          // Note: Array indices are 0-based, Range indices are 1-based
-          const rowData = dbSheet.getRange(rowId, 1, 1, 16).getValues()[0];
-          
-          // Update values if present in payload
           if(data.technician) dbSheet.getRange(rowId, 8).setValue(data.technician);
           if(data.serviceType) dbSheet.getRange(rowId, 6).setValue(data.serviceType);
           if(data.patchMethod) dbSheet.getRange(rowId, 7).setValue(data.patchMethod);
@@ -168,7 +162,6 @@ function doPost(e) {
           if(data.paymentMethod) dbSheet.getRange(rowId, 11).setValue(data.paymentMethod);
           if(data.remark) dbSheet.getRange(rowId, 12).setValue(data.remark);
           if(data.pendingAmount !== undefined) dbSheet.getRange(rowId, 16).setValue(data.pendingAmount);
-          
           return response({status: "success"});
       }
       return response({error: "Row not found"});
@@ -219,13 +212,13 @@ function doPost(e) {
       // Note: Sheet indices are 1-based.
       const row = [
         toSheetDate(data.startDate), 
-        data.clientName, 
-        data.packageName, 
-        data.totalCost, 
-        data.totalServices, 
-        data.status,
-        data.oldServiceCount || 0,
-        data.packageType || 'NEW'
+        String(data.clientName), 
+        String(data.packageName), 
+        Number(data.totalCost || 0), 
+        Number(data.totalServices || 0), 
+        String(data.status || 'PENDING'),
+        Number(data.oldServiceCount || 0),
+        String(data.packageType || 'NEW')
       ];
       pkgSheet.appendRow(row);
       return response({status: "success"});
@@ -235,7 +228,7 @@ function doPost(e) {
       const pkgSheet = getSheet(ss, "PACKAGE PLAN");
       const rowId = parseInt(data.id.split('_')[1]);
       if (rowId > 0) {
-          pkgSheet.getRange(rowId, 6).setValue(data.status); // Col 6 is Status
+          pkgSheet.getRange(rowId, 6).setValue(data.status); 
           return response({status: "success"});
       }
       return response({error: "Invalid ID"});
@@ -245,15 +238,13 @@ function doPost(e) {
       const pkgSheet = getSheet(ss, "PACKAGE PLAN");
       const rowId = parseInt(data.id.split('_')[1]);
       if (rowId > 0) {
-          // Update Name(2), PkgName(3), Cost(4), Services(5), Date(1)
           pkgSheet.getRange(rowId, 1).setValue(toSheetDate(data.startDate));
           pkgSheet.getRange(rowId, 3).setValue(data.packageName);
           pkgSheet.getRange(rowId, 4).setValue(data.totalCost);
           pkgSheet.getRange(rowId, 5).setValue(data.totalServices);
-          // Update New Fields if editing allowed (Optional)
+          // Update New Fields if editing allowed
           if(data.oldServiceCount !== undefined) pkgSheet.getRange(rowId, 7).setValue(data.oldServiceCount);
           if(data.packageType) pkgSheet.getRange(rowId, 8).setValue(data.packageType);
-          
           return response({status: "success"});
       }
       return response({error: "Invalid ID"});
@@ -280,9 +271,9 @@ function doPost(e) {
 
   if (action == 'updateAppointmentStatus') {
       const apptSheet = getSheet(ss, "APPOINTMENT");
-      const row = findRowById(apptSheet, data.id, 0); // ID is in col 0
+      const row = findRowById(apptSheet, data.id, 0); 
       if (row > 0) {
-          apptSheet.getRange(row, 7).setValue(data.status); // Col 7 is status
+          apptSheet.getRange(row, 7).setValue(data.status); 
           return response({status: "success"});
       }
       return response({error: "Appointment not found"});
@@ -316,7 +307,7 @@ function doPost(e) {
       return response({error: "User not found"});
   }
 
-  // ... (Other actions like updatePaymentFollowUp remain same, ensure they are here)
+  // ... (Other actions like updatePaymentFollowUp)
   if (action == 'updatePaymentFollowUp') {
       const dbSheet = getSheet(ss, "DATA BASE");
       const collectionSheet = getSheet(ss, "PAYMENT COLLECTION");
