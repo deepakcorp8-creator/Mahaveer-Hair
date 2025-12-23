@@ -89,4 +89,7 @@ export interface ServicePackage {
   totalServices: number;
   startDate: string;
   status: 'APPROVED' | 'ACTIVE' | 'EXPIRED' | 'COMPLETED' | 'PENDING' | 'REJECTED';
+  // New Fields
+  packageType?: 'NEW' | 'OLD';
+  oldServiceCount?: number; // Count of services completed before this system
 }

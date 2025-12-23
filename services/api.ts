@@ -176,12 +176,22 @@ export const api = {
     }
     if (isLive) {
         try {
-            const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getPackages`);
+            const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getPackages&t=${now}`);
             const data = await response.json();
-            const formatted = Array.isArray(data) ? data.map((p: any) => ({ ...p, startDate: normalizeToISO(p.startDate) })) : [];
-            DATA_CACHE.packages = formatted;
-            DATA_CACHE.lastFetch['packages'] = now;
-            return formatted;
+            if (Array.isArray(data)) {
+                // Ensure status defaults to PENDING if undefined
+                // Ensure oldServiceCount defaults to 0 and packageType defaults to NEW
+                const formatted = data.map((p: any) => ({ 
+                    ...p, 
+                    startDate: normalizeToISO(p.startDate),
+                    status: p.status || 'PENDING',
+                    packageType: p.packageType || 'NEW',
+                    oldServiceCount: Number(p.oldServiceCount || 0)
+                }));
+                DATA_CACHE.packages = formatted;
+                DATA_CACHE.lastFetch['packages'] = now;
+                return formatted;
+            }
         } catch (e) { console.warn(e); }
     }
     return [...MOCK_PACKAGES];
@@ -239,11 +249,25 @@ export const api = {
       if (!pkg) return null;
       
       const entries = await api.getEntries();
-      const usedCount = entries.filter((e: any) => 
-          e.clientName.trim().toLowerCase() === normalizedName && 
-          e.serviceType === 'SERVICE' && 
-          e.workStatus === 'DONE'
-      ).length;
+      
+      const pkgStartDate = new Date(pkg.startDate);
+      pkgStartDate.setHours(0,0,0,0);
+
+      const dbUsedCount = entries.filter((e: any) => {
+          const entryDate = new Date(e.date);
+          entryDate.setHours(0,0,0,0);
+          
+          return (
+             e.clientName.trim().toLowerCase() === normalizedName && 
+             entryDate >= pkgStartDate &&
+             e.serviceType === 'SERVICE' && 
+             e.workStatus === 'DONE'
+          );
+      }).length;
+
+      // Add old service count if package type is OLD
+      const initialCount = pkg.packageType === 'OLD' ? (pkg.oldServiceCount || 0) : 0;
+      const usedCount = dbUsedCount + initialCount;
 
       return { 
           package: pkg, 

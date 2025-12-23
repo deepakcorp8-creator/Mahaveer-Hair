@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { ServicePackage, Client, Entry, Role, User } from '../types';
-import { PackageCheck, Plus, Search, User as UserIcon, Clock, Pencil, X, ShieldAlert, Sparkles, CheckCircle2, AlertTriangle, CalendarRange, IndianRupee } from 'lucide-react';
+import { PackageCheck, Plus, Search, User as UserIcon, Clock, Pencil, X, ShieldAlert, Sparkles, CheckCircle2, AlertTriangle, CalendarRange, IndianRupee, Layers, Rewind } from 'lucide-react';
 import { SearchableSelect } from './SearchableSelect';
 
 const ServicePackages: React.FC = () => {
@@ -23,7 +23,9 @@ const ServicePackages: React.FC = () => {
     totalCost: 0,
     totalServices: 12,
     startDate: new Date().toISOString().split('T')[0],
-    status: 'PENDING'
+    status: 'PENDING',
+    packageType: 'NEW',
+    oldServiceCount: 0
   });
 
   useEffect(() => {
@@ -73,7 +75,9 @@ const ServicePackages: React.FC = () => {
                 totalCost: 0,
                 totalServices: 12,
                 startDate: new Date().toISOString().split('T')[0],
-                status: 'PENDING'
+                status: 'PENDING',
+                packageType: 'NEW',
+                oldServiceCount: 0
             });
         }
     } catch (e) {
@@ -128,7 +132,8 @@ const ServicePackages: React.FC = () => {
       const pkgStart = new Date(pkg.startDate);
       pkgStart.setHours(0,0,0,0);
 
-      const used = entries.filter(e => {
+      // Count only services done AFTER package start date in the system
+      const dbUsed = entries.filter(e => {
           const entryName = (e.clientName || '').trim().toLowerCase();
           const entryDate = new Date(e.date);
           entryDate.setHours(0,0,0,0);
@@ -141,9 +146,13 @@ const ServicePackages: React.FC = () => {
           );
       }).length;
       
-      const remaining = Math.max(0, pkg.totalServices - used);
-      const isExpired = used >= pkg.totalServices;
-      return { used, remaining, isExpired };
+      // Calculate Total used based on Package Type
+      const startingCount = pkg.packageType === 'OLD' ? (pkg.oldServiceCount || 0) : 0;
+      const totalUsed = dbUsed + startingCount;
+      
+      const remaining = Math.max(0, pkg.totalServices - totalUsed);
+      const isExpired = totalUsed >= pkg.totalServices;
+      return { used: totalUsed, remaining, isExpired, startingCount };
   };
 
   const filteredPackages = packages.filter(p => 
@@ -158,6 +167,7 @@ const ServicePackages: React.FC = () => {
   const renderCard = (pkg: ServicePackage) => {
     const stats = getPackageUsage(pkg);
     const isPending = pkg.status === 'PENDING' || !pkg.status;
+    const isOldPackage = pkg.packageType === 'OLD';
     
     return (
         <div key={pkg.id} className={`
@@ -192,12 +202,19 @@ const ServicePackages: React.FC = () => {
                             <h3 className="font-black text-slate-800 text-lg leading-tight tracking-tight mb-1 truncate">
                                 {pkg.clientName}
                             </h3>
-                            <div className={`inline-flex items-center px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider border shadow-sm
-                                ${isPending 
-                                    ? 'bg-amber-50 text-amber-700 border-amber-100' 
-                                    : 'bg-indigo-50 text-indigo-700 border-indigo-100'}
-                            `}>
-                                {pkg.packageName}
+                            <div className="flex flex-wrap gap-2">
+                                <div className={`inline-flex items-center px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider border shadow-sm
+                                    ${isPending 
+                                        ? 'bg-amber-50 text-amber-700 border-amber-100' 
+                                        : 'bg-indigo-50 text-indigo-700 border-indigo-100'}
+                                `}>
+                                    {pkg.packageName}
+                                </div>
+                                {isOldPackage && (
+                                    <div className="inline-flex items-center px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider border shadow-sm bg-slate-100 text-slate-600 border-slate-200">
+                                        OLD PKG
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -205,6 +222,16 @@ const ServicePackages: React.FC = () => {
 
                 {/* Body */}
                 <div className="flex-1">
+                    {/* INFO FOR ADMIN - Old Package Details */}
+                    {isOldPackage && (
+                        <div className="mb-3 px-3 py-2 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
+                            <span className="text-[10px] font-bold text-slate-500 uppercase flex items-center">
+                                <Rewind className="w-3 h-3 mr-1" /> Prev. Done
+                            </span>
+                            <span className="text-xs font-black text-slate-800">{pkg.oldServiceCount} Services</span>
+                        </div>
+                    )}
+
                     {isPending ? (
                         <div className="bg-white/80 rounded-xl p-3 border border-amber-100 text-center mb-4">
                             <p className="text-[10px] font-black uppercase text-amber-600 tracking-wider mb-2 flex items-center justify-center">
@@ -360,6 +387,45 @@ const ServicePackages: React.FC = () => {
                     </div>
                 </div>
 
+                {/* NEW FIELDS: Package Type & Old Count */}
+                <div>
+                    <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">Package Type</label>
+                    <div className="flex gap-2 bg-slate-100 p-1 rounded-xl">
+                        <button
+                            type="button"
+                            onClick={() => setNewPkg({ ...newPkg, packageType: 'NEW', oldServiceCount: 0 })}
+                            className={`flex-1 py-3 rounded-lg text-xs font-black transition-all ${newPkg.packageType === 'NEW' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}
+                        >
+                            NEW PACKAGE
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setNewPkg({ ...newPkg, packageType: 'OLD' })}
+                            className={`flex-1 py-3 rounded-lg text-xs font-black transition-all ${newPkg.packageType === 'OLD' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}
+                        >
+                            OLD PACKAGE
+                        </button>
+                    </div>
+                </div>
+
+                {newPkg.packageType === 'OLD' && (
+                    <div className="animate-in fade-in slide-in-from-top-2 bg-amber-50 p-4 rounded-2xl border border-amber-200">
+                        <label className="block text-[10px] font-black uppercase tracking-widest text-amber-700 mb-2 ml-1 flex items-center">
+                            <Rewind className="w-3 h-3 mr-1" /> Completed Services
+                        </label>
+                        <input 
+                            type="number" 
+                            className="w-full rounded-xl border border-amber-200 bg-white px-4 py-3 text-slate-800 font-bold focus:ring-2 focus:ring-amber-500 outline-none"
+                            placeholder="e.g. 5"
+                            value={newPkg.oldServiceCount || ''}
+                            onChange={e => setNewPkg({...newPkg, oldServiceCount: Number(e.target.value)})}
+                        />
+                        <p className="text-[10px] text-amber-600 mt-2 font-medium">
+                            Enter number of services *already done* in this package. Next service will count from here.
+                        </p>
+                    </div>
+                )}
+
                 <div>
                     <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">Start Date</label>
                     <input 
@@ -485,15 +551,30 @@ const ServicePackages: React.FC = () => {
                               />
                           </div>
                       </div>
-                      <div>
-                          <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Start Date</label>
-                          <input 
-                              type="date"
-                              value={editingPackage.startDate}
-                              onChange={e => setEditingPackage({...editingPackage, startDate: e.target.value})}
-                              className="w-full rounded-xl border-slate-200 border bg-slate-50 px-4 py-3 font-bold focus:ring-2 focus:ring-indigo-500 outline-none"
-                              required
-                          />
+                      
+                      {/* Edit Old Service Count if applicable */}
+                      <div className="grid grid-cols-2 gap-6">
+                          <div>
+                              <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Start Date</label>
+                              <input 
+                                  type="date"
+                                  value={editingPackage.startDate}
+                                  onChange={e => setEditingPackage({...editingPackage, startDate: e.target.value})}
+                                  className="w-full rounded-xl border-slate-200 border bg-slate-50 px-4 py-3 font-bold focus:ring-2 focus:ring-indigo-500 outline-none"
+                                  required
+                              />
+                          </div>
+                          {editingPackage.packageType === 'OLD' && (
+                              <div>
+                                  <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Old Count</label>
+                                  <input 
+                                      type="number"
+                                      value={editingPackage.oldServiceCount}
+                                      onChange={e => setEditingPackage({...editingPackage, oldServiceCount: Number(e.target.value)})}
+                                      className="w-full rounded-xl border-slate-200 border bg-slate-50 px-4 py-3 font-bold focus:ring-2 focus:ring-indigo-500 outline-none"
+                                  />
+                              </div>
+                          )}
                       </div>
 
                       <div className="pt-4 flex gap-4">

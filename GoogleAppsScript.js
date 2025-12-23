@@ -215,8 +215,18 @@ function doPost(e) {
   // --- PACKAGES ---
   if (action == 'addPackage') {
       const pkgSheet = getSheet(ss, "PACKAGE PLAN");
-      // Format: Date, Name, PackageName, Cost, Services, Status
-      const row = [toSheetDate(data.startDate), data.clientName, data.packageName, data.totalCost, data.totalServices, data.status];
+      // Format: Date(1), Name(2), PackageName(3), Cost(4), Services(5), Status(6), OLD_SRV(7), TYPE(8)
+      // Note: Sheet indices are 1-based.
+      const row = [
+        toSheetDate(data.startDate), 
+        data.clientName, 
+        data.packageName, 
+        data.totalCost, 
+        data.totalServices, 
+        data.status,
+        data.oldServiceCount || 0,
+        data.packageType || 'NEW'
+      ];
       pkgSheet.appendRow(row);
       return response({status: "success"});
   }
@@ -240,6 +250,10 @@ function doPost(e) {
           pkgSheet.getRange(rowId, 3).setValue(data.packageName);
           pkgSheet.getRange(rowId, 4).setValue(data.totalCost);
           pkgSheet.getRange(rowId, 5).setValue(data.totalServices);
+          // Update New Fields if editing allowed (Optional)
+          if(data.oldServiceCount !== undefined) pkgSheet.getRange(rowId, 7).setValue(data.oldServiceCount);
+          if(data.packageType) pkgSheet.getRange(rowId, 8).setValue(data.packageType);
+          
           return response({status: "success"});
       }
       return response({error: "Invalid ID"});
@@ -378,7 +392,7 @@ function getSheet(ss, name) {
         sheet = ss.insertSheet(name);
         if (name === "DATA BASE") sheet.appendRow(["DATE","CLIENT NAME","CONTACT","ADDRESS","BRANCH","SERVICE","METHOD","TECH","STATUS","TOTAL BILL","MODE","REMARK","SRV_NO","INVOICE","SIZE","PENDING"]);
         if (name === "APPOINTMENT") sheet.appendRow(["ID", "DATE", "NAME", "CONTACT", "ADDRESS", "NOTE", "STATUS", "BRANCH", "TIME"]);
-        if (name === "PACKAGE PLAN") sheet.appendRow(["START DATE", "CLIENT NAME", "PACKAGE", "COST", "SERVICES", "STATUS"]);
+        if (name === "PACKAGE PLAN") sheet.appendRow(["START DATE", "CLIENT NAME", "PACKAGE", "COST", "SERVICES", "STATUS", "OLD SERVICE NUMBER", "PACKAGE TYPE"]);
     }
     return sheet;
 }
@@ -406,9 +420,18 @@ function getOptions(ss) {
 function getPackages(ss) {
     const sheet = getSheet(ss, "PACKAGE PLAN");
     if (!sheet || sheet.getLastRow() <= 1) return response([]);
-    const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 6).getValues();
+    // Read up to Col H (8 columns)
+    const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 8).getValues();
     return response(data.map((row, index) => ({
-      id: 'row_' + (index + 2), startDate: fromSheetDate(row[0]), clientName: row[1], packageName: row[2], totalCost: row[3], totalServices: row[4], status: row[5] || 'PENDING' 
+      id: 'row_' + (index + 2), 
+      startDate: fromSheetDate(row[0]), 
+      clientName: row[1], 
+      packageName: row[2], 
+      totalCost: row[3], 
+      totalServices: row[4], 
+      status: row[5] || 'PENDING',
+      oldServiceCount: Number(row[6] || 0),
+      packageType: row[7] || 'NEW'
     })));
 }
 
