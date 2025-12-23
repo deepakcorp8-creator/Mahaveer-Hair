@@ -1,6 +1,6 @@
 
 // =====================================================================================
-// ⚠️ MAHAVEER WEB APP - BACKEND SCRIPT (FIXED: PACKAGE STORAGE & TYPES)
+// ⚠️ MAHAVEER WEB APP - BACKEND SCRIPT (V2)
 // =====================================================================================
 
 function doGet(e) {
@@ -13,141 +13,105 @@ function doGet(e) {
   if (action == 'getUsers') return getUsers(ss);
   if (action == 'getAppointments') return getAppointments(ss);
 
-  return response({error: "Invalid action"});
-}
-
-function getSafeLastRow(sheet, colIndex) {
-  var column = colIndex || 2; 
-  var lastRow = sheet.getMaxRows();
-  var values = sheet.getRange(1, column, lastRow).getValues();
-  for (var i = values.length - 1; i >= 0; i--) {
-    if (values[i][0] && values[i][0].toString().trim() !== "") {
-      return i + 1;
-    }
-  }
-  return 1;
-}
-
-// Helper to find row by ID column (Assumes ID is in Col 1 or specific generated ID logic)
-function findRowById(sheet, id, idColIndex) {
-  const data = sheet.getDataRange().getValues();
-  // Start from row 1 (index 1) to skip header
-  for (let i = 1; i < data.length; i++) {
-    // If ID matches. Note: Some IDs are generated row numbers (row_5), some are UUIDs
-    // For 'row_X' format, we check simply index. For others, check value.
-    if (id.startsWith('row_')) {
-       if (('row_' + (i + 1)) === id) return i + 1;
-    } else {
-       if (data[i][idColIndex] == id) return i + 1;
-    }
-  }
-  return -1;
-}
-
-function createInvoice(data) {
-  try {
-    const folderName = "MAHAVEER_INVOICES";
-    let folders = DriveApp.getFoldersByName(folderName);
-    let folder = folders.hasNext() ? folders.next() : DriveApp.createFolder(folderName);
-    
-    const date = data.date || new Date().toLocaleDateString();
-    // Simplified Inline CSS for better Google PDF Engine compatibility
-    const html = `
-      <div style="font-family: Helvetica, Arial, sans-serif; padding: 40px; color: #333;">
-        <div style="text-align: center; margin-bottom: 20px;">
-           <h1 style="color: #B51A2B; margin: 0; font-size: 24px;">MAHAVEER HAIR SOLUTION</h1>
-           <p style="color: #666; font-size: 12px; margin: 5px 0;">Official Service Invoice</p>
-        </div>
-        <hr style="border: 0; border-top: 1px solid #ddd;" />
-        
-        <table style="width: 100%; margin-top: 20px; font-size: 12px;">
-          <tr>
-            <td style="padding: 5px;"><strong>Client:</strong> ${data.clientName}</td>
-            <td style="text-align: right; padding: 5px;"><strong>Date:</strong> ${date}</td>
-          </tr>
-          <tr>
-            <td style="padding: 5px;"><strong>Contact:</strong> ${data.contactNo}</td>
-            <td style="text-align: right; padding: 5px;"><strong>Branch:</strong> ${data.branch}</td>
-          </tr>
-        </table>
-
-        <table style="width: 100%; margin-top: 30px; border-collapse: collapse; font-size: 12px;">
-          <tr style="background-color: #f3f4f6;">
-            <th style="padding: 10px; border: 1px solid #ddd; text-align: left;">Service Description</th>
-            <th style="padding: 10px; border: 1px solid #ddd; text-align: right;">Amount</th>
-          </tr>
-          <tr>
-            <td style="padding: 10px; border: 1px solid #ddd;">
-              <strong>${data.serviceType}</strong><br/>
-              <span style="color: #666; font-size: 10px;">Tech: ${data.technician} | Method: ${data.patchMethod}</span>
-            </td>
-            <td style="padding: 10px; border: 1px solid #ddd; text-align: right;">₹${data.amount}</td>
-          </tr>
-        </table>
-
-        <div style="margin-top: 20px; text-align: right; font-size: 12px;">
-           <p style="margin: 5px 0;"><strong>Total Amount:</strong> ₹${data.amount}</p>
-           <p style="margin: 5px 0; color: #10b981;"><strong>Paid (${data.paymentMethod}):</strong> ₹${data.amount - (data.pendingAmount || 0)}</p>
-           ${(data.pendingAmount || 0) > 0 ? `<p style="margin: 5px 0; color: #ef4444;"><strong>Balance Due:</strong> ₹${data.pendingAmount}</p>` : ''}
-        </div>
-
-        <div style="margin-top: 50px; text-align: center; font-size: 10px; color: #888;">
-           <p>Thank you for choosing Mahaveer Hair Solution.</p>
-           <p>This is a computer generated invoice.</p>
-        </div>
-      </div>
-    `;
-    
-    const blob = Utilities.newBlob(html, 'text/html', `Invoice_${data.clientName}_${Date.now()}.html`);
-    const pdf = folder.createFile(blob.getAs('application/pdf'));
-    pdf.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-    
-    // Return direct download link or viewer link
-    return "https://drive.google.com/uc?export=view&id=" + pdf.getId();
-  } catch (e) {
-    // Return empty string on error so code doesn't break, but log it
-    Logger.log("Invoice Error: " + e.toString());
-    return ""; 
-  }
+  return response({error: "Invalid GET action: " + action});
 }
 
 function doPost(e) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const data = JSON.parse(e.postData.contents);
+  var data;
+  
+  try {
+    data = JSON.parse(e.postData.contents);
+  } catch(err) {
+    return response({error: "Invalid JSON body"});
+  }
+  
   const action = data.action;
+
+  // --- PACKAGES (PRIORITY) ---
+  if (action == 'addPackage') {
+      try {
+        const pkgSheet = getSheet(ss, "PACKAGE PLAN");
+        
+        // Ensure values are safe
+        var startDate = toSheetDate(data.startDate);
+        var clientName = String(data.clientName || 'Unknown');
+        var packageName = String(data.packageName || 'Custom Package');
+        var totalCost = Number(data.totalCost || 0);
+        var totalServices = Number(data.totalServices || 0);
+        var status = String(data.status || 'PENDING');
+        var oldServiceCount = Number(data.oldServiceCount || 0);
+        var packageType = String(data.packageType || 'NEW');
+
+        const row = [
+          startDate, 
+          clientName, 
+          packageName, 
+          totalCost, 
+          totalServices, 
+          status,
+          oldServiceCount,
+          packageType
+        ];
+        
+        pkgSheet.appendRow(row);
+        return response({status: "success", message: "Package created successfully"});
+      } catch (err) {
+        return response({error: "Failed to create package (Server Error): " + err.toString()});
+      }
+  }
+
+  if (action == 'updatePackageStatus') {
+      const pkgSheet = getSheet(ss, "PACKAGE PLAN");
+      const rowId = parseInt(data.id.split('_')[1]);
+      if (rowId > 0) {
+          pkgSheet.getRange(rowId, 6).setValue(data.status); 
+          return response({status: "success"});
+      }
+      return response({error: "Invalid ID for Package"});
+  }
+
+  if (action == 'editPackage') {
+      const pkgSheet = getSheet(ss, "PACKAGE PLAN");
+      const rowId = parseInt(data.id.split('_')[1]);
+      if (rowId > 0) {
+          pkgSheet.getRange(rowId, 1).setValue(toSheetDate(data.startDate));
+          pkgSheet.getRange(rowId, 3).setValue(data.packageName);
+          pkgSheet.getRange(rowId, 4).setValue(data.totalCost);
+          pkgSheet.getRange(rowId, 5).setValue(data.totalServices);
+          if(data.oldServiceCount !== undefined) pkgSheet.getRange(rowId, 7).setValue(data.oldServiceCount);
+          if(data.packageType) pkgSheet.getRange(rowId, 8).setValue(data.packageType);
+          return response({status: "success"});
+      }
+      return response({error: "Invalid ID for Edit"});
+  }
+
+  if (action == 'deletePackage') {
+      const pkgSheet = getSheet(ss, "PACKAGE PLAN");
+      const rowId = parseInt(data.id.split('_')[1]);
+      if (rowId > 0) {
+          pkgSheet.deleteRow(rowId);
+          return response({status: "success"});
+      }
+      return response({error: "Invalid ID for Delete"});
+  }
 
   // --- ENTRIES ---
   if (action == 'addEntry') {
     const dbSheet = getSheet(ss, "DATA BASE");
     var invoiceUrl = "";
-    // Generate Invoice only if amount > 0
     if (Number(data.amount) >= 0) {
         invoiceUrl = createInvoice(data);
     }
-    
     const newRow = [
-      toSheetDate(data.date), 
-      data.clientName, 
-      data.contactNo, 
-      data.address, 
-      data.branch, 
-      data.serviceType, 
-      data.patchMethod, 
-      data.technician, 
-      data.workStatus, 
-      data.amount, 
-      data.paymentMethod, 
-      String(data.remark || ""), 
-      data.numberOfService, 
-      invoiceUrl, 
-      data.patchSize || '', 
-      data.pendingAmount || 0
+      toSheetDate(data.date), data.clientName, data.contactNo, data.address, data.branch, 
+      data.serviceType, data.patchMethod, data.technician, data.workStatus, data.amount, 
+      data.paymentMethod, String(data.remark || ""), data.numberOfService, invoiceUrl, 
+      data.patchSize || '', data.pendingAmount || 0
     ];
-    
     const nextRow = getSafeLastRow(dbSheet, 2) + 1;
     dbSheet.getRange(nextRow, 1, 1, newRow.length).setValues([newRow]);
     dbSheet.getRange(nextRow, 1).setNumberFormat("dd/mm/yyyy");
-    
     return response({status: "success", invoiceUrl: invoiceUrl, id: 'row_' + nextRow});
   }
 
@@ -205,61 +169,6 @@ function doPost(e) {
       return response({error: "Client not found"});
   }
 
-  // --- PACKAGES ---
-  if (action == 'addPackage') {
-      const pkgSheet = getSheet(ss, "PACKAGE PLAN");
-      // Format: Date(1), Name(2), PackageName(3), Cost(4), Services(5), Status(6), OLD_SRV(7), TYPE(8)
-      // Note: Sheet indices are 1-based.
-      const row = [
-        toSheetDate(data.startDate), 
-        String(data.clientName), 
-        String(data.packageName), 
-        Number(data.totalCost || 0), 
-        Number(data.totalServices || 0), 
-        String(data.status || 'PENDING'),
-        Number(data.oldServiceCount || 0),
-        String(data.packageType || 'NEW')
-      ];
-      pkgSheet.appendRow(row);
-      return response({status: "success"});
-  }
-
-  if (action == 'updatePackageStatus') {
-      const pkgSheet = getSheet(ss, "PACKAGE PLAN");
-      const rowId = parseInt(data.id.split('_')[1]);
-      if (rowId > 0) {
-          pkgSheet.getRange(rowId, 6).setValue(data.status); 
-          return response({status: "success"});
-      }
-      return response({error: "Invalid ID"});
-  }
-
-  if (action == 'editPackage') {
-      const pkgSheet = getSheet(ss, "PACKAGE PLAN");
-      const rowId = parseInt(data.id.split('_')[1]);
-      if (rowId > 0) {
-          pkgSheet.getRange(rowId, 1).setValue(toSheetDate(data.startDate));
-          pkgSheet.getRange(rowId, 3).setValue(data.packageName);
-          pkgSheet.getRange(rowId, 4).setValue(data.totalCost);
-          pkgSheet.getRange(rowId, 5).setValue(data.totalServices);
-          // Update New Fields if editing allowed
-          if(data.oldServiceCount !== undefined) pkgSheet.getRange(rowId, 7).setValue(data.oldServiceCount);
-          if(data.packageType) pkgSheet.getRange(rowId, 8).setValue(data.packageType);
-          return response({status: "success"});
-      }
-      return response({error: "Invalid ID"});
-  }
-
-  if (action == 'deletePackage') {
-      const pkgSheet = getSheet(ss, "PACKAGE PLAN");
-      const rowId = parseInt(data.id.split('_')[1]);
-      if (rowId > 0) {
-          pkgSheet.deleteRow(rowId);
-          return response({status: "success"});
-      }
-      return response({error: "Invalid ID"});
-  }
-
   // --- APPOINTMENTS ---
   if (action == 'addAppointment') {
       const apptSheet = getSheet(ss, "APPOINTMENT");
@@ -290,6 +199,24 @@ function doPost(e) {
   }
 
   // --- USERS ---
+  if (action == 'addUser') {
+      const userSheet = getSheet(ss, "LOGIN");
+      // username, password, role, department, permissions
+      const row = [
+          data.username, 
+          data.password || '123456', 
+          data.role, 
+          data.department, 
+          data.permissions, 
+          '', // dpUrl 
+          '', // gender
+          '', // dob
+          ''  // address
+      ];
+      userSheet.appendRow(row);
+      return response({status: "success"});
+  }
+
   if (action == 'deleteUser') {
       const userSheet = getSheet(ss, "LOGIN");
       const users = userSheet.getDataRange().getValues();
@@ -307,7 +234,27 @@ function doPost(e) {
       return response({error: "User not found"});
   }
 
-  // ... (Other actions like updatePaymentFollowUp)
+  if (action == 'updateUser') {
+      const userSheet = getSheet(ss, "LOGIN");
+      const users = userSheet.getDataRange().getValues();
+      let row = -1;
+      for (let i = 1; i < users.length; i++) {
+          if (users[i][0] == data.username) {
+              row = i + 1;
+              break;
+          }
+      }
+      if (row > 0) {
+          if(data.password) userSheet.getRange(row, 2).setValue(data.password);
+          if(data.role) userSheet.getRange(row, 3).setValue(data.role);
+          if(data.department) userSheet.getRange(row, 4).setValue(data.department);
+          if(data.permissions) userSheet.getRange(row, 5).setValue(data.permissions);
+          return response({status: "success"});
+      }
+      return response({error: "User not found"});
+  }
+
+  // --- PAYMENTS ---
   if (action == 'updatePaymentFollowUp') {
       const dbSheet = getSheet(ss, "DATA BASE");
       const collectionSheet = getSheet(ss, "PAYMENT COLLECTION");
@@ -335,7 +282,8 @@ function doPost(e) {
       } catch(e) { return response({error: e.message}); }
   }
 
-  return response({error: "Action processed"});
+  // Catch-all with helpful message
+  return response({error: "System Error: Unknown Action (v2) - " + action});
 }
 
 function toSheetDate(dateStr) {
@@ -355,6 +303,49 @@ function fromSheetDate(val) {
      return ("0" + d.getDate()).slice(-2) + "/" + ("0" + (d.getMonth() + 1)).slice(-2) + "/" + d.getFullYear();
   }
   return String(val).trim();
+}
+
+function getSafeLastRow(sheet, colIndex) {
+  var column = colIndex || 2; 
+  var lastRow = sheet.getMaxRows();
+  var values = sheet.getRange(1, column, lastRow).getValues();
+  for (var i = values.length - 1; i >= 0; i--) {
+    if (values[i][0] && values[i][0].toString().trim() !== "") {
+      return i + 1;
+    }
+  }
+  return 1;
+}
+
+function findRowById(sheet, id, idColIndex) {
+  const data = sheet.getDataRange().getValues();
+  for (let i = 1; i < data.length; i++) {
+    if (id.startsWith('row_')) {
+       if (('row_' + (i + 1)) === id) return i + 1;
+    } else {
+       if (data[i][idColIndex] == id) return i + 1;
+    }
+  }
+  return -1;
+}
+
+function createInvoice(data) {
+  try {
+    const folderName = "MAHAVEER_INVOICES";
+    let folders = DriveApp.getFoldersByName(folderName);
+    let folder = folders.hasNext() ? folders.next() : DriveApp.createFolder(folderName);
+    
+    const date = data.date || new Date().toLocaleDateString();
+    // Simplified Invoice Logic
+    const html = `<html><body><h1>Invoice</h1><p>${data.clientName}</p><p>Total: ${data.amount}</p></body></html>`;
+    
+    const blob = Utilities.newBlob(html, 'text/html', `Invoice_${data.clientName}_${Date.now()}.html`);
+    const pdf = folder.createFile(blob.getAs('application/pdf'));
+    pdf.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    return "https://drive.google.com/uc?export=view&id=" + pdf.getId();
+  } catch (e) {
+    return ""; 
+  }
 }
 
 function getTodayInSheetFormat() {
@@ -411,7 +402,6 @@ function getOptions(ss) {
 function getPackages(ss) {
     const sheet = getSheet(ss, "PACKAGE PLAN");
     if (!sheet || sheet.getLastRow() <= 1) return response([]);
-    // Read up to Col H (8 columns)
     const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 8).getValues();
     return response(data.map((row, index) => ({
       id: 'row_' + (index + 2), 

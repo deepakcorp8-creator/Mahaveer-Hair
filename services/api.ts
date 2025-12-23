@@ -1,3 +1,4 @@
+
 import { Entry, Client, Appointment, DashboardStats, ServicePackage, User } from '../types';
 import { MOCK_CLIENTS, MOCK_ENTRIES, MOCK_APPOINTMENTS, MOCK_ITEMS, MOCK_TECHNICIANS, MOCK_PACKAGES, GOOGLE_SCRIPT_URL } from '../constants';
 
@@ -435,6 +436,7 @@ export const api = {
             body: JSON.stringify({ action: 'addPackage', ...pkgPayload })
         });
         const result = await res.json();
+        // Check if server returned explicit error
         if (result.error) throw new Error(result.error);
         return true; 
       }

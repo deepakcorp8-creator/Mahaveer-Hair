@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { ServicePackage, Client, Entry, Role, User } from '../types';
-import { PackageCheck, Plus, Search, User as UserIcon, Clock, Pencil, X, ShieldAlert, Sparkles, CheckCircle2, AlertTriangle, CalendarRange, IndianRupee, Layers, Rewind } from 'lucide-react';
+import { PackageCheck, Plus, Search, User as UserIcon, Clock, Pencil, X, ShieldAlert, Sparkles, CheckCircle2, AlertTriangle, CalendarRange, IndianRupee, Layers, Rewind, Loader2 } from 'lucide-react';
 import { SearchableSelect } from './SearchableSelect';
 
 const ServicePackages: React.FC = () => {
@@ -62,12 +62,20 @@ const ServicePackages: React.FC = () => {
 
     setLoading(true);
     try {
-        if(newPkg.clientName && newPkg.packageName && newPkg.totalServices) {
-            await api.addPackage({
-                ...newPkg as ServicePackage,
+        if(newPkg.clientName && newPkg.packageName) {
+            // Explicitly cast numbers and ensure contact is string
+            const payload = {
+                ...newPkg,
+                contact: newPkg.contact || '',
+                totalCost: Number(newPkg.totalCost || 0),
+                totalServices: Number(newPkg.totalServices || 0),
+                oldServiceCount: Number(newPkg.oldServiceCount || 0),
                 status: 'PENDING'
-            });
-            await loadData(); 
+            } as ServicePackage;
+
+            await api.addPackage(payload);
+            
+            // Success Handling
             setNewPkg({
                 clientName: '',
                 contact: '',
@@ -79,10 +87,20 @@ const ServicePackages: React.FC = () => {
                 packageType: 'NEW',
                 oldServiceCount: 0
             });
+            await loadData(); 
+            alert("✅ Package created successfully!");
+        } else {
+            alert("⚠️ Please fill in Client Name and Package Name");
         }
-    } catch (e) {
+    } catch (e: any) {
         console.error(e);
-        alert("Error creating package.");
+        const errString = e.message || e.toString();
+        // Check for specific error message indicating old deployment
+        if (errString.includes("Unknown action") || errString.includes("Action processed")) {
+             alert(`❌ CRITICAL ERROR: Backend Script Not Updated.\n\nPlease go to Google Apps Script -> Deploy -> New Deployment. (Do NOT just click save)\n\nError Details: ${errString}`);
+        } else {
+             alert(`❌ Error creating package: ${errString}`);
+        }
     } finally {
         setLoading(false);
     }
@@ -440,9 +458,15 @@ const ServicePackages: React.FC = () => {
                 <button
                     type="submit"
                     disabled={loading}
-                    className="w-full py-4 bg-slate-900 hover:bg-slate-800 text-white font-black text-lg rounded-2xl shadow-xl shadow-slate-400/40 transition-all transform hover:-translate-y-1 hover:shadow-2xl flex justify-center items-center active:scale-95 border border-slate-700"
+                    className={`w-full py-4 text-white font-black text-lg rounded-2xl shadow-xl transition-all transform hover:-translate-y-1 hover:shadow-2xl flex justify-center items-center active:scale-95 border
+                        ${loading ? 'bg-slate-400 border-slate-500 cursor-not-allowed' : 'bg-slate-900 hover:bg-slate-800 border-slate-700 shadow-slate-400/40'}
+                    `}
                 >
-                    {loading ? 'Processing...' : <><Plus className="w-5 h-5 mr-2" /> Create Package</>}
+                    {loading ? (
+                        <span className="flex items-center"><Loader2 className="w-5 h-5 mr-2 animate-spin" /> Processing...</span>
+                    ) : (
+                        <span className="flex items-center"><Plus className="w-5 h-5 mr-2" /> Create Package</span>
+                    )}
                 </button>
             </form>
         </div>
