@@ -1,6 +1,6 @@
 
 // =====================================================================================
-// ⚠️ MAHAVEER WEB APP - BACKEND SCRIPT (V3 - Invoice Fix)
+// ⚠️ MAHAVEER WEB APP - BACKEND SCRIPT (V4 - PDF Design Fix)
 // =====================================================================================
 
 function doGet(e) {
@@ -290,131 +290,158 @@ function createInvoice(data) {
     var invoiceDate = data.date ? toSheetDate(data.date) : getTodayInSheetFormat();
     var invNum = "INV-" + new Date().getFullYear() + "-" + Math.floor(Math.random() * 9000 + 1000);
 
-    // 3. Build HTML (CSS Inlined for PDF Conversion)
+    // 3. Build HTML (Design Fix to match Screenshot)
     var html = `
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <style>
-          body { font-family: sans-serif; color: #333; padding: 20px; }
-          .header { text-align: center; margin-bottom: 20px; }
-          .logo { font-size: 28px; font-weight: bold; color: #000; letter-spacing: 2px; margin-bottom: 5px; }
-          .logo-sub { font-size: 10px; letter-spacing: 3px; margin-bottom: 15px; color: #555; }
-          .address { font-size: 10px; color: #555; margin-bottom: 20px; line-height: 1.4; }
-          .meta-table { width: 100%; border-top: 1px solid #ddd; margin-bottom: 20px; }
-          .meta-table td { padding: 15px 0; vertical-align: top; font-size: 11px; font-weight: bold; color: #333; }
-          .meta-label { font-size: 9px; color: #777; display: block; margin-bottom: 2px; }
-          .info-box-container { display: table; width: 100%; border-spacing: 10px; margin-bottom: 20px; }
-          .info-box { display: table-cell; width: 48%; border: 1px solid #ddd; padding: 15px; border-radius: 4px; vertical-align: top; }
-          .box-header { font-size: 9px; font-weight: bold; color: #777; margin-bottom: 5px; text-transform: uppercase; }
-          .box-text { font-size: 12px; font-weight: bold; margin-bottom: 2px; }
-          .box-sub { font-size: 11px; color: #555; }
-          .main-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-          .main-table th { background-color: #333; color: #fff; padding: 10px; text-align: left; font-size: 10px; font-weight: bold; }
-          .main-table td { border-bottom: 1px solid #eee; padding: 12px 10px; font-size: 11px; }
-          .totals-table { float: right; width: 300px; border-collapse: collapse; }
-          .totals-table td { padding: 5px 0; font-size: 11px; }
-          .grand-total { border-top: 2px solid #000; border-bottom: 2px solid #000; font-weight: bold; font-size: 14px; padding: 10px 0; }
-          .footer { margin-top: 100px; font-size: 9px; color: #555; border-top: 1px solid #eee; padding-top: 20px; }
-          .footer-table { width: 100%; }
-          .footer-table td { vertical-align: bottom; }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <div class="logo">MAHAVEER <span style="color:#0ea5e9">HAIR</span></div>
-          <div class="logo-sub">SOLUTION FOR BETTER SHINE</div>
-          <div class="address">
-            ${branchAddress}<br>
-            Contact: ${branchContact} | Email: info@mahaveerhairsolution.com
+      <html>
+        <head>
+          <style>
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+            body { font-family: 'Inter', sans-serif; color: #111; padding: 40px; font-size: 12px; background: white; }
+            .header { text-align: center; margin-bottom: 25px; }
+            .logo { font-size: 32px; font-weight: 900; margin-bottom: 0px; letter-spacing: -1px; text-transform: uppercase; color: #000; }
+            .logo span { color: #0ea5e9; }
+            .tagline { font-size: 10px; letter-spacing: 2px; color: #555; margin-bottom: 12px; text-transform: uppercase; font-weight: 700; }
+            .address { font-size: 10px; color: #555; line-height: 1.5; max-width: 80%; margin: 0 auto; }
+            
+            .divider { border-bottom: 2px solid #000; margin: 25px 0; }
+            
+            .meta { display: table; width: 100%; margin-bottom: 25px; }
+            .meta-col { display: table-cell; vertical-align: top; width: 33%; }
+            .meta-label { font-size: 9px; font-weight: 900; color: #888; text-transform: uppercase; margin-bottom: 2px; }
+            .meta-val { font-size: 12px; font-weight: 700; color: #000; }
+            
+            .boxes { margin-bottom: 25px; }
+            .box-container { display: table; width: 100%; border-collapse: separate; border-spacing: 15px 0; margin: 0 -15px; }
+            .box { display: table-cell; border: 1px solid #e5e7eb; padding: 15px; border-radius: 6px; width: 48%; vertical-align: top; background: #fafafa; }
+            .box-title { font-size: 9px; font-weight: 900; color: #9ca3af; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.5px; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px; }
+            .box-name { font-size: 13px; font-weight: 900; margin-bottom: 2px; color: #000; }
+            .box-detail { font-size: 11px; color: #4b5563; line-height: 1.4; font-weight: 500; }
+            
+            table { width: 100%; border-collapse: collapse; margin-bottom: 25px; }
+            th { background: #111; color: white; padding: 10px; text-align: left; font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.5px; }
+            td { border-bottom: 1px solid #e5e7eb; padding: 12px 10px; font-size: 11px; font-weight: 500; color: #333; }
+            .text-right { text-align: right; }
+            .text-center { text-align: center; }
+            
+            .totals { float: right; width: 260px; }
+            .total-row { display: table; width: 100%; margin-bottom: 6px; }
+            .total-label { display: table-cell; text-align: left; font-size: 11px; color: #4b5563; font-weight: 500; }
+            .total-val { display: table-cell; text-align: right; font-size: 12px; font-weight: 900; color: #000; }
+            .grand-total { border-top: 2px solid #000; border-bottom: 2px solid #000; padding: 10px 0; margin-top: 10px; }
+            .grand-total .total-val { font-size: 14px; }
+            
+            .footer-section { margin-top: 60px; display: table; width: 100%; border-top: 1px solid #eee; padding-top: 20px; }
+            .footer-left { display: table-cell; width: 60%; vertical-align: top; }
+            .footer-right { display: table-cell; width: 40%; vertical-align: bottom; text-align: right; }
+            
+            .terms { font-size: 9px; color: #666; line-height: 1.6; }
+            .terms-head { font-weight: 900; color: #111; margin-bottom: 4px; text-transform: uppercase; }
+            
+            .sign-area { margin-top: 20px; font-weight: 900; font-size: 10px; text-transform: uppercase; color: #000; }
+            .sys-badge { display: inline-block; background: #f3f4f6; padding: 5px 10px; border-radius: 4px; color: #374151; margin-top: 10px; font-size: 9px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; }
+            .no-sign { font-size: 8px; color: #9ca3af; margin-top: 4px; font-weight: 500; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+             <div class="logo">MAHAVEER <span>HAIR</span></div>
+             <div class="tagline">Solution For Better Shine</div>
+             <div class="address">${branchAddress}<br>Contact: ${branchContact} | Email: info@mahaveerhairsolution.com</div>
           </div>
-        </div>
-
-        <table class="meta-table">
-          <tr>
-            <td width="33%"><span class="meta-label">INVOICE NUMBER</span>${invNum}</td>
-            <td width="33%" align="center"><span class="meta-label">DATE ISSUED</span>${invoiceDate}</td>
-            <td width="33%" align="right"><span class="meta-label">BRANCH CODE</span>${branchCode}</td>
-          </tr>
-        </table>
-
-        <div class="info-box-container">
-          <div class="info-box">
-            <div class="box-header">BILL TO</div>
-            <div class="box-text">${data.clientName}</div>
-            <div class="box-sub">${data.contactNo}</div>
-            <div class="box-sub">${data.address || ''}</div>
+          <div class="divider"></div>
+          
+          <div class="meta">
+             <div class="meta-col">
+               <div class="meta-label">Invoice Number</div>
+               <div class="meta-val">${invNum}</div>
+             </div>
+             <div class="meta-col" style="text-align:center">
+               <div class="meta-label">Date Issued</div>
+               <div class="meta-val">${invoiceDate}</div>
+             </div>
+             <div class="meta-col" style="text-align:right">
+               <div class="meta-label">Branch Code</div>
+               <div class="meta-val">${branchCode}</div>
+             </div>
           </div>
-          <div class="info-box">
-            <div class="box-header">SERVICE INFO</div>
-            <div class="box-text">${data.serviceType} Application</div>
-            <div class="box-sub">Technician: ${data.technician}</div>
-            <div class="box-sub">Method: ${data.patchMethod}</div>
+          
+          <div class="boxes">
+             <div class="box-container">
+                <div class="box">
+                   <div class="box-title">Bill To</div>
+                   <div class="box-name">${data.clientName}</div>
+                   <div class="box-detail">${data.address || ''}</div>
+                   <div class="box-detail">Ph: ${data.contactNo}</div>
+                </div>
+                <div class="box">
+                   <div class="box-title">Service Info</div>
+                   <div class="box-name">${data.serviceType} Application</div>
+                   <div class="box-detail">Technician: ${data.technician}</div>
+                   <div class="box-detail">Method: ${data.patchMethod}</div>
+                </div>
+             </div>
           </div>
-        </div>
-
-        <table class="main-table">
-          <thead>
-            <tr>
-              <th width="50%">DESCRIPTION</th>
-              <th width="10%" align="center">QTY</th>
-              <th width="20%" align="right">PRICE</th>
-              <th width="20%" align="right">TOTAL</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>
-                <strong>${data.serviceType} Service</strong><br>
-                <span style="color:#666; font-size:10px">${data.patchSize ? 'Size: ' + data.patchSize : ''} ${data.remark ? '| ' + data.remark : ''}</span>
-              </td>
-              <td align="center">1</td>
-              <td align="right">₹${data.amount}</td>
-              <td align="right"><strong>₹${data.amount}</strong></td>
-            </tr>
-          </tbody>
-        </table>
-
-        <table class="totals-table">
-          <tr>
-            <td>Subtotal</td>
-            <td align="right" style="font-weight:bold">₹${data.amount}</td>
-          </tr>
-          <tr>
-            <td>Pending Amount</td>
-            <td align="right" style="font-weight:bold; color:${(data.pendingAmount || 0) > 0 ? 'red' : 'black'}">₹${data.pendingAmount || 0}</td>
-          </tr>
-          <tr>
-            <td>Payment Mode</td>
-            <td align="right" style="font-weight:bold; text-transform:uppercase">${data.paymentMethod}</td>
-          </tr>
-          <tr>
-            <td class="grand-total">Total Paid</td>
-            <td class="grand-total" align="right">₹${Math.max(0, data.amount - (data.pendingAmount || 0))}</td>
-          </tr>
-        </table>
-        <div style="clear:both"></div>
-
-        <div class="footer">
-          <table class="footer-table">
-            <tr>
-              <td width="60%">
-                <strong>TERMS & CONDITIONS</strong><br>
-                • Goods once sold will not be returned.<br>
-                • Subject to Raipur Jurisdiction only.<br>
-                • Interest @ 24% p.a. will be charged if bill is not paid on due date.<br>
-                • E. & O.E.
-              </td>
-              <td width="40%" align="right">
-                <div style="font-weight:bold; margin-bottom:40px">FOR, MAHAVEER HAIR SOLUTION</div>
-                <div style="background:#eee; padding:5px 10px; display:inline-block; font-weight:bold; border-radius:4px; font-size:10px;">SYSTEM GENERATED INVOICE</div>
-                <div style="margin-top:5px; font-size:8px;">No physical signature required</div>
-              </td>
-            </tr>
+          
+          <table>
+             <thead>
+               <tr>
+                 <th width="50%">Description</th>
+                 <th class="text-center">Qty</th>
+                 <th class="text-right">Price</th>
+                 <th class="text-right">Total</th>
+               </tr>
+             </thead>
+             <tbody>
+               <tr>
+                 <td>
+                   <div class="font-bold">${data.serviceType} Service</div>
+                   <div style="font-size:9px; color:#666; margin-top:2px;">${data.patchSize ? 'Size: ' + data.patchSize : ''}</div>
+                 </td>
+                 <td class="text-center font-bold">1</td>
+                 <td class="text-right font-bold">Rs. ${data.amount}</td>
+                 <td class="text-right font-bold">Rs. ${data.amount}</td>
+               </tr>
+             </tbody>
           </table>
-        </div>
-      </body>
-    </html>
+          
+          <div class="totals">
+             <div class="total-row">
+               <div class="total-label">Subtotal</div>
+               <div class="total-val">Rs. ${data.amount}</div>
+             </div>
+             <div class="total-row">
+               <div class="total-label">Pending Amount</div>
+               <div class="total-val" style="color:${(data.pendingAmount||0)>0?'red':'inherit'}">Rs. ${data.pendingAmount||0}</div>
+             </div>
+             <div class="total-row">
+               <div class="total-label">Payment Mode</div>
+               <div class="total-val" style="text-transform:uppercase">${data.paymentMethod}</div>
+             </div>
+             <div class="total-row grand-total">
+               <div class="total-label" style="font-weight:900; color:black;">Total Paid</div>
+               <div class="total-val">Rs. ${Math.max(0, data.amount - (data.pendingAmount||0))}</div>
+             </div>
+          </div>
+          <div style="clear:both"></div>
+          
+          <div class="footer-section">
+             <div class="footer-left">
+                <div class="terms">
+                   <div class="terms-head">Terms & Conditions</div>
+                   &bull; Goods once sold will not be returned.<br>
+                   &bull; Subject to Raipur Jurisdiction only.<br>
+                   &bull; Interest @ 24% p.a. will be charged if bill is not paid on due date.<br>
+                   &bull; E. & O.E.
+                </div>
+             </div>
+             <div class="footer-right">
+                <div class="sign-area">For, Mahaveer Hair Solution</div>
+                <div class="sys-badge">System Generated Invoice</div>
+                <div class="no-sign">No physical signature required</div>
+             </div>
+          </div>
+        </body>
+      </html>
     `;
 
     // 4. Save to Drive (Using provided Folder ID)
@@ -423,7 +450,6 @@ function createInvoice(data) {
     try {
       folder = DriveApp.getFolderById(folderId);
     } catch(e) {
-      // Fallback: search by name or create
       var folders = DriveApp.getFoldersByName("MAHAVEER_INVOICES");
       folder = folders.hasNext() ? folders.next() : DriveApp.createFolder("MAHAVEER_INVOICES");
     }

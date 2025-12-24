@@ -31,4 +31,4 @@ export const MOCK_PACKAGES: ServicePackage[] = [];
 // =========================================================================================
 // ⚠️ PASTE YOUR NEW WEB APP URL HERE
 // =========================================================================================
-export const GOOGLE_SCRIPT_URL: string = 'https://script.google.com/macros/s/AKfycbxRSAESFqKjSGbCKIHQKrKjuWu0NOkVhEUhP8FOAbVdHUacW1h31QyCmN78pA_DlEjUIQ/exec'; 
+export const GOOGLE_SCRIPT_URL: string = 'https://script.google.com/macros/s/AKfycbzTwTxqh1u2N73IW1uZgzoIJzISIwNEaXBjyLX7UHol5LQHuQqi_0osK5IOHj5Az-T2cw/exec'; 

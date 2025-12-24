@@ -72,7 +72,7 @@ export const generateInvoice = (entry: Entry) => {
           width: 210mm;
           min-height: 297mm;
           background: white;
-          padding: 15mm;
+          padding: 40px;
           box-sizing: border-box;
           box-shadow: 0 10px 30px rgba(0,0,0,0.3);
           position: relative;
@@ -84,106 +84,105 @@ export const generateInvoice = (entry: Entry) => {
         /* Header */
         .header {
           text-align: center;
-          margin-bottom: 30px;
+          margin-bottom: 25px;
         }
 
-        /* Wide Logo Styling */
         .logo {
-          width: 320px;
-          max-width: 80%;
-          height: auto;
-          object-fit: contain;
-          margin-bottom: 10px;
+          font-size: 32px; 
+          font-weight: 900; 
+          margin-bottom: 0px; 
+          letter-spacing: -1px; 
+          text-transform: uppercase; 
+          color: #000;
           display: block;
           margin-left: auto;
           margin-right: auto;
         }
+        .logo span { color: #0ea5e9; }
+
+        /* Fallback if image fails */
+        img.logo-img {
+            max-height: 60px;
+            margin-bottom: 5px;
+        }
+
+        .tagline { font-size: 10px; letter-spacing: 2px; color: #555; margin-bottom: 12px; text-transform: uppercase; font-weight: 700; }
 
         .address {
           font-size: 10px;
           color: #555;
           max-width: 80%;
           margin: 0 auto;
-          line-height: 1.4;
+          line-height: 1.5;
         }
         
-        .divider { border-bottom: 2px solid #333; margin: 20px 0; }
+        .divider { border-bottom: 2px solid #000; margin: 25px 0; }
 
         /* Meta Box */
         .meta-row {
           display: flex;
           justify-content: space-between;
-          font-size: 11px;
-          font-weight: 700;
           margin-bottom: 25px;
-          color: #444;
         }
         .meta-group { display: flex; flex-direction: column; }
-        .meta-label { color: #888; font-size: 9px; text-transform: uppercase; margin-bottom: 2px; }
+        .meta-label { font-size: 9px; font-weight: 900; color: #888; text-transform: uppercase; margin-bottom: 2px; }
+        .meta-val { font-size: 12px; font-weight: 700; color: #000; }
 
         /* Info Grid */
         .grid-container {
           display: flex;
           justify-content: space-between;
-          margin-bottom: 30px;
+          margin-bottom: 25px;
           gap: 20px;
         }
 
         .box {
           flex: 1;
           padding: 15px;
-          border: 1px solid #ddd;
+          border: 1px solid #e5e7eb;
           border-radius: 6px;
           background: #fafafa;
-          font-size: 11px;
+          vertical-align: top;
         }
 
         .box-title {
           font-size: 9px;
           text-transform: uppercase;
-          color: #888;
-          font-weight: 800;
+          color: #9ca3af;
+          font-weight: 900;
           margin-bottom: 8px;
           letter-spacing: 0.5px;
-          border-bottom: 1px solid #eee;
+          border-bottom: 1px solid #e5e7eb;
           padding-bottom: 5px;
         }
 
-        .box-content {
-          font-size: 12px;
-          font-weight: 800;
-          color: #111;
-          margin-bottom: 2px;
-        }
-        
-        .box-sub {
-          font-size: 11px;
-          color: #555;
-        }
+        .box-name { font-size: 13px; font-weight: 900; margin-bottom: 2px; color: #000; }
+        .box-detail { font-size: 11px; color: #4b5563; line-height: 1.4; font-weight: 500; }
 
         /* Table */
         table {
           width: 100%;
           border-collapse: collapse;
-          margin-bottom: 30px;
+          margin-bottom: 25px;
         }
 
         th {
-          background-color: #333;
+          background-color: #111;
           color: #fff;
           text-transform: uppercase;
           padding: 10px;
           text-align: left;
           font-size: 10px;
-          font-weight: 700;
+          font-weight: 900;
           letter-spacing: 0.5px;
         }
 
         td {
-          padding: 15px 10px;
-          border-bottom: 1px solid #eee;
+          padding: 12px 10px;
+          border-bottom: 1px solid #e5e7eb;
           vertical-align: top;
           font-size: 11px;
+          font-weight: 500;
           color: #333;
         }
 
@@ -199,7 +198,7 @@ export const generateInvoice = (entry: Entry) => {
         }
 
         .totals-table {
-          width: 250px;
+          width: 260px;
           border-collapse: collapse;
         }
 
@@ -207,40 +206,39 @@ export const generateInvoice = (entry: Entry) => {
           padding: 6px 0;
           border: none;
         }
+        
+        .total-label { text-align: left; font-size: 11px; color: #4b5563; font-weight: 500; }
+        .total-val { text-align: right; font-size: 12px; font-weight: 900; color: #000; }
 
         .grand-total {
           border-top: 2px solid #000 !important;
           border-bottom: 2px solid #000 !important;
           padding: 10px 0 !important;
-          font-size: 14px;
-          font-weight: 900;
-          color: #000;
         }
-
-        .red-text { color: #dc2626; }
+        .grand-total .total-val {
+          font-size: 14px;
+        }
 
         /* Professional Footer */
         .footer-wrapper {
-            margin-top: 50px;
+            margin-top: 60px;
             padding-top: 20px;
-            border-top: 1px solid #ccc;
+            border-top: 1px solid #eee;
         }
         
         .footer-cols {
             display: flex;
             justify-content: space-between;
-            align-items: flex-end;
-            margin-bottom: 20px;
+            align-items: flex-start;
         }
         
         .terms {
             font-size: 9px;
             color: #666;
             max-width: 55%;
+            line-height: 1.6;
         }
-        .terms-title { font-weight: 700; text-transform: uppercase; margin-bottom: 5px; color: #333; border-bottom: 1px solid #eee; padding-bottom: 3px; display: inline-block; }
-        .terms ul { padding-left: 15px; margin: 0; line-height: 1.5; }
-        .terms li { margin-bottom: 3px; }
+        .terms-title { font-weight: 900; text-transform: uppercase; margin-bottom: 4px; color: #111; }
 
         .signature {
           text-align: right;
@@ -251,27 +249,27 @@ export const generateInvoice = (entry: Entry) => {
         }
         .for-company {
             font-size: 10px;
-            font-weight: 700;
+            font-weight: 900;
             text-transform: uppercase;
             color: #000;
-            margin-bottom: 40px;
+            margin-bottom: 10px;
         }
         
         /* System Generated Badge */
         .sys-gen-badge {
-            font-size: 10px;
+            font-size: 9px;
             font-weight: 700;
             background: #f3f4f6;
-            color: #444;
-            padding: 6px 12px;
-            border-radius: 6px;
+            color: #374151;
+            padding: 5px 10px;
+            border-radius: 4px;
             display: inline-block;
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
         .no-sign {
             font-size: 8px;
-            color: #888;
+            color: #9ca3af;
             margin-top: 4px;
             font-weight: 500;
         }
@@ -327,7 +325,7 @@ export const generateInvoice = (entry: Entry) => {
             height: 100%; 
             margin: 0; 
             box-shadow: none; 
-            padding: 15mm;
+            padding: 40px;
           }
           .no-print { display: none !important; }
         }
@@ -338,7 +336,8 @@ export const generateInvoice = (entry: Entry) => {
         
         <!-- Header -->
         <div class="header">
-           <img src="${LOGO_URL}" class="logo" alt="Mahaveer Logo" crossorigin="anonymous" />
+           <div class="logo">MAHAVEER <span>HAIR</span></div>
+           <div class="tagline">Solution For Better Shine</div>
            <div class="address">
               ${branchAddress}<br>
               <strong>Contact:</strong> ${branchContact} &nbsp;|&nbsp; <strong>Email:</strong> info@mahaveerhairsolution.com
@@ -351,15 +350,15 @@ export const generateInvoice = (entry: Entry) => {
         <div class="meta-row">
             <div class="meta-group">
                 <span class="meta-label">Invoice Number</span>
-                <span>${invoiceNumber}</span>
+                <span class="meta-val">${invoiceNumber}</span>
             </div>
             <div class="meta-group" style="text-align:center">
                 <span class="meta-label">Date Issued</span>
-                <span>${formattedDate}</span>
+                <span class="meta-val">${formattedDate}</span>
             </div>
             <div class="meta-group" style="text-align:right">
                 <span class="meta-label">Branch Code</span>
-                <span>${entry.branch}</span>
+                <span class="meta-val">${branchCode}</span>
             </div>
         </div>
 
@@ -367,15 +366,15 @@ export const generateInvoice = (entry: Entry) => {
         <div class="grid-container">
             <div class="box">
                 <div class="box-title">Bill To</div>
-                <div class="box-content">${entry.clientName}</div>
-                <div class="box-sub">${entry.address || 'Address not provided'}</div>
-                <div class="box-sub">Ph: ${entry.contactNo}</div>
+                <div class="box-name">${entry.clientName}</div>
+                <div class="box-detail">${entry.address || 'Address not provided'}</div>
+                <div class="box-detail">Ph: ${entry.contactNo}</div>
             </div>
             <div class="box">
                 <div class="box-title">Service Info</div>
-                <div class="box-content">${entry.serviceType} Application</div>
-                <div class="box-sub">Technician: ${entry.technician}</div>
-                <div class="box-sub">Method: ${entry.patchMethod}</div>
+                <div class="box-name">${entry.serviceType} Application</div>
+                <div class="box-detail">Technician: ${entry.technician}</div>
+                <div class="box-detail">Method: ${entry.patchMethod}</div>
             </div>
         </div>
 
@@ -393,13 +392,13 @@ export const generateInvoice = (entry: Entry) => {
                 <tr>
                     <td>
                         <div class="bold">${entry.serviceType} Service</div>
-                        <div class="box-sub" style="margin-top:4px;">
+                        <div class="box-detail" style="margin-top:2px;">
                             ${entry.patchSize ? `Size: ${entry.patchSize}` : ''}
                             ${entry.remark ? `<br/>Note: ${entry.remark}` : ''}
                         </div>
                     </td>
-                    <td class="text-center">1</td>
-                    <td class="text-right">₹${entry.amount}</td>
+                    <td class="text-center bold">1</td>
+                    <td class="text-right bold">₹${entry.amount}</td>
                     <td class="text-right bold">₹${entry.amount}</td>
                 </tr>
             </tbody>
@@ -409,20 +408,20 @@ export const generateInvoice = (entry: Entry) => {
         <div class="totals">
             <table class="totals-table">
                 <tr>
-                    <td>Subtotal</td>
-                    <td class="text-right bold">₹${entry.amount}</td>
+                    <td class="total-label">Subtotal</td>
+                    <td class="total-val">₹${entry.amount}</td>
                 </tr>
                 <tr>
-                    <td>Pending Amount</td>
-                    <td class="text-right bold" style="${(entry.pendingAmount || 0) > 0 ? 'color:red' : 'color:#333'}">₹${entry.pendingAmount || 0}</td>
+                    <td class="total-label">Pending Amount</td>
+                    <td class="total-val" style="${(entry.pendingAmount || 0) > 0 ? 'color:red' : 'color:#333'}">₹${entry.pendingAmount || 0}</td>
                 </tr>
                 <tr>
-                    <td>Payment Mode</td>
-                    <td class="text-right bold" style="text-transform: uppercase;">${entry.paymentMethod}</td>
+                    <td class="total-label">Payment Mode</td>
+                    <td class="total-val" style="text-transform: uppercase;">${entry.paymentMethod}</td>
                 </tr>
                 <tr>
-                    <td class="grand-total">Total Paid</td>
-                    <td class="text-right grand-total">₹${Math.max(0, Number(entry.amount) - (Number(entry.pendingAmount) || 0))}</td>
+                    <td class="total-label grand-total" style="color:black; font-weight:900;">Total Paid</td>
+                    <td class="total-val grand-total">₹${Math.max(0, Number(entry.amount) - (Number(entry.pendingAmount) || 0))}</td>
                 </tr>
             </table>
         </div>
@@ -432,17 +431,13 @@ export const generateInvoice = (entry: Entry) => {
             <div class="footer-cols">
                 <div class="terms">
                     <div class="terms-title">Terms & Conditions</div>
-                    <ul>
-                        <li>Goods once sold will not be returned.</li>
-                        <li>Subject to Raipur Jurisdiction only.</li>
-                        <li>Interest @ 24% p.a. will be charged if bill is not paid on due date.</li>
-                        <li>E. & O.E.</li>
-                    </ul>
+                    • Goods once sold will not be returned.<br>
+                    • Subject to Raipur Jurisdiction only.<br>
+                    • Interest @ 24% p.a. will be charged if bill is not paid on due date.<br>
+                    • E. & O.E.
                 </div>
                 <div class="signature">
-                    <div class="for-company">For, MAHAVEER HAIR SOLUTION</div>
-                    
-                    <!-- System Generated Badge (No Sign Line) -->
+                    <div class="for-company">For, Mahaveer Hair Solution</div>
                     <div class="sys-gen-badge">System Generated Invoice</div>
                     <div class="no-sign">No physical signature required</div>
                 </div>
