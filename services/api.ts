@@ -127,7 +127,9 @@ export const api = {
   // --- ENTRIES ---
   addEntry: async (entry: Omit<Entry, 'id'>) => {
     const formatted = { ...entry, date: toDDMMYYYY(entry.date) };
-    const newEntry = { ...entry, id: 'temp_' + Date.now() + Math.random().toString(36).substr(2, 5) };
+    // Generate a temporary ID
+    const tempId = 'temp_' + Date.now() + Math.random().toString(36).substr(2, 5);
+    const newEntry = { ...entry, id: tempId };
     
     // Add to local cache immediately
     LOCAL_NEW_ENTRIES.push(newEntry as Entry);
@@ -144,7 +146,20 @@ export const api = {
           ...formatted
         })
       });
-      return await res.json();
+      const result = await res.json();
+      
+      // FIX: Update the local entry ID with the real Server ID immediately to prevent duplicates
+      if (result.status === 'success' && result.id) {
+          const localIndex = LOCAL_NEW_ENTRIES.findIndex(e => e.id === tempId);
+          if (localIndex !== -1) {
+              LOCAL_NEW_ENTRIES[localIndex].id = result.id;
+              // Also update the returned object if needed
+              newEntry.id = result.id;
+          }
+      }
+      
+      // Return the entry with the correct ID (or the updated one)
+      return { ...newEntry, ...result };
     } else {
         MOCK_ENTRIES.push(newEntry as Entry);
     }
@@ -167,6 +182,10 @@ export const api = {
 
   deleteEntry: async (id: string) => {
     DATA_CACHE.entries = null;
+    // Also remove from local new entries if present
+    const localIndex = LOCAL_NEW_ENTRIES.findIndex(e => e.id === id);
+    if (localIndex !== -1) LOCAL_NEW_ENTRIES.splice(localIndex, 1);
+
     if (isLive) {
       await fetch(GOOGLE_SCRIPT_URL, {
         method: 'POST',
@@ -206,7 +225,11 @@ export const api = {
 
     // Merge with local new entries
     const serverIds = new Set(allEntries.map(e => e.id));
+    // Important: Filter out local entries that have IDs already present in server data
     const uniqueLocal = LOCAL_NEW_ENTRIES.filter(e => !serverIds.has(e.id));
+    
+    // Cleanup local cache: remove entries that are now in server cache
+    // (Optional optimization to keep array small, but filter above handles display correctness)
     
     return [...uniqueLocal, ...allEntries];
   },
@@ -317,18 +340,29 @@ export const api = {
 
   addAppointment: async (appt: Omit<Appointment, 'id'>) => {
     const formatted = { ...appt, date: toDDMMYYYY(appt.date) };
-    const newAppt = { ...appt, id: 'temp_' + Date.now() + Math.random().toString(36).substr(2, 5) };
+    const tempId = 'temp_' + Date.now() + Math.random().toString(36).substr(2, 5);
+    const newAppt = { ...appt, id: tempId };
     
     // Add to local cache immediately so it shows in UI
     LOCAL_NEW_APPOINTMENTS.push(newAppt as Appointment);
     
     if (isLive) {
-        // Fire & Forget
+        // Fire & Forget but capture ID update
         fetch(GOOGLE_SCRIPT_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify({ action: 'addAppointment', ...formatted })
-        }).catch(e => console.error("BG Appt Error", e));
+        })
+        .then(res => res.json())
+        .then(result => {
+             if (result.status === 'success' && result.id) {
+                 const localIndex = LOCAL_NEW_APPOINTMENTS.findIndex(a => a.id === tempId);
+                 if (localIndex !== -1) {
+                     LOCAL_NEW_APPOINTMENTS[localIndex].id = result.id;
+                 }
+             }
+        })
+        .catch(e => console.error("BG Appt Error", e));
     } else {
         MOCK_APPOINTMENTS.push(newAppt as Appointment);
     }

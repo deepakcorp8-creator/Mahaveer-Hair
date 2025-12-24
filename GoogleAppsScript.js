@@ -1,6 +1,6 @@
 
 // =====================================================================================
-// ⚠️ MAHAVEER WEB APP - BACKEND SCRIPT (V2)
+// ⚠️ MAHAVEER WEB APP - BACKEND SCRIPT (V3 - Invoice Fix)
 // =====================================================================================
 
 function doGet(e) {
@@ -28,36 +28,24 @@ function doPost(e) {
   
   const action = data.action;
 
-  // --- PACKAGES (PRIORITY) ---
+  // --- PACKAGES ---
   if (action == 'addPackage') {
       try {
         const pkgSheet = getSheet(ss, "PACKAGE PLAN");
-        
-        // Ensure values are safe
-        var startDate = toSheetDate(data.startDate);
-        var clientName = String(data.clientName || 'Unknown');
-        var packageName = String(data.packageName || 'Custom Package');
-        var totalCost = Number(data.totalCost || 0);
-        var totalServices = Number(data.totalServices || 0);
-        var status = String(data.status || 'PENDING');
-        var oldServiceCount = Number(data.oldServiceCount || 0);
-        var packageType = String(data.packageType || 'NEW');
-
         const row = [
-          startDate, 
-          clientName, 
-          packageName, 
-          totalCost, 
-          totalServices, 
-          status,
-          oldServiceCount,
-          packageType
+          toSheetDate(data.startDate), 
+          String(data.clientName || ''), 
+          String(data.packageName || ''), 
+          Number(data.totalCost || 0), 
+          Number(data.totalServices || 0), 
+          String(data.status || 'PENDING'),
+          Number(data.oldServiceCount || 0),
+          String(data.packageType || 'NEW')
         ];
-        
         pkgSheet.appendRow(row);
         return response({status: "success", message: "Package created successfully"});
       } catch (err) {
-        return response({error: "Failed to create package (Server Error): " + err.toString()});
+        return response({error: "Failed to create package: " + err.toString()});
       }
   }
 
@@ -100,6 +88,7 @@ function doPost(e) {
   if (action == 'addEntry') {
     const dbSheet = getSheet(ss, "DATA BASE");
     var invoiceUrl = "";
+    // Generate invoice if amount > 0 and not explicitly skipped
     if (Number(data.amount) >= 0) {
         invoiceUrl = createInvoice(data);
     }
@@ -282,10 +271,175 @@ function doPost(e) {
       } catch(e) { return response({error: e.message}); }
   }
 
-  // Catch-all with helpful message
-  return response({error: "System Error: Unknown Action (v2) - " + action});
+  return response({error: "Unknown action: " + action});
 }
 
+function createInvoice(data) {
+  try {
+    // 1. Determine Branch Details
+    var branchCode = (data.branch || 'RPR').toUpperCase();
+    var branchAddress = "2nd Floor Rais Reality, front Anupam garden, GE Road Raipur Chhattisgarh";
+    var branchContact = "+91-9144939828";
+    
+    if (branchCode == 'JDP') {
+       branchAddress = "Varghese Wings, Near Vishal Mega Mart Dharampura, Jagdalpur, Jagdalpur-494001, Chhattisgarh";
+       branchContact = "09725567348";
+    }
+
+    // 2. Generate Date Strings
+    var invoiceDate = data.date ? toSheetDate(data.date) : getTodayInSheetFormat();
+    var invNum = "INV-" + new Date().getFullYear() + "-" + Math.floor(Math.random() * 9000 + 1000);
+
+    // 3. Build HTML (CSS Inlined for PDF Conversion)
+    var html = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <style>
+          body { font-family: sans-serif; color: #333; padding: 20px; }
+          .header { text-align: center; margin-bottom: 20px; }
+          .logo { font-size: 28px; font-weight: bold; color: #000; letter-spacing: 2px; margin-bottom: 5px; }
+          .logo-sub { font-size: 10px; letter-spacing: 3px; margin-bottom: 15px; color: #555; }
+          .address { font-size: 10px; color: #555; margin-bottom: 20px; line-height: 1.4; }
+          .meta-table { width: 100%; border-top: 1px solid #ddd; margin-bottom: 20px; }
+          .meta-table td { padding: 15px 0; vertical-align: top; font-size: 11px; font-weight: bold; color: #333; }
+          .meta-label { font-size: 9px; color: #777; display: block; margin-bottom: 2px; }
+          .info-box-container { display: table; width: 100%; border-spacing: 10px; margin-bottom: 20px; }
+          .info-box { display: table-cell; width: 48%; border: 1px solid #ddd; padding: 15px; border-radius: 4px; vertical-align: top; }
+          .box-header { font-size: 9px; font-weight: bold; color: #777; margin-bottom: 5px; text-transform: uppercase; }
+          .box-text { font-size: 12px; font-weight: bold; margin-bottom: 2px; }
+          .box-sub { font-size: 11px; color: #555; }
+          .main-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+          .main-table th { background-color: #333; color: #fff; padding: 10px; text-align: left; font-size: 10px; font-weight: bold; }
+          .main-table td { border-bottom: 1px solid #eee; padding: 12px 10px; font-size: 11px; }
+          .totals-table { float: right; width: 300px; border-collapse: collapse; }
+          .totals-table td { padding: 5px 0; font-size: 11px; }
+          .grand-total { border-top: 2px solid #000; border-bottom: 2px solid #000; font-weight: bold; font-size: 14px; padding: 10px 0; }
+          .footer { margin-top: 100px; font-size: 9px; color: #555; border-top: 1px solid #eee; padding-top: 20px; }
+          .footer-table { width: 100%; }
+          .footer-table td { vertical-align: bottom; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div class="logo">MAHAVEER <span style="color:#0ea5e9">HAIR</span></div>
+          <div class="logo-sub">SOLUTION FOR BETTER SHINE</div>
+          <div class="address">
+            ${branchAddress}<br>
+            Contact: ${branchContact} | Email: info@mahaveerhairsolution.com
+          </div>
+        </div>
+
+        <table class="meta-table">
+          <tr>
+            <td width="33%"><span class="meta-label">INVOICE NUMBER</span>${invNum}</td>
+            <td width="33%" align="center"><span class="meta-label">DATE ISSUED</span>${invoiceDate}</td>
+            <td width="33%" align="right"><span class="meta-label">BRANCH CODE</span>${branchCode}</td>
+          </tr>
+        </table>
+
+        <div class="info-box-container">
+          <div class="info-box">
+            <div class="box-header">BILL TO</div>
+            <div class="box-text">${data.clientName}</div>
+            <div class="box-sub">${data.contactNo}</div>
+            <div class="box-sub">${data.address || ''}</div>
+          </div>
+          <div class="info-box">
+            <div class="box-header">SERVICE INFO</div>
+            <div class="box-text">${data.serviceType} Application</div>
+            <div class="box-sub">Technician: ${data.technician}</div>
+            <div class="box-sub">Method: ${data.patchMethod}</div>
+          </div>
+        </div>
+
+        <table class="main-table">
+          <thead>
+            <tr>
+              <th width="50%">DESCRIPTION</th>
+              <th width="10%" align="center">QTY</th>
+              <th width="20%" align="right">PRICE</th>
+              <th width="20%" align="right">TOTAL</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>
+                <strong>${data.serviceType} Service</strong><br>
+                <span style="color:#666; font-size:10px">${data.patchSize ? 'Size: ' + data.patchSize : ''} ${data.remark ? '| ' + data.remark : ''}</span>
+              </td>
+              <td align="center">1</td>
+              <td align="right">₹${data.amount}</td>
+              <td align="right"><strong>₹${data.amount}</strong></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <table class="totals-table">
+          <tr>
+            <td>Subtotal</td>
+            <td align="right" style="font-weight:bold">₹${data.amount}</td>
+          </tr>
+          <tr>
+            <td>Pending Amount</td>
+            <td align="right" style="font-weight:bold; color:${(data.pendingAmount || 0) > 0 ? 'red' : 'black'}">₹${data.pendingAmount || 0}</td>
+          </tr>
+          <tr>
+            <td>Payment Mode</td>
+            <td align="right" style="font-weight:bold; text-transform:uppercase">${data.paymentMethod}</td>
+          </tr>
+          <tr>
+            <td class="grand-total">Total Paid</td>
+            <td class="grand-total" align="right">₹${Math.max(0, data.amount - (data.pendingAmount || 0))}</td>
+          </tr>
+        </table>
+        <div style="clear:both"></div>
+
+        <div class="footer">
+          <table class="footer-table">
+            <tr>
+              <td width="60%">
+                <strong>TERMS & CONDITIONS</strong><br>
+                • Goods once sold will not be returned.<br>
+                • Subject to Raipur Jurisdiction only.<br>
+                • Interest @ 24% p.a. will be charged if bill is not paid on due date.<br>
+                • E. & O.E.
+              </td>
+              <td width="40%" align="right">
+                <div style="font-weight:bold; margin-bottom:40px">FOR, MAHAVEER HAIR SOLUTION</div>
+                <div style="background:#eee; padding:5px 10px; display:inline-block; font-weight:bold; border-radius:4px; font-size:10px;">SYSTEM GENERATED INVOICE</div>
+                <div style="margin-top:5px; font-size:8px;">No physical signature required</div>
+              </td>
+            </tr>
+          </table>
+        </div>
+      </body>
+    </html>
+    `;
+
+    // 4. Save to Drive (Using provided Folder ID)
+    var folderId = "1uOdikrd7tlLiFkTCzWCG1SNB-ibW164R";
+    var folder;
+    try {
+      folder = DriveApp.getFolderById(folderId);
+    } catch(e) {
+      // Fallback: search by name or create
+      var folders = DriveApp.getFoldersByName("MAHAVEER_INVOICES");
+      folder = folders.hasNext() ? folders.next() : DriveApp.createFolder("MAHAVEER_INVOICES");
+    }
+
+    var blob = Utilities.newBlob(html, 'text/html', 'Invoice_' + data.clientName + '.html');
+    var pdf = folder.createFile(blob.getAs('application/pdf'));
+    pdf.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    
+    return "https://drive.google.com/uc?export=view&id=" + pdf.getId();
+  } catch (e) {
+    Logger.log("Invoice Generation Error: " + e.toString());
+    return ""; 
+  }
+}
+
+// ... helper functions (toSheetDate, fromSheetDate, getSafeLastRow, etc.) ...
 function toSheetDate(dateStr) {
   if (!dateStr || typeof dateStr !== 'string' || dateStr === "") return "";
   if (dateStr.includes('/') && dateStr.split('/').length === 3) return dateStr;
@@ -303,6 +457,11 @@ function fromSheetDate(val) {
      return ("0" + d.getDate()).slice(-2) + "/" + ("0" + (d.getMonth() + 1)).slice(-2) + "/" + d.getFullYear();
   }
   return String(val).trim();
+}
+
+function getTodayInSheetFormat() {
+  const d = new Date();
+  return ("0" + d.getDate()).slice(-2) + "/" + ("0" + (d.getMonth() + 1)).slice(-2) + "/" + d.getFullYear();
 }
 
 function getSafeLastRow(sheet, colIndex) {
@@ -327,30 +486,6 @@ function findRowById(sheet, id, idColIndex) {
     }
   }
   return -1;
-}
-
-function createInvoice(data) {
-  try {
-    const folderName = "MAHAVEER_INVOICES";
-    let folders = DriveApp.getFoldersByName(folderName);
-    let folder = folders.hasNext() ? folders.next() : DriveApp.createFolder(folderName);
-    
-    const date = data.date || new Date().toLocaleDateString();
-    // Simplified Invoice Logic
-    const html = `<html><body><h1>Invoice</h1><p>${data.clientName}</p><p>Total: ${data.amount}</p></body></html>`;
-    
-    const blob = Utilities.newBlob(html, 'text/html', `Invoice_${data.clientName}_${Date.now()}.html`);
-    const pdf = folder.createFile(blob.getAs('application/pdf'));
-    pdf.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-    return "https://drive.google.com/uc?export=view&id=" + pdf.getId();
-  } catch (e) {
-    return ""; 
-  }
-}
-
-function getTodayInSheetFormat() {
-  const d = new Date();
-  return ("0" + d.getDate()).slice(-2) + "/" + ("0" + (d.getMonth() + 1)).slice(-2) + "/" + d.getFullYear();
 }
 
 function getEntries(ss) {
