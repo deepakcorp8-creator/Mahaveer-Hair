@@ -1,6 +1,6 @@
 
 // =====================================================================================
-// ⚠️ MAHAVEER WEB APP - BACKEND SCRIPT (V6 - Logo Fix)
+// ⚠️ MAHAVEER WEB APP - BACKEND SCRIPT (V7 - Base64 Logo Fix)
 // =====================================================================================
 
 function doGet(e) {
@@ -286,22 +286,36 @@ function createInvoice(data) {
        branchContact = "09725567348";
     }
 
-    // 2. Generate Date Strings
+    // 2. Fetch Logo and convert to Base64 (Crucial for PDF)
+    // Using high quality image provided
+    var logoUrl = "https://i.ibb.co/WpNJYmKV/MAHAVEER-Logo-1920x1080-1.png";
+    var logoBase64 = ""; 
+    try {
+        var resp = UrlFetchApp.fetch(logoUrl);
+        var blob = resp.getBlob();
+        logoBase64 = "data:image/png;base64," + Utilities.base64Encode(blob.getBytes());
+    } catch(e) {
+        // Fallback to URL if fetch fails (might not show in PDF but safer)
+        logoBase64 = logoUrl;
+        Logger.log("Logo fetch failed: " + e.toString());
+    }
+
+    // 3. Generate Date Strings
     var invoiceDate = data.date ? toSheetDate(data.date) : getTodayInSheetFormat();
     var invNum = "INV-" + new Date().getFullYear() + "-" + Math.floor(Math.random() * 9000 + 1000);
 
-    // 3. Build HTML - ROBUST TABLE LAYOUT for Google PDF Engine
+    // 4. Build HTML - ROBUST TABLE LAYOUT for Google PDF Engine
     var html = `
       <html>
         <head>
           <style>
-            body { font-family: sans-serif; color: #111; font-size: 11px; padding: 30px; }
+            body { font-family: sans-serif; color: #111; font-size: 11px; padding: 40px; }
             table { width: 100%; border-collapse: collapse; }
-            .header-table td { text-align: center; vertical-align: middle; }
-            .logo-img { width: 100%; max-width: 300px; height: auto; display: block; margin: 0 auto; margin-bottom: 10px; }
+            .header-table { margin-bottom: 20px; }
+            .header-table td { text-align: center; vertical-align: top; }
             .address { font-size: 10px; color: #666; margin-top: 5px; line-height: 1.4; }
             
-            .meta-table { margin-top: 30px; border-top: 1px solid #ddd; margin-bottom: 20px; }
+            .meta-table { margin-top: 10px; border-top: 1px solid #ddd; margin-bottom: 20px; }
             .meta-table td { padding: 15px 0; vertical-align: top; }
             .label { font-size: 9px; color: #888; font-weight: bold; display: block; margin-bottom: 3px; text-transform: uppercase; }
             .val { font-size: 12px; font-weight: bold; color: #000; }
@@ -335,8 +349,8 @@ function createInvoice(data) {
           
           <table class="header-table">
             <tr>
-              <td>
-                <img src="https://i.ibb.co/WpNJYmKV/MAHAVEER-Logo-1920x1080-1.png" class="logo-img" alt="Mahaveer Logo" />
+              <td align="center">
+                <img src="${logoBase64}" width="280" style="max-width:300px; height:auto; display:block; margin: 0 auto 10px auto;" />
                 <div class="address">
                   ${branchAddress}<br>
                   Contact: ${branchContact} | Email: info@mahaveerhairsolution.com
@@ -451,7 +465,7 @@ function createInvoice(data) {
       </html>
     `;
 
-    // 4. Save to Drive (Using provided Folder ID)
+    // 5. Save to Drive (Using provided Folder ID)
     var folderId = "1uOdikrd7tlLiFkTCzWCG1SNB-ibW164R";
     var folder;
     try {

@@ -50,11 +50,12 @@ export const generateInvoice = (entry: Entry) => {
       <style>
         body { font-family: sans-serif; color: #111; font-size: 11px; padding: 20px; }
         table { width: 100%; border-collapse: collapse; }
-        .header-table td { text-align: center; vertical-align: middle; }
+        .header-table { margin-bottom: 20px; }
+        .header-table td { text-align: center; vertical-align: top; }
         .logo-img { width: 100%; max-width: 300px; height: auto; display: block; margin: 0 auto; margin-bottom: 10px; }
         .address { font-size: 10px; color: #666; margin-top: 5px; line-height: 1.4; }
         
-        .meta-table { margin-top: 30px; border-top: 1px solid #ddd; margin-bottom: 20px; }
+        .meta-table { margin-top: 10px; border-top: 1px solid #ddd; margin-bottom: 20px; }
         .meta-table td { padding: 15px 0; vertical-align: top; }
         .label { font-size: 9px; color: #888; font-weight: bold; display: block; margin-bottom: 3px; text-transform: uppercase; }
         .val { font-size: 12px; font-weight: bold; color: #000; }
@@ -94,8 +95,8 @@ export const generateInvoice = (entry: Entry) => {
       
       <table class="header-table">
         <tr>
-          <td>
-            <img src="${LOGO_URL}" class="logo-img" />
+          <td align="center">
+            <img src="${LOGO_URL}" class="logo-img" alt="Mahaveer Logo" />
             <div class="address">
               ${branchAddress}<br>
               Contact: ${branchContact} | Email: info@mahaveerhairsolution.com
