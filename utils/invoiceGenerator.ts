@@ -8,12 +8,11 @@ export const generateInvoice = (entry: Entry) => {
     return;
   }
 
-  // FIXED: Using stable public URL instead of signed AppSheet URL which expires/blocks access
+  // USE THIS STABLE PUBLIC URL (AppSheet URLs expire/block access)
   const LOGO_URL = "https://i.ibb.co/WpNJYmKV/MAHAVEER-Logo-1920x1080-1.png";
 
   const invoiceNumber = `INV-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 10000)).padStart(4, '0')}`;
 
-  // DATE FORMATTING (YYYY-MM-DD -> DD/MM/YYYY)
   let formattedDate = entry.date;
   try {
       if (entry.date && entry.date.includes('-')) {
@@ -23,17 +22,14 @@ export const generateInvoice = (entry: Entry) => {
           }
       } else if (entry.date) {
           const d = new Date(entry.date);
-          formattedDate = d.toLocaleDateString('en-GB'); // dd/mm/yyyy
+          formattedDate = d.toLocaleDateString('en-GB'); 
       }
   } catch (e) {
       formattedDate = entry.date;
   }
 
-  // BRANCH SPECIFIC ADDRESS LOGIC
   let branchAddress = "2nd Floor Rais Reality, front Anupam garden, GE Road Raipur Chhattisgarh";
   let branchContact = "+91-9144939828";
-
-  // Check branch code (Handle case insensitivity)
   const branchCode = (entry.branch || 'RPR').toUpperCase();
 
   if (branchCode === 'JDP') {
@@ -48,11 +44,20 @@ export const generateInvoice = (entry: Entry) => {
       <meta charset="UTF-8">
       <title>Invoice - ${entry.clientName}</title>
       <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #111; font-size: 12px; padding: 30px; line-height: 1.5; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #111; font-size: 12px; padding: 30px; line-height: 1.5; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         table { width: 100%; border-collapse: collapse; }
         
         .header-container { text-align: center; margin-bottom: 30px; }
-        .logo-img { max-width: 250px; height: auto; display: block; margin: 0 auto 10px auto; }
+        /* FORCE LOGO SIZE AND DISPLAY */
+        .logo-img { 
+            max-width: 250px; 
+            max-height: 100px;
+            width: auto;
+            height: auto;
+            display: block; 
+            margin: 0 auto 10px auto; 
+            object-fit: contain;
+        }
         .address { font-size: 11px; color: #555; line-height: 1.4; }
         
         .meta-table { width: 100%; margin-bottom: 25px; border-top: 1px solid #e5e7eb; border-bottom: 1px solid #e5e7eb; }
@@ -101,6 +106,7 @@ export const generateInvoice = (entry: Entry) => {
             text-decoration: none; font-weight: 700; 
             box-shadow: 0 4px 12px rgba(0,0,0,0.15);
             font-family: sans-serif;
+            cursor: pointer;
         }
         .btn-print:hover { background: #000; }
       </style>
@@ -108,7 +114,16 @@ export const generateInvoice = (entry: Entry) => {
     <body>
       
       <div class="header-container">
-        <img src="${LOGO_URL}" class="logo-img" alt="Mahaveer Hair Solution" />
+        <!-- ADDED ID and ONERROR Handler -->
+        <img 
+            id="invoice-logo"
+            src="${LOGO_URL}" 
+            class="logo-img" 
+            alt="Mahaveer Hair Solution" 
+            onerror="this.style.display='none'; document.getElementById('logo-fallback').style.display='block';"
+        />
+        <div id="logo-fallback" style="display:none; font-size:24px; font-weight:900; margin-bottom:10px; text-transform:uppercase;">MAHAVEER HAIR SOLUTION</div>
+        
         <div class="address">
           ${branchAddress}<br>
           <strong>Contact:</strong> ${branchContact} | <strong>Email:</strong> info@mahaveerhairsolution.com
@@ -227,10 +242,30 @@ export const generateInvoice = (entry: Entry) => {
 
       <a href="javascript:window.print()" class="btn-print no-print">Print Invoice</a>
 
+      <script>
+        // SCRIPT TO ENSURE LOGO LOADS BEFORE PRINTING
+        window.onload = function() {
+            var img = document.getElementById('invoice-logo');
+            // If image is already loaded or broken, trigger print shortly
+            if (img.complete) {
+                setTimeout(function() { window.print(); }, 500);
+            } else {
+                // Wait for load
+                img.onload = function() {
+                    setTimeout(function() { window.print(); }, 500);
+                };
+                img.onerror = function() {
+                    // Even if error, allow print
+                    setTimeout(function() { window.print(); }, 500);
+                };
+            }
+        };
+      </script>
+
     </body>
     </html>
   `;
 
   invoiceWindow.document.write(htmlContent);
-  invoiceWindow.document.close();
+  invoiceWindow.document.close(); // IMPORTANT: Necessary for IE >= 10 and ensuring load events fire
 };
