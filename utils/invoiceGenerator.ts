@@ -8,7 +8,7 @@ export const generateInvoice = (entry: Entry) => {
     return;
   }
 
-  // LOGO URL
+  // FIXED: Using stable public URL instead of signed AppSheet URL which expires/blocks access
   const LOGO_URL = "https://i.ibb.co/WpNJYmKV/MAHAVEER-Logo-1920x1080-1.png";
 
   const invoiceNumber = `INV-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 10000)).padStart(4, '0')}`;
@@ -48,76 +48,86 @@ export const generateInvoice = (entry: Entry) => {
       <meta charset="UTF-8">
       <title>Invoice - ${entry.clientName}</title>
       <style>
-        body { font-family: sans-serif; color: #111; font-size: 11px; padding: 20px; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #111; font-size: 12px; padding: 30px; line-height: 1.5; }
         table { width: 100%; border-collapse: collapse; }
-        .header-table { margin-bottom: 20px; }
-        .header-table td { text-align: center; vertical-align: top; }
-        .logo-img { width: 100%; max-width: 300px; height: auto; display: block; margin: 0 auto; margin-bottom: 10px; }
-        .address { font-size: 10px; color: #666; margin-top: 5px; line-height: 1.4; }
         
-        .meta-table { margin-top: 10px; border-top: 1px solid #ddd; margin-bottom: 20px; }
-        .meta-table td { padding: 15px 0; vertical-align: top; }
-        .label { font-size: 9px; color: #888; font-weight: bold; display: block; margin-bottom: 3px; text-transform: uppercase; }
-        .val { font-size: 12px; font-weight: bold; color: #000; }
+        .header-container { text-align: center; margin-bottom: 30px; }
+        .logo-img { max-width: 250px; height: auto; display: block; margin: 0 auto 10px auto; }
+        .address { font-size: 11px; color: #555; line-height: 1.4; }
         
-        .box-table { margin-bottom: 25px; }
-        .box { border: 1px solid #ddd; padding: 15px; border-radius: 5px; background-color: #fcfcfc; }
-        .box-title { font-size: 9px; font-weight: bold; color: #999; text-transform: uppercase; margin-bottom: 5px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
-        .box-content { font-size: 12px; font-weight: bold; line-height: 1.5; color: #333; }
-        .box-sub { font-size: 11px; font-weight: normal; color: #555; }
+        .meta-table { width: 100%; margin-bottom: 25px; border-top: 1px solid #e5e7eb; border-bottom: 1px solid #e5e7eb; }
+        .meta-table td { padding: 12px 0; vertical-align: top; }
+        .meta-label { font-size: 10px; color: #6b7280; font-weight: 700; text-transform: uppercase; display: block; margin-bottom: 4px; letter-spacing: 0.05em; }
+        .meta-val { font-size: 13px; font-weight: 700; color: #111827; }
         
-        .item-table { margin-bottom: 20px; }
-        .item-table th { background-color: #111; color: #fff; padding: 10px; text-align: left; font-size: 10px; text-transform: uppercase; font-weight: bold; }
-        .item-table td { border-bottom: 1px solid #eee; padding: 12px 10px; font-size: 11px; color: #333; }
-        .item-name { font-weight: bold; font-size: 12px; }
+        .box-table { width: 100%; margin-bottom: 30px; }
+        .box-cell { background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 15px; }
+        .box-title { font-size: 10px; font-weight: 700; color: #9ca3af; text-transform: uppercase; margin-bottom: 8px; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px; letter-spacing: 0.05em; }
+        .box-content { font-size: 14px; font-weight: 700; color: #1f2937; margin-bottom: 2px; }
+        .box-sub { font-size: 12px; color: #4b5563; }
         
-        .totals-table { width: 300px; float: right; margin-bottom: 20px; }
-        .totals-table td { padding: 5px 0; text-align: right; }
-        .totals-label { font-size: 11px; color: #666; font-weight: bold; }
-        .totals-val { font-size: 12px; font-weight: bold; color: #000; }
-        .grand-total { border-top: 2px solid #000; border-bottom: 2px solid #000; padding: 10px 0; }
-        .grand-val { font-size: 14px; font-weight: bold; }
+        .item-table { width: 100%; margin-bottom: 30px; }
+        .item-table th { background-color: #f3f4f6; color: #374151; padding: 12px 10px; text-align: left; font-size: 11px; text-transform: uppercase; font-weight: 700; border-bottom: 2px solid #e5e7eb; }
+        .item-table td { border-bottom: 1px solid #f3f4f6; padding: 15px 10px; font-size: 12px; color: #374151; }
+        .item-name { font-weight: 700; color: #111; font-size: 13px; }
         
-        .footer { margin-top: 80px; border-top: 1px solid #eee; padding-top: 20px; }
-        .terms { font-size: 9px; color: #777; line-height: 1.6; }
-        .terms-title { font-weight: bold; color: #000; text-transform: uppercase; margin-bottom: 5px; }
-        .sign { text-align: right; font-weight: bold; font-size: 10px; text-transform: uppercase; }
-        .badge { background: #f0f0f0; color: #555; padding: 4px 8px; border-radius: 3px; font-size: 9px; display: inline-block; margin-top: 5px; }
+        .totals-container { float: right; width: 300px; }
+        .totals-table { width: 100%; }
+        .totals-table td { padding: 6px 0; text-align: right; }
+        .totals-label { font-size: 11px; color: #6b7280; font-weight: 600; }
+        .totals-val { font-size: 13px; font-weight: 700; color: #1f2937; }
+        
+        .grand-total { border-top: 2px solid #111; padding-top: 12px; margin-top: 6px; }
+        .grand-label { font-size: 12px; font-weight: 800; color: #111; }
+        .grand-val { font-size: 18px; font-weight: 900; color: #111; }
+        
+        .footer { margin-top: 80px; padding-top: 20px; border-top: 1px solid #e5e7eb; font-size: 10px; color: #6b7280; }
+        .footer-table td { vertical-align: top; }
+        .terms-title { font-weight: 700; color: #374151; text-transform: uppercase; margin-bottom: 5px; }
+        
+        .badge { display: inline-block; padding: 4px 8px; background: #f3f4f6; color: #4b5563; font-size: 10px; font-weight: 600; border-radius: 4px; }
         
         @media print {
             body { padding: 0; }
             .no-print { display: none; }
+            .box-cell { background-color: #f9fafb !important; -webkit-print-color-adjust: exact; }
+            .item-table th { background-color: #f3f4f6 !important; -webkit-print-color-adjust: exact; }
         }
-        .btn-print { position: fixed; bottom: 20px; right: 20px; background: #333; color: white; padding: 10px 20px; border-radius: 5px; text-decoration: none; font-weight: bold; }
+        
+        .btn-print { 
+            position: fixed; bottom: 30px; right: 30px; 
+            background: #111; color: white; 
+            padding: 12px 24px; border-radius: 50px; 
+            text-decoration: none; font-weight: 700; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            font-family: sans-serif;
+        }
+        .btn-print:hover { background: #000; }
       </style>
     </head>
     <body>
       
-      <table class="header-table">
-        <tr>
-          <td align="center">
-            <img src="${LOGO_URL}" class="logo-img" alt="Mahaveer Logo" />
-            <div class="address">
-              ${branchAddress}<br>
-              Contact: ${branchContact} | Email: info@mahaveerhairsolution.com
-            </div>
-          </td>
-        </tr>
-      </table>
+      <div class="header-container">
+        <img src="${LOGO_URL}" class="logo-img" alt="Mahaveer Hair Solution" />
+        <div class="address">
+          ${branchAddress}<br>
+          <strong>Contact:</strong> ${branchContact} | <strong>Email:</strong> info@mahaveerhairsolution.com
+        </div>
+      </div>
 
       <table class="meta-table">
         <tr>
           <td width="33%">
-            <span class="label">Invoice Number</span>
-            <span class="val">${invoiceNumber}</span>
+            <span class="meta-label">Invoice Number</span>
+            <span class="meta-val">${invoiceNumber}</span>
           </td>
           <td width="33%" align="center">
-            <span class="label">Date Issued</span>
-            <span class="val">${formattedDate}</span>
+            <span class="meta-label">Date Issued</span>
+            <span class="meta-val">${formattedDate}</span>
           </td>
           <td width="33%" align="right">
-            <span class="label">Branch Code</span>
-            <span class="val">${branchCode}</span>
+            <span class="meta-label">Branch Code</span>
+            <span class="meta-val">${branchCode}</span>
           </td>
         </tr>
       </table>
@@ -125,18 +135,22 @@ export const generateInvoice = (entry: Entry) => {
       <table class="box-table">
         <tr>
           <td width="48%" valign="top">
-            <div class="box">
+            <div class="box-cell">
               <div class="box-title">Bill To</div>
               <div class="box-content">${entry.clientName}</div>
-              <div class="box-sub">${entry.address || ''}<br>Ph: ${entry.contactNo}</div>
+              <div class="box-sub">${entry.address || ''}</div>
+              <div class="box-sub" style="margin-top:2px;"><strong>Ph:</strong> ${entry.contactNo}</div>
             </div>
           </td>
           <td width="4%"></td>
           <td width="48%" valign="top">
-            <div class="box">
-              <div class="box-title">Service Info</div>
+            <div class="box-cell">
+              <div class="box-title">Service Details</div>
               <div class="box-content">${entry.serviceType} Application</div>
-              <div class="box-sub">Tech: ${entry.technician}<br>Method: ${entry.patchMethod}</div>
+              <div class="box-sub" style="margin-top:4px;">
+                <strong>Technician:</strong> ${entry.technician}<br>
+                <strong>Method:</strong> ${entry.patchMethod}
+              </div>
             </div>
           </td>
         </tr>
@@ -155,59 +169,63 @@ export const generateInvoice = (entry: Entry) => {
           <tr>
             <td>
               <div class="item-name">${entry.serviceType} Service</div>
-              <div style="color:#666; font-size:10px;">${entry.patchSize ? 'Size: ' + entry.patchSize : ''} ${entry.remark ? '| ' + entry.remark : ''}</div>
+              <div style="color:#6b7280; font-size:11px; margin-top:2px;">
+                ${entry.patchSize ? 'Size: ' + entry.patchSize : ''} 
+                ${entry.remark ? (entry.patchSize ? ' | ' : '') + entry.remark : ''}
+              </div>
             </td>
             <td align="center">1</td>
-            <td align="right">Rs. ${entry.amount}</td>
-            <td align="right"><strong>Rs. ${entry.amount}</strong></td>
+            <td align="right">₹${entry.amount}</td>
+            <td align="right"><strong>₹${entry.amount}</strong></td>
           </tr>
         </tbody>
       </table>
 
-      <table class="totals-table">
-        <tr>
-          <td class="totals-label">Subtotal</td>
-          <td class="totals-val">Rs. ${entry.amount}</td>
-        </tr>
-        <tr>
-          <td class="totals-label">Pending Amount</td>
-          <td class="totals-val" style="color:${(entry.pendingAmount||0)>0?'red':'inherit'}">Rs. ${entry.pendingAmount||0}</td>
-        </tr>
-        <tr>
-          <td class="totals-label">Payment Mode</td>
-          <td class="totals-val" style="text-transform:uppercase">${entry.paymentMethod}</td>
-        </tr>
-        <tr>
-          <td class="grand-total totals-label" style="color:black;">Total Paid</td>
-          <td class="grand-total grand-val">Rs. ${Math.max(0, Number(entry.amount) - (Number(entry.pendingAmount)||0))}</td>
-        </tr>
-      </table>
+      <div class="totals-container">
+        <table class="totals-table">
+          <tr>
+            <td class="totals-label">Subtotal</td>
+            <td class="totals-val">₹${entry.amount}</td>
+          </tr>
+          <tr>
+            <td class="totals-label">Pending Amount</td>
+            <td class="totals-val" style="color:${(entry.pendingAmount||0)>0?'#ef4444':'inherit'}">₹${entry.pendingAmount||0}</td>
+          </tr>
+          <tr>
+            <td class="totals-label">Payment Mode</td>
+            <td class="totals-val" style="text-transform:uppercase">${entry.paymentMethod}</td>
+          </tr>
+          <tr class="grand-total">
+            <td class="grand-label">Total Paid</td>
+            <td class="grand-val">₹${Math.max(0, Number(entry.amount) - (Number(entry.pendingAmount)||0))}</td>
+          </tr>
+        </table>
+      </div>
       <div style="clear:both;"></div>
 
       <div class="footer">
-        <table width="100%">
+        <table class="footer-table" width="100%">
           <tr>
-            <td width="60%" valign="top">
-              <div class="terms">
-                <div class="terms-title">Terms & Conditions</div>
-                • Goods once sold will not be returned.<br>
-                • Subject to Raipur Jurisdiction only.<br>
-                • Interest @ 24% p.a. will be charged if bill is not paid on due date.<br>
-                • E. & O.E.
-              </div>
+            <td width="60%">
+              <div class="terms-title">Terms & Conditions</div>
+              <ul style="margin:0; padding-left:15px; line-height:1.6;">
+                <li>Goods once sold will not be returned.</li>
+                <li>Subject to Raipur Jurisdiction only.</li>
+                <li>This is a system generated invoice.</li>
+                <li>E. & O.E.</li>
+              </ul>
             </td>
-            <td width="40%" valign="bottom">
-              <div class="sign">
-                For, Mahaveer Hair Solution<br><br>
-                <div class="badge">System Generated Invoice</div><br>
-                <span style="font-weight:normal; font-size:9px; color:#888;">No signature required</span>
+            <td width="40%" align="right" valign="bottom">
+              <div style="text-align:right;">
+                <strong>For, MAHAVEER HAIR SOLUTION</strong><br><br><br>
+                <span class="badge">Authorized Signatory</span>
               </div>
             </td>
           </tr>
         </table>
       </div>
 
-      <a href="#" onclick="window.print(); return false;" class="btn-print no-print">Print Invoice</a>
+      <a href="javascript:window.print()" class="btn-print no-print">Print Invoice</a>
 
     </body>
     </html>
