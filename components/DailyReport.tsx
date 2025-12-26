@@ -5,7 +5,8 @@ import { Entry, Technician } from '../types';
 import { 
   Calendar, Filter, FileText, UserPlus, Scissors, CreditCard, Search, Wallet, 
   Smartphone, Landmark, AlertCircle, RefreshCw, Eye, FileDown, Printer, User, 
-  Ruler, Sparkles, Layers, Pencil, X, Save, Droplets, Zap, UserCheck, Trash2, AlertTriangle
+  Ruler, Sparkles, Layers, Pencil, X, Save, Droplets, Zap, UserCheck, Trash2, 
+  AlertTriangle, SlidersHorizontal, ChevronDown, RotateCcw
 } from 'lucide-react';
 import { generateInvoice } from '../utils/invoiceGenerator';
 
@@ -20,6 +21,10 @@ const DailyReport: React.FC = () => {
   const [serviceFilter, setServiceFilter] = useState('ALL');
   const [paymentFilter, setPaymentFilter] = useState('ALL');
   const [searchTerm, setSearchTerm] = useState('');
+
+  // UI States for Toolbar
+  const [showSearch, setShowSearch] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
 
   // Edit Modal State
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -105,6 +110,12 @@ const DailyReport: React.FC = () => {
       }
   };
 
+  const resetFilters = () => {
+      setServiceFilter('ALL');
+      setPaymentFilter('ALL');
+      setShowFilters(false);
+  };
+
   const filteredData = entries.filter(entry => {
     if (entry.date !== selectedDate) return false;
     if (serviceFilter !== 'ALL' && entry.serviceType !== serviceFilter) return false;
@@ -142,7 +153,7 @@ const DailyReport: React.FC = () => {
   const card3D = "bg-white rounded-2xl shadow-[0_8px_30px_-5px_rgba(0,0,0,0.05)] border border-slate-200 p-4 transition-transform duration-300 hover:-translate-y-1 hover:shadow-lg relative overflow-hidden";
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500 pb-10">
+    <div className="space-y-8 animate-in fade-in duration-500 pb-20">
       
       {/* DELETE CONFIRMATION MODAL */}
       {deletingId && (
@@ -177,7 +188,8 @@ const DailyReport: React.FC = () => {
           </div>
       )}
 
-      <div className="flex flex-col md:flex-row justify-between items-center bg-white p-6 rounded-3xl shadow-[0_15px_35px_-10px_rgba(0,0,0,0.08)] border border-slate-200 backdrop-blur-sm">
+      {/* HEADER */}
+      <div className="flex flex-col md:flex-row justify-between items-center bg-white p-6 rounded-3xl shadow-[0_15px_35px_-10px_rgba(0,0,0,0.08)] border border-slate-200 backdrop-blur-sm relative z-10">
         <div>
            <div className="flex items-center gap-2">
                <h2 className="text-3xl font-black text-slate-800">Daily Report</h2>
@@ -187,17 +199,127 @@ const DailyReport: React.FC = () => {
            </div>
            <p className="text-slate-500 font-bold mt-1">Transactions for {formatDateDisplay(selectedDate)}</p>
         </div>
-        <div className="mt-4 md:mt-0 flex items-center bg-white border-2 border-slate-200 rounded-xl p-1.5 shadow-sm">
-            <div className="px-3 py-2 text-indigo-600 bg-indigo-50 rounded-lg mr-2">
-                <Calendar className="w-5 h-5" />
+      </div>
+
+      {/* ENHANCED FLOATING FILTER TOOLBAR */}
+      <div className="sticky top-[70px] lg:top-4 z-40 mb-6 flex justify-end items-start gap-2 pointer-events-none">
+            <div className="pointer-events-auto flex flex-col sm:flex-row gap-2 items-end sm:items-start">
+                
+                {/* DATE PICKER - ALWAYS VISIBLE */}
+                <div className="bg-white p-1.5 rounded-2xl shadow-lg border border-slate-200 flex items-center">
+                     <div className="flex items-center bg-indigo-50 rounded-xl px-3 py-2 border border-indigo-100 transition-colors hover:border-indigo-300">
+                        <Calendar className="w-4 h-4 text-indigo-500 mr-2 flex-shrink-0" />
+                        <input 
+                            type="date" 
+                            value={selectedDate}
+                            onChange={e => setSelectedDate(e.target.value)}
+                            className="bg-transparent border-none p-0 text-xs font-bold text-indigo-900 focus:ring-0 outline-none w-auto cursor-pointer"
+                        />
+                    </div>
+                </div>
+
+                {/* SEARCH */}
+                <div className={`transition-all duration-300 ease-in-out ${showSearch ? 'w-full sm:w-72' : 'w-auto'}`}>
+                    {showSearch ? (
+                        <div className="bg-white p-2 rounded-2xl shadow-xl border border-slate-200 flex items-center animate-in fade-in zoom-in-95">
+                            <Search className="w-4 h-4 text-indigo-500 ml-2" />
+                            <input 
+                                autoFocus
+                                type="text"
+                                value={searchTerm}
+                                onChange={e => setSearchTerm(e.target.value)}
+                                className="flex-1 bg-transparent border-none focus:ring-0 text-sm font-bold text-slate-700 placeholder:font-normal px-2 outline-none"
+                                placeholder="Search client..."
+                            />
+                            <button 
+                                onClick={() => { setShowSearch(false); setSearchTerm(''); }} 
+                                className="p-2 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-red-500 transition-colors"
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
+                    ) : (
+                        <button 
+                            onClick={() => setShowSearch(true)} 
+                            className={`p-3 bg-white rounded-2xl shadow-lg border transition-all hover:scale-105 active:scale-95 group ${searchTerm ? 'border-indigo-300 text-indigo-600 ring-2 ring-indigo-100' : 'border-slate-200 text-slate-500 hover:text-indigo-600'}`}
+                            title="Search"
+                        >
+                            <Search className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                        </button>
+                    )}
+                </div>
+
+                {/* FILTERS (Service & Payment) */}
+                <div className={`transition-all duration-300 ease-in-out ${showFilters ? 'w-full sm:w-auto max-w-[90vw]' : 'w-auto'}`}>
+                    {showFilters ? (
+                        <div className="bg-white p-2 rounded-2xl shadow-xl border border-slate-200 flex flex-col sm:flex-row gap-2 animate-in fade-in zoom-in-95 items-center overflow-x-auto">
+                            
+                            {/* Service Filter */}
+                            <div className="relative w-full sm:w-auto min-w-[120px]">
+                                <select 
+                                    value={serviceFilter}
+                                    onChange={e => setServiceFilter(e.target.value)}
+                                    className="w-full appearance-none bg-slate-50 border border-slate-100 rounded-xl pl-3 pr-8 py-2 text-xs font-bold text-slate-700 focus:ring-0 focus:border-indigo-500 outline-none cursor-pointer hover:bg-slate-100 transition-colors"
+                                >
+                                    <option value="ALL">All Services</option>
+                                    <option value="NEW">New Patch</option>
+                                    <option value="SERVICE">Service</option>
+                                    <option value="WASHING">Washing</option>
+                                    <option value="DEMO">Demo</option>
+                                    <option value="MUNDAN">Mundan</option>
+                                </select>
+                                <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400 pointer-events-none" />
+                            </div>
+
+                            {/* Payment Filter */}
+                            <div className="relative w-full sm:w-auto min-w-[120px]">
+                                <select 
+                                    value={paymentFilter}
+                                    onChange={e => setPaymentFilter(e.target.value)}
+                                    className="w-full appearance-none bg-slate-50 border border-slate-100 rounded-xl pl-3 pr-8 py-2 text-xs font-bold text-slate-700 focus:ring-0 focus:border-indigo-500 outline-none cursor-pointer hover:bg-slate-100 transition-colors"
+                                >
+                                    <option value="ALL">All Payments</option>
+                                    <option value="CASH">Cash</option>
+                                    <option value="UPI">UPI</option>
+                                    <option value="CARD">Card</option>
+                                    <option value="PENDING">Pending</option>
+                                </select>
+                                <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400 pointer-events-none" />
+                            </div>
+                            
+                            <div className="h-6 w-px bg-slate-200 hidden sm:block mx-1"></div>
+
+                            {/* Reset Button */}
+                            <button 
+                                onClick={resetFilters} 
+                                className="p-2 bg-slate-50 hover:bg-red-50 rounded-xl text-slate-400 hover:text-red-500 transition-colors flex-shrink-0 flex items-center gap-1 border border-slate-100 hover:border-red-100"
+                                title="Reset Filters"
+                            >
+                                <RotateCcw className="w-3.5 h-3.5" />
+                            </button>
+
+                            <button 
+                                onClick={() => setShowFilters(false)} 
+                                className="p-2 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-slate-600 transition-colors flex-shrink-0"
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
+                    ) : (
+                        <button 
+                            onClick={() => setShowFilters(true)} 
+                            className={`p-3 bg-white rounded-2xl shadow-lg border transition-all hover:scale-105 active:scale-95 group relative ${serviceFilter !== 'ALL' || paymentFilter !== 'ALL' ? 'border-indigo-300 text-indigo-600 ring-2 ring-indigo-100' : 'border-slate-200 text-slate-500 hover:text-indigo-600'}`}
+                            title="More Filters"
+                        >
+                            <Filter className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                            {(serviceFilter !== 'ALL' || paymentFilter !== 'ALL') && (
+                                <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-indigo-500 rounded-full border-2 border-white animate-pulse"></span>
+                            )}
+                        </button>
+                    )}
+                </div>
+
             </div>
-            <input 
-                type="date" 
-                value={selectedDate} 
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className="bg-transparent border-none focus:ring-0 text-slate-800 font-black text-sm"
-            />
-        </div>
       </div>
 
       {/* Main KPI Row */}
@@ -306,51 +428,6 @@ const DailyReport: React.FC = () => {
                   <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Pending</p>
                   <p className="font-black text-slate-800 text-lg">₹{paymentStats.PENDING.toLocaleString()}</p>
               </div>
-          </div>
-      </div>
-
-      <div className="bg-white p-5 rounded-2xl shadow-[0_10px_25px_-5px_rgba(0,0,0,0.05)] border border-slate-200 flex flex-col md:flex-row gap-6 items-center justify-between sticky top-4 z-20">
-          <div className="flex items-center gap-3 w-full md:w-auto">
-              <div className="bg-indigo-50 p-2 rounded-lg border border-indigo-100"><Filter className="w-4 h-4 text-indigo-600" /></div>
-              <span className="text-sm font-bold text-slate-700">Filter Records:</span>
-          </div>
-
-          <div className="flex flex-col md:flex-row gap-4 w-full md:w-auto">
-              <div className="relative">
-                  <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
-                  <input 
-                    type="text" 
-                    placeholder="Search Client Name..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 w-full shadow-inner font-semibold placeholder:font-normal"
-                  />
-              </div>
-
-              <select 
-                value={serviceFilter}
-                onChange={(e) => setServiceFilter(e.target.value)}
-                className="px-4 py-2.5 border border-slate-200 bg-slate-50 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 font-bold text-slate-600 shadow-sm cursor-pointer"
-              >
-                  <option value="ALL">All Services</option>
-                  <option value="NEW">New Patch</option>
-                  <option value="SERVICE">Service</option>
-                  <option value="WASHING">Washing</option>
-                  <option value="DEMO">Demo</option>
-                  <option value="MUNDAN">Mundan</option>
-              </select>
-
-              <select 
-                value={paymentFilter}
-                onChange={(e) => setPaymentFilter(e.target.value)}
-                className="px-4 py-2.5 border border-slate-200 bg-slate-50 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 font-bold text-slate-600 shadow-sm cursor-pointer"
-              >
-                  <option value="ALL">All Payments</option>
-                  <option value="CASH">Cash</option>
-                  <option value="UPI">UPI</option>
-                  <option value="CARD">Card</option>
-                  <option value="PENDING">Pending</option>
-              </select>
           </div>
       </div>
 

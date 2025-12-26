@@ -13,6 +13,7 @@ import DailyReport from './components/DailyReport';
 import ClientHistory from './components/ClientHistory'; 
 import PendingPayments from './components/PendingPayments';
 import AdminPanel from './components/AdminPanel';
+import ReportsAnalytics from './components/ReportsAnalytics';
 import Login from './components/Login';
 import { User, Role } from './types';
 import { Clock } from 'lucide-react';
@@ -196,7 +197,7 @@ function App() {
           />
           <Route 
             path="/reports" 
-            element={user.role === Role.ADMIN ? <div className="p-4">Reports & Analysis Module</div> : <Navigate to="/new-entry" />} 
+            element={user.role === Role.ADMIN ? <ReportsAnalytics /> : <Navigate to="/new-entry" />} 
           />
 
           <Route path="*" element={<Navigate to="/" />} />

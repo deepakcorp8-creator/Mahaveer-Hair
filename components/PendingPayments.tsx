@@ -6,7 +6,7 @@ import {
   Wallet, CheckCircle2, Search, X, RefreshCw, Calendar, Phone, UploadCloud, 
   Check, ArrowRight, Clock, AlertTriangle, UserCheck, IndianRupee, Megaphone, 
   MapPin, Scissors, User, MessageCircle, Filter, ChevronDown, Copy, CheckSquare, 
-  Trash2, Send, MessageSquare
+  Trash2, Send, MessageSquare, SlidersHorizontal
 } from 'lucide-react';
 
 const PendingPayments: React.FC = () => {
@@ -17,6 +17,11 @@ const PendingPayments: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterDate, setFilterDate] = useState<string>(''); 
   const [sortBy, setSortBy] = useState<'AMOUNT_DESC' | 'DATE_ASC' | 'DATE_DESC'>('DATE_ASC');
+  
+  // UI States for Toolbar
+  const [showSearch, setShowSearch] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
+
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState<Entry | null>(null);
@@ -166,41 +171,91 @@ const PendingPayments: React.FC = () => {
             <div className="bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-3xl p-6 text-white shadow-xl shadow-emerald-200 flex items-center justify-between group hover:-translate-y-1 transition-transform"><div><div className="flex items-center gap-2 mb-2"><span className="bg-white/20 p-1.5 rounded-lg backdrop-blur-sm"><IndianRupee className="w-4 h-4 text-white" /></span><p className="text-emerald-100 text-xs font-black uppercase tracking-widest">Today Collection</p></div><h3 className="text-3xl font-black">₹{sessionCollected.toLocaleString()}</h3><p className="text-xs font-bold text-emerald-100 mt-1 opacity-80">Session Total</p></div></div>
         </div>
 
-        {/* FIXED FILTER BAR: Adjusted sticky top for mobile and added z-index for visibility */}
-        <div className="sticky top-[70px] lg:top-4 z-[40] mb-6">
-            <div className="bg-white p-4 rounded-2xl shadow-xl border-2 border-slate-200 flex flex-col sm:flex-row gap-4 items-center">
-                <div className="relative flex-1 w-full">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <input 
-                        type="text" 
-                        placeholder="Search Client Name, Phone..." 
-                        value={searchTerm} 
-                        onChange={(e) => setSearchTerm(e.target.value)} 
-                        className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-bold text-sm" 
-                    />
-                </div>
-                <div className="flex flex-row gap-3 w-full sm:w-auto">
-                    <div className="relative flex-1 sm:flex-none">
-                        <input 
-                            type="date" 
-                            value={filterDate} 
-                            onChange={(e) => setFilterDate(e.target.value)} 
-                            className="w-full pl-4 pr-3 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 text-sm font-bold text-slate-600" 
-                        />
-                    </div>
-                    <div className="relative flex-1 sm:flex-none group">
-                        <select 
-                            value={sortBy} 
-                            onChange={(e) => setSortBy(e.target.value as any)} 
-                            className="w-full appearance-none pl-4 pr-10 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 text-sm font-bold text-slate-600 cursor-pointer"
+        {/* ENHANCED FLOATING FILTER TOOLBAR */}
+        <div className="sticky top-[70px] lg:top-4 z-[40] mb-6 flex justify-end items-start gap-2 pointer-events-none">
+            <div className="pointer-events-auto flex flex-col sm:flex-row gap-3 items-end sm:items-start">
+                
+                {/* SEARCH */}
+                <div className={`transition-all duration-300 ease-in-out ${showSearch ? 'w-full sm:w-72' : 'w-auto'}`}>
+                    {showSearch ? (
+                        <div className="bg-white p-2 rounded-2xl shadow-xl border border-slate-200 flex items-center animate-in fade-in zoom-in-95">
+                            <Search className="w-4 h-4 text-indigo-500 ml-2" />
+                            <input 
+                                autoFocus
+                                type="text"
+                                value={searchTerm}
+                                onChange={e => setSearchTerm(e.target.value)}
+                                className="flex-1 bg-transparent border-none focus:ring-0 text-sm font-bold text-slate-700 placeholder:font-normal px-2 outline-none"
+                                placeholder="Search client..."
+                            />
+                            <button 
+                                onClick={() => { setShowSearch(false); setSearchTerm(''); }} 
+                                className="p-2 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-red-500 transition-colors"
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
+                    ) : (
+                        <button 
+                            onClick={() => setShowSearch(true)} 
+                            className={`p-3 bg-white rounded-2xl shadow-lg border transition-all hover:scale-105 active:scale-95 group ${searchTerm ? 'border-indigo-300 text-indigo-600 ring-2 ring-indigo-100' : 'border-slate-200 text-slate-500 hover:text-indigo-600'}`}
+                            title="Search"
                         >
-                            <option value="DATE_ASC">📅 Due (Old)</option>
-                            <option value="DATE_DESC">📅 Due (New)</option>
-                            <option value="AMOUNT_DESC">💰 Amount</option>
-                        </select>
-                        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-                    </div>
+                            <Search className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                        </button>
+                    )}
                 </div>
+
+                {/* FILTERS */}
+                <div className={`transition-all duration-300 ease-in-out ${showFilters ? 'w-full sm:w-auto' : 'w-auto'}`}>
+                    {showFilters ? (
+                        <div className="bg-white p-2 rounded-2xl shadow-xl border border-slate-200 flex flex-col sm:flex-row gap-2 animate-in fade-in zoom-in-95 items-center">
+                            {/* Date Filter */}
+                            <div className="flex items-center bg-slate-50 rounded-xl px-3 py-2 border border-slate-100 w-full sm:w-auto">
+                                <Calendar className="w-4 h-4 text-slate-400 mr-2 flex-shrink-0" />
+                                <input 
+                                    type="date" 
+                                    value={filterDate}
+                                    onChange={e => setFilterDate(e.target.value)}
+                                    className="bg-transparent border-none p-0 text-xs font-bold text-slate-700 focus:ring-0 outline-none w-full"
+                                />
+                            </div>
+                            
+                            {/* Sort Selector */}
+                            <div className="relative w-full sm:w-auto">
+                                <select 
+                                    value={sortBy}
+                                    onChange={e => setSortBy(e.target.value as any)}
+                                    className="w-full appearance-none bg-slate-50 border border-slate-100 rounded-xl pl-3 pr-8 py-2 text-xs font-bold text-slate-700 focus:ring-0 focus:border-indigo-500 outline-none cursor-pointer"
+                                >
+                                    <option value="DATE_ASC">📅 Oldest Due</option>
+                                    <option value="DATE_DESC">📅 Newest Due</option>
+                                    <option value="AMOUNT_DESC">💰 High Amount</option>
+                                </select>
+                                <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400 pointer-events-none" />
+                            </div>
+                            
+                            <button 
+                                onClick={() => setShowFilters(false)} 
+                                className="p-2 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-slate-600 transition-colors flex-shrink-0"
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
+                    ) : (
+                        <button 
+                            onClick={() => setShowFilters(true)} 
+                            className={`p-3 bg-white rounded-2xl shadow-lg border transition-all hover:scale-105 active:scale-95 group relative ${filterDate || sortBy !== 'DATE_ASC' ? 'border-indigo-300 text-indigo-600 ring-2 ring-indigo-100' : 'border-slate-200 text-slate-500 hover:text-indigo-600'}`}
+                            title="Filter & Sort"
+                        >
+                            <SlidersHorizontal className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                            {(filterDate || sortBy !== 'DATE_ASC') && (
+                                <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-indigo-500 rounded-full border-2 border-white animate-pulse"></span>
+                            )}
+                        </button>
+                    )}
+                </div>
+
             </div>
         </div>
 
