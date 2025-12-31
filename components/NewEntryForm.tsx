@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
-import { Client, Item, Technician, Entry, ServicePackage } from '../types';
-import { Save, AlertCircle, User, CreditCard, Scissors, Calendar, MapPin, RefreshCw, CheckCircle2, Ticket, FileDown, ShieldCheck, Search, PenSquare, Wallet, X, Clock, AlertTriangle, Loader2, IndianRupee, Sparkles, Layers, UserPlus } from 'lucide-react';
+import { Client, Item, Technician, Entry, ServicePackage, Role, User } from '../types';
+import { Save, AlertCircle, User as UserIcon, CreditCard, Scissors, Calendar, MapPin, RefreshCw, CheckCircle2, Ticket, FileDown, ShieldCheck, Search, PenSquare, Wallet, X, Clock, AlertTriangle, Loader2, IndianRupee, Sparkles, Layers, UserPlus } from 'lucide-react';
 import { SearchableSelect } from './SearchableSelect';
 import { generateInvoice } from '../utils/invoiceGenerator';
 
@@ -16,7 +16,12 @@ const NewEntryForm: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   
   const [activePackageClients, setActivePackageClients] = useState<Set<string>>(new Set());
+  const [userBranch, setUserBranch] = useState<'RPR' | 'JDP' | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   
+  // Activity List Filter
+  const [activityBranchFilter, setActivityBranchFilter] = useState<string>('ALL');
+
   // --- MODAL STATES ---
   const [editingEntry, setEditingEntry] = useState<Entry | null>(null);
   
@@ -49,7 +54,7 @@ const NewEntryForm: React.FC = () => {
     date: new Date().toISOString().split('T')[0],
     branch: 'RPR',
     serviceType: 'SERVICE',
-    patchMethod: 'BONDING', // UPDATED: Default changed to BONDING
+    patchMethod: 'BONDING', 
     paymentMethod: 'CASH',
     workStatus: 'DONE',
     numberOfService: 1,
@@ -69,6 +74,24 @@ const NewEntryForm: React.FC = () => {
   const [lastSubmittedEntry, setLastSubmittedEntry] = useState<Entry | null>(null);
 
   useEffect(() => {
+    // Determine User Branch on Mount
+    try {
+        const saved = localStorage.getItem('mahaveer_user');
+        if (saved) {
+            const user: User = JSON.parse(saved);
+            if (user.role === Role.ADMIN) {
+                setIsAdmin(true);
+            } else {
+                setIsAdmin(false);
+                const dept = (user.department || '').toUpperCase();
+                let branch: 'RPR' | 'JDP' = 'RPR';
+                if (dept.includes('JDP') || dept.includes('JAGDALPUR')) branch = 'JDP';
+                setUserBranch(branch);
+                setFormData(prev => ({ ...prev, branch: branch }));
+            }
+        }
+    } catch(e) {}
+
     init();
   }, []);
 
@@ -134,10 +157,8 @@ const NewEntryForm: React.FC = () => {
       try {
           await api.addClient(newClientForm);
           setIsAddClientModalOpen(false);
-          // Refetch clients so the new one shows up in options
           const options = await api.getOptions(true);
           setClients(options.clients);
-          // Automatically select the new client
           handleClientChange(newClientForm.name);
           setNotification({ msg: `New client "${newClientForm.name}" added to master!`, type: 'success' });
       } catch (err) {
@@ -180,7 +201,11 @@ const NewEntryForm: React.FC = () => {
     const totalBill = Number(formData.amount || 0);
     if (formData.paymentMethod === 'PENDING') pending = totalBill;
     else if (isFormPartPayment) pending = Math.max(0, totalBill - Number(receivedAmount || 0));
-    const entryToSubmit = { ...formData, pendingAmount: pending } as Entry;
+    
+    // Ensure correct branch if not admin
+    const branchToUse = isAdmin ? formData.branch : userBranch;
+    const entryToSubmit = { ...formData, branch: branchToUse, pendingAmount: pending } as Entry;
+    
     try {
       const result = await api.addEntry(entryToSubmit);
       const savedEntry = result as Entry;
@@ -190,7 +215,7 @@ const NewEntryForm: React.FC = () => {
           type: savedEntry.pendingAmount ? 'warning' : 'success',
           hasAction: !!savedEntry.pendingAmount
       });
-      setFormData({ ...initialFormState, date: formData.date });
+      setFormData({ ...initialFormState, date: formData.date, branch: branchToUse }); // Reset but keep branch/date
       setReceivedAmount('');
       setIsFormPartPayment(false);
       setActivePackage(null);
@@ -247,7 +272,13 @@ const NewEntryForm: React.FC = () => {
   const cardClass = "bg-white rounded-3xl shadow-[0_15px_40px_-5px_rgba(0,0,0,0.1)] border-2 border-slate-200 relative overflow-hidden transition-all duration-300 hover:shadow-[0_20px_50px_-5px_rgba(0,0,0,0.15)] hover:border-slate-300";
   const inputClass = "w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3.5 text-gray-900 shadow-inner focus:ring-2 focus:ring-indigo-500 focus:bg-white focus:border-indigo-500 transition-all font-bold placeholder:font-normal placeholder:text-slate-400";
   const labelClass = "block text-xs font-black uppercase tracking-widest text-slate-500 mb-2 ml-1";
-  const filteredTodayEntries = todayEntries.filter(e => e.clientName.toLowerCase().includes(searchTerm.toLowerCase()) || String(e.contactNo).includes(searchTerm));
+  
+  const filteredTodayEntries = todayEntries.filter(e => {
+      const matchSearch = e.clientName.toLowerCase().includes(searchTerm.toLowerCase()) || String(e.contactNo).includes(searchTerm);
+      const matchBranch = activityBranchFilter === 'ALL' || e.branch === activityBranchFilter;
+      return matchSearch && matchBranch;
+  });
+
   const isDemo = formData.serviceType === 'DEMO';
   const formPending = Math.max(0, Number(formData.amount || 0) - (isFormPartPayment ? Number(receivedAmount || 0) : Number(formData.amount || 0)));
   const editPendingCalc = isPartPayment ? Math.max(0, Number(editTotalAmount) - Number(editReceivedAmount)) : 0;
@@ -289,7 +320,7 @@ const NewEntryForm: React.FC = () => {
             <div className="lg:col-span-8 space-y-8">
                 <div className={cardClass}>
                     <div className="px-8 py-6 bg-gradient-to-r from-blue-50 to-white border-b border-blue-100 flex items-center">
-                        <div className="p-3 bg-blue-100 text-blue-600 rounded-2xl mr-4 shadow-sm border border-blue-200"><User className="w-6 h-6" /></div>
+                        <div className="p-3 bg-blue-100 text-blue-600 rounded-2xl mr-4 shadow-sm border border-blue-200"><UserIcon className="w-6 h-6" /></div>
                         <div><h3 className="text-xl font-black text-slate-800">Client Details</h3><p className="text-sm text-blue-500 font-bold">Customer Information</p></div>
                     </div>
                     <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-6 bg-gradient-to-b from-white to-blue-50/20">
@@ -323,7 +354,27 @@ const NewEntryForm: React.FC = () => {
                         <div><h3 className="text-xl font-black text-slate-800">Service Data</h3><p className="text-sm text-violet-500 font-bold">Work & Technician</p></div>
                     </div>
                     <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-6 bg-gradient-to-b from-white to-violet-50/20">
-                        <div><label className={labelClass}>Branch</label><div className="flex gap-4 p-1 bg-slate-100/50 rounded-2xl border border-slate-200">{['RPR', 'JDP'].map((b) => (<button type="button" key={b} onClick={() => setFormData(prev => ({ ...prev, branch: b as any }))} className={`flex-1 py-3 rounded-xl font-bold text-sm transition-all duration-200 border ${formData.branch === b ? 'bg-violet-600 text-white shadow-lg shadow-violet-500/30 transform scale-105 border-violet-700' : 'text-slate-500 hover:bg-white hover:text-slate-700 border-transparent hover:border-slate-200'}`}>{b}</button>))}</div></div>
+                        <div>
+                            <label className={labelClass}>Branch</label>
+                            <div className="flex gap-4 p-1 bg-slate-100/50 rounded-2xl border border-slate-200">
+                                {['RPR', 'JDP'].map((b) => (
+                                    <button 
+                                        type="button" 
+                                        key={b} 
+                                        onClick={() => isAdmin && setFormData(prev => ({ ...prev, branch: b as any }))} 
+                                        disabled={!isAdmin && formData.branch !== b}
+                                        className={`flex-1 py-3 rounded-xl font-bold text-sm transition-all duration-200 border 
+                                            ${formData.branch === b 
+                                                ? 'bg-violet-600 text-white shadow-lg shadow-violet-500/30 transform scale-105 border-violet-700' 
+                                                : 'text-slate-400 border-transparent ' + (isAdmin ? 'hover:bg-white hover:text-slate-700 hover:border-slate-200' : 'opacity-50 cursor-not-allowed')
+                                            }`
+                                        }
+                                    >
+                                        {b}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
                         <div><label className={labelClass}>Transaction Date</label><input type="date" name="date" value={formData.date} onChange={handleChange} className={inputClass} required /></div>
                         <div className="md:col-span-2 h-px bg-slate-200 my-2"></div>
                         <div><label className={labelClass}>Service Type</label><div className="relative"><select name="serviceType" value={formData.serviceType} onChange={handleChange} className={`${inputClass} appearance-none cursor-pointer`}><option value="SERVICE">SERVICE</option><option value="NEW">NEW</option><option value="WASHING">WASHING</option><option value="DEMO">DEMO</option><option value="MUNDAN">MUNDAN</option></select><div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">▼</div></div></div>
@@ -374,7 +425,24 @@ const NewEntryForm: React.FC = () => {
       <div className="bg-white rounded-[2.5rem] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)] border border-slate-200 overflow-hidden relative">
           <div className="px-8 py-6 bg-slate-50/50 border-b border-slate-200 flex flex-col md:flex-row justify-between items-center gap-4">
               <div className="flex items-center gap-3"><div className="p-2.5 bg-indigo-100 text-indigo-600 rounded-xl border border-indigo-200"><Clock className="w-6 h-6" /></div><div><h3 className="text-xl font-black text-slate-800">Today's Activity</h3><p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{formatDateDisplay(new Date().toISOString().split('T')[0])}</p></div></div>
-              <div className="relative w-full md:w-80 group"><Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" /><input type="text" placeholder="Search today's client..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-sm" /></div>
+              
+              <div className="flex items-center gap-2 w-full md:w-auto">
+                  {/* Branch Filter for Activity List */}
+                  <select 
+                      value={activityBranchFilter} 
+                      onChange={(e) => setActivityBranchFilter(e.target.value)} 
+                      className="px-3 py-3 bg-white border border-slate-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-xs text-indigo-700"
+                  >
+                      <option value="ALL">All Branches</option>
+                      <option value="RPR">Raipur</option>
+                      <option value="JDP">Jagdalpur</option>
+                  </select>
+
+                  <div className="relative w-full md:w-64 group">
+                      <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                      <input type="text" placeholder="Search today..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-sm" />
+                  </div>
+              </div>
           </div>
           <div className="divide-y divide-slate-100">
              {filteredTodayEntries.length === 0 ? (<div className="p-12 text-center text-slate-400 font-medium">No transactions found for today.</div>) : (filteredTodayEntries.map((entry) => {
@@ -386,7 +454,13 @@ const NewEntryForm: React.FC = () => {
                                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-black text-lg shadow-sm border ${showAction ? 'bg-amber-100 text-amber-600 border-amber-200' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>{entry.clientName.charAt(0)}</div>
                                  <div><h4 className="font-black text-slate-800 text-lg leading-tight">{entry.clientName}</h4><div className="text-xs font-bold text-slate-400 flex items-center gap-2 mt-1"><span>{entry.contactNo}</span>{showAction && (<span className="flex items-center text-amber-600 bg-amber-100 px-1.5 py-0.5 rounded border border-amber-200"><AlertTriangle className="w-3 h-3 mr-1" /> Update Amount</span>)}</div></div>
                              </div>
-                             <div className="w-full md:w-1/4"><div className="text-sm font-bold text-slate-700">{entry.serviceType}</div><div className="text-xs text-slate-400 font-medium">Tech: {entry.technician}</div></div>
+                             <div className="w-full md:w-1/4">
+                                 <div className="text-sm font-bold text-slate-700">{entry.serviceType}</div>
+                                 <div className="text-xs text-slate-400 font-medium flex items-center gap-2">
+                                     <span>Tech: {entry.technician}</span>
+                                     <span className="px-1.5 py-0.5 rounded bg-slate-100 border border-slate-200 text-[10px]">{entry.branch}</span>
+                                 </div>
+                             </div>
                              <div className="w-full md:w-1/6 text-right md:text-left"><div className={`font-black text-xl ${showAction ? 'text-amber-600' : 'text-slate-800'}`}>₹{entry.amount}</div><div className="text-[10px] font-black uppercase tracking-wider text-slate-400">{entry.paymentMethod}</div></div>
                              <div className="flex items-center gap-2 w-full md:w-auto justify-end">{showAction && (<button onClick={() => openPaymentModal(entry)} className="px-4 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-xl font-bold text-sm shadow-lg border border-emerald-600"><Wallet className="w-4 h-4 mr-2" />Amount</button>)}<button onClick={() => openDetailsModal(entry)} className="p-2.5 bg-white border border-slate-200 text-slate-500 rounded-xl hover:text-indigo-600 shadow-sm" title="Edit Entry Details"><PenSquare className="w-4 h-4" /></button></div>
                          </div>

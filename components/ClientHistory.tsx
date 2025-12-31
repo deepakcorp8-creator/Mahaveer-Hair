@@ -13,6 +13,7 @@ const ClientHistory: React.FC = () => {
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]); 
   const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [branchFilter, setBranchFilter] = useState('ALL');
 
   useEffect(() => {
     loadData();
@@ -62,6 +63,8 @@ const ClientHistory: React.FC = () => {
 
   // Filter Logic
   const filteredData = entries.filter(e => {
+      if (branchFilter !== 'ALL' && e.branch !== branchFilter) return false;
+      
       const entryDate = e.date; 
       if (startDate && entryDate < startDate) return false;
       if (endDate && entryDate > endDate) return false;
@@ -157,8 +160,18 @@ const ClientHistory: React.FC = () => {
             </div>
       </div>
 
-      <div className="sticky top-0 z-20 -mx-4 px-4 md:-mx-8 md:px-8 bg-[#F8FAFC]/90 backdrop-blur-md py-4">
-            <div className="relative group shadow-xl shadow-indigo-900/5 rounded-[1.5rem]">
+      <div className="sticky top-0 z-20 -mx-4 px-4 md:-mx-8 md:px-8 bg-[#F8FAFC]/90 backdrop-blur-md py-4 flex flex-col md:flex-row gap-2">
+            <select 
+                value={branchFilter}
+                onChange={(e) => setBranchFilter(e.target.value)}
+                className="md:w-48 px-4 py-4 bg-white border-2 border-white focus:border-indigo-500 rounded-[1.5rem] text-sm font-bold shadow-sm focus:ring-4 focus:ring-indigo-100 outline-none text-indigo-700"
+            >
+                <option value="ALL">All Branches</option>
+                <option value="RPR">Raipur</option>
+                <option value="JDP">Jagdalpur</option>
+            </select>
+
+            <div className="relative group shadow-xl shadow-indigo-900/5 rounded-[1.5rem] flex-1">
                 <div className="absolute left-5 top-1/2 transform -translate-y-1/2 pointer-events-none p-2 bg-indigo-50 rounded-xl"><Search className="w-5 h-5 text-indigo-600 transition-transform group-hover:scale-110" /></div>
                 <input id="history-search-input" type="text" placeholder="Search Client Name or Contact Number..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-16 pr-6 py-4 bg-white border-2 border-white focus:border-indigo-500 rounded-[1.5rem] text-base focus:ring-4 focus:ring-indigo-100 font-bold shadow-sm transition-all text-slate-800" />
             </div>
@@ -194,7 +207,13 @@ const ClientHistory: React.FC = () => {
                                      <div className="flex items-center gap-2 mt-1"><span className="text-[11px] font-bold text-slate-500 bg-white shadow-sm px-2 py-0.5 rounded border border-slate-200">{entry.contactNo}</span></div>
                                  </td>
                                  <td className="px-8 py-5">
-                                    <div className="flex flex-col items-start gap-1.5"><span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border shadow-sm ${entry.serviceType === 'NEW' ? 'bg-blue-50 text-blue-700 border-blue-200' : entry.serviceType === 'SERVICE' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : entry.serviceType === 'DEMO' ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-slate-50 text-slate-700 border-slate-200'}`}>{entry.serviceType}</span><div className="text-xs font-bold text-slate-500 flex items-center pl-1"><User className="w-3 h-3 mr-1.5 text-slate-400" />{entry.technician}</div></div>
+                                    <div className="flex flex-col items-start gap-1.5">
+                                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border shadow-sm ${entry.serviceType === 'NEW' ? 'bg-blue-50 text-blue-700 border-blue-200' : entry.serviceType === 'SERVICE' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : entry.serviceType === 'DEMO' ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-slate-50 text-slate-700 border-slate-200'}`}>{entry.serviceType}</span>
+                                        <div className="text-xs font-bold text-slate-500 flex items-center pl-1">
+                                            <User className="w-3 h-3 mr-1.5 text-slate-400" />{entry.technician}
+                                            <span className="ml-2 px-1.5 py-0.5 bg-slate-100 border border-slate-200 rounded text-[9px] uppercase">{entry.branch}</span>
+                                        </div>
+                                    </div>
                                  </td>
                                  <td className="px-8 py-5"><div className="flex items-center gap-2"><span className="font-bold text-xs uppercase text-slate-600 bg-white border border-slate-200 px-3 py-1.5 rounded-lg shadow-sm">{entry.paymentMethod}</span></div></td>
                                  <td className="px-8 py-5 text-right"><div className="font-black text-slate-900 text-lg">₹{entry.amount}</div></td>

@@ -4,7 +4,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line, AreaChart, Area
 } from 'recharts';
-import { Users, IndianRupee, Activity, ShoppingBag, ArrowUpRight, Sparkles, TrendingUp, AlertCircle, Calendar, ChevronDown, Filter } from 'lucide-react';
+import { Users, IndianRupee, Activity, ShoppingBag, ArrowUpRight, Sparkles, TrendingUp, AlertCircle, Calendar, ChevronDown, Filter, MapPin } from 'lucide-react';
 import { api } from '../services/api';
 import { DashboardStats, Entry } from '../types';
 
@@ -19,6 +19,7 @@ const Dashboard: React.FC = () => {
   const [totalRegisteredClients, setTotalRegisteredClients] = useState(0);
   const [loading, setLoading] = useState(true);
   const [selectedMonth, setSelectedMonth] = useState('All Time');
+  const [selectedBranch, setSelectedBranch] = useState('ALL');
 
   useEffect(() => {
     const fetchData = async () => {
@@ -51,8 +52,12 @@ const Dashboard: React.FC = () => {
     );
   }
 
-  // Filter entries based on selected month
+  // Filter entries based on selected month AND branch
   const filteredEntries = entries.filter(entry => {
+    // Branch Filter
+    if (selectedBranch !== 'ALL' && entry.branch !== selectedBranch) return false;
+
+    // Month Filter
     if (selectedMonth === 'All Time') return true;
     if (!entry.date) return false;
     const date = new Date(entry.date);
@@ -137,9 +142,28 @@ const Dashboard: React.FC = () => {
             <p className="text-slate-600 mt-2 font-semibold text-lg">Business Analytics & Overview</p>
         </div>
         
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Branch Filter */}
           <div className="relative group">
-            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-indigo-500 z-10">
+            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-indigo-500 z-10 pointer-events-none">
+              <MapPin className="w-4 h-4" />
+            </div>
+            <select 
+              value={selectedBranch}
+              onChange={(e) => setSelectedBranch(e.target.value)}
+              className="appearance-none bg-white border-2 border-indigo-100 pl-11 pr-10 py-3 rounded-2xl shadow-lg shadow-indigo-50 text-indigo-700 text-sm font-black focus:outline-none focus:ring-4 focus:ring-indigo-500/10 cursor-pointer hover:border-indigo-400 transition-all"
+            >
+              <option value="ALL">All Branches</option>
+              <option value="RPR">Raipur (RPR)</option>
+              <option value="JDP">Jagdalpur (JDP)</option>
+            </select>
+            <div className="absolute right-4 top-1/2 -translate-y-1/2 text-indigo-500 pointer-events-none">
+              <ChevronDown className="w-4 h-4" />
+            </div>
+          </div>
+
+          <div className="relative group">
+            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-indigo-500 z-10 pointer-events-none">
               <Calendar className="w-4 h-4" />
             </div>
             <select 
@@ -359,7 +383,7 @@ const Dashboard: React.FC = () => {
                   <tr key={idx} className="hover:bg-slate-50/80 transition-colors group">
                     <td className="px-8 py-5">
                         <div className="flex items-center">
-                            <div className="h-10 w-10 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-xs font-bold text-white mr-4 shadow-lg shadow-indigo-200 border border-indigo-400">
+                            <div className="h-10 w-10 rounded-2xl bg-gradient-to-br from-indigo-50 to-purple-600 flex items-center justify-center text-xs font-bold text-white mr-4 shadow-lg shadow-indigo-200 border border-indigo-400">
                                 {tech.name.charAt(0)}
                             </div>
                             <span className="font-bold text-slate-800 text-base">{tech.name}</span>

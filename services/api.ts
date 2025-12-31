@@ -1,16 +1,14 @@
 
-import { Entry, Client, Appointment, DashboardStats, ServicePackage, User } from '../types';
+import { Entry, Client, Appointment, DashboardStats, ServicePackage, User, Role } from '../types';
 import { MOCK_CLIENTS, MOCK_ENTRIES, MOCK_APPOINTMENTS, MOCK_ITEMS, MOCK_TECHNICIANS, MOCK_PACKAGES, GOOGLE_SCRIPT_URL } from '../constants';
 
 // Helper to check if we have a valid URL
 const isLive = GOOGLE_SCRIPT_URL && GOOGLE_SCRIPT_URL.startsWith('http');
 
 // --- LOCAL CACHE & STATE MANAGEMENT ---
-// 1. Temporary storage for items added in this session (shows up immediately)
 const LOCAL_NEW_ENTRIES: Entry[] = [];
 const LOCAL_NEW_APPOINTMENTS: Appointment[] = [];
 
-// 2. Data Cache to prevent "Slow" performance (prevents fetching on every keystroke)
 let DATA_CACHE: {
     options: any | null;
     packages: ServicePackage[] | null;
@@ -25,9 +23,30 @@ let DATA_CACHE: {
     lastFetch: {}
 };
 
-// Increased Cache Duration for speed
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minute cache for entries/appts
-const OPTIONS_CACHE_DURATION = 15 * 60 * 1000; // 15 minutes for clients/items
+const CACHE_DURATION = 5 * 60 * 1000; 
+const OPTIONS_CACHE_DURATION = 15 * 60 * 1000; 
+
+// --- SECURITY & BRANCH HELPER ---
+const getCurrentUserBranch = (): string | null => {
+    try {
+        const saved = localStorage.getItem('mahaveer_user');
+        if (!saved) return null;
+        const user: User = JSON.parse(saved);
+        
+        // Admin sees everything (return null to signify no filter)
+        if (user.role === Role.ADMIN) return null;
+
+        // Normalize Department to Branch Code
+        const dept = (user.department || '').toUpperCase();
+        if (dept.includes('JDP') || dept.includes('JAGDALPUR')) return 'JDP';
+        if (dept.includes('RPR') || dept.includes('RAIPUR')) return 'RPR';
+        
+        // Default fallback if strictly defined, or return the raw dept
+        return 'RPR'; 
+    } catch (e) {
+        return null;
+    }
+};
 
 const toDDMMYYYY = (dateStr: string) => {
     if (!dateStr) return "";
@@ -53,9 +72,8 @@ const normalizeToISO = (dateStr: string) => {
 };
 
 export const api = {
-  // --- OPTION HELPERS (Clients, Technicians, Items) ---
+  // --- OPTION HELPERS ---
   getOptions: async (forceRefresh = false) => {
-    // Return cached if valid
     const now = Date.now();
     if (!forceRefresh && DATA_CACHE.options && (now - (DATA_CACHE.lastFetch['options'] || 0) < OPTIONS_CACHE_DURATION)) {
         return DATA_CACHE.options;
@@ -71,17 +89,15 @@ export const api = {
                 technicians: data.technicians || MOCK_TECHNICIANS,
                 items: data.items || MOCK_ITEMS
             };
-            // Update Cache
             DATA_CACHE.options = result;
             DATA_CACHE.lastFetch['options'] = now;
             return result;
         }
       } catch (e) {
-        console.warn("Failed to fetch options, using mock/cache", e);
+        console.warn("Failed to fetch options", e);
       }
     }
     
-    // Fallback or Initial Mock
     return {
       clients: MOCK_CLIENTS,
       technicians: MOCK_TECHNICIANS,
@@ -90,17 +106,13 @@ export const api = {
   },
 
   getClientDetails: async (name: string) => {
-    // Optimized: Use cache instead of fetching
     const options = await api.getOptions();
     return options.clients.find((c: any) => c.name.toLowerCase() === name.toLowerCase());
   },
 
   addClient: async (client: Client) => {
-    // Invalidate Cache
     DATA_CACHE.options = null;
-    
     if (isLive) {
-        // Fire and forget - don't await
         fetch(GOOGLE_SCRIPT_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -124,46 +136,33 @@ export const api = {
     return true;
   },
 
-  // --- ENTRIES ---
+  // --- ENTRIES (WITH BRANCH FILTER) ---
   addEntry: async (entry: Omit<Entry, 'id'>) => {
     const formatted = { ...entry, date: toDDMMYYYY(entry.date) };
-    // Generate a temporary ID
     const tempId = 'temp_' + Date.now() + Math.random().toString(36).substr(2, 5);
     const newEntry = { ...entry, id: tempId };
     
-    // Add to local cache immediately
     LOCAL_NEW_ENTRIES.push(newEntry as Entry);
     
     if (isLive) {
-      // OPTIMISTIC UI: Don't await the fetch. Let it run in background.
       const res = await fetch(GOOGLE_SCRIPT_URL, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'text/plain;charset=utf-8', 
-        },
-        body: JSON.stringify({
-          action: 'addEntry',
-          ...formatted
-        })
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'addEntry', ...formatted })
       });
       const result = await res.json();
       
-      // FIX: Update the local entry ID with the real Server ID immediately to prevent duplicates
       if (result.status === 'success' && result.id) {
           const localIndex = LOCAL_NEW_ENTRIES.findIndex(e => e.id === tempId);
           if (localIndex !== -1) {
               LOCAL_NEW_ENTRIES[localIndex].id = result.id;
-              // Also update the returned object if needed
               newEntry.id = result.id;
           }
       }
-      
-      // Return the entry with the correct ID (or the updated one)
       return { ...newEntry, ...result };
     } else {
         MOCK_ENTRIES.push(newEntry as Entry);
     }
-
     return newEntry;
   },
 
@@ -182,7 +181,6 @@ export const api = {
 
   deleteEntry: async (id: string) => {
     DATA_CACHE.entries = null;
-    // Also remove from local new entries if present
     const localIndex = LOCAL_NEW_ENTRIES.findIndex(e => e.id === id);
     if (localIndex !== -1) LOCAL_NEW_ENTRIES.splice(localIndex, 1);
 
@@ -200,7 +198,6 @@ export const api = {
     let allEntries: Entry[] = [];
     const now = Date.now();
 
-    // Check Cache
     if (!forceRefresh && DATA_CACHE.entries && (now - (DATA_CACHE.lastFetch['entries'] || 0) < CACHE_DURATION)) {
         allEntries = DATA_CACHE.entries;
     } else {
@@ -214,8 +211,6 @@ export const api = {
                 DATA_CACHE.lastFetch['entries'] = now;
             }
            } catch (e) {
-             console.warn("Using mock entries due to fetch failure");
-             // If fetch fails, keep old cache if available
              allEntries = DATA_CACHE.entries || [...MOCK_ENTRIES];
            }
         } else {
@@ -223,19 +218,22 @@ export const api = {
         }
     }
 
-    // Merge with local new entries
     const serverIds = new Set(allEntries.map(e => e.id));
-    // Important: Filter out local entries that have IDs already present in server data
     const uniqueLocal = LOCAL_NEW_ENTRIES.filter(e => !serverIds.has(e.id));
-    
-    // Cleanup local cache: remove entries that are now in server cache
-    // (Optional optimization to keep array small, but filter above handles display correctness)
-    
-    return [...uniqueLocal, ...allEntries];
+    let combinedEntries = [...uniqueLocal, ...allEntries];
+
+    // --- SECURITY: BRANCH FILTER ---
+    const userBranch = getCurrentUserBranch();
+    if (userBranch) {
+        // If userBranch is 'JDP', only show 'JDP' entries.
+        // We handle exact match.
+        combinedEntries = combinedEntries.filter(e => e.branch === userBranch);
+    }
+
+    return combinedEntries;
   },
 
   updateEntryStatus: async (id: string, status: string) => {
-    // 1. Update Local Cache
     const localEntry = LOCAL_NEW_ENTRIES.find(e => e.id === id);
     if(localEntry) localEntry.workStatus = status as any;
 
@@ -244,11 +242,6 @@ export const api = {
         if(cacheEntry) cacheEntry.workStatus = status as any;
     }
 
-    // 2. Mock Data Update
-    const mockEntry = MOCK_ENTRIES.find(e => e.id === id);
-    if(mockEntry) mockEntry.workStatus = status as any;
-
-    // 3. Live Update (Fire & Forget)
     if (isLive) {
         fetch(GOOGLE_SCRIPT_URL, {
             method: 'POST',
@@ -259,24 +252,10 @@ export const api = {
     return true;
   },
   
-  // NEW: Update Payment Follow Up (With Image)
-  updatePaymentFollowUp: async (payload: {
-      id: string,
-      clientName: string,
-      contactNo?: string,
-      address?: string,
-      paymentMethod?: string,
-      paidAmount?: number,
-      pendingAmount?: number,
-      nextCallDate?: string,
-      remark?: string,
-      screenshotBase64?: string,
-      existingScreenshotUrl?: string
-  }) => {
+  updatePaymentFollowUp: async (payload: any) => {
       const formatted = { ...payload, nextCallDate: toDDMMYYYY(payload.nextCallDate || '') };
       if (isLive) {
           try {
-              // We return the response to get the generated screenshot URL
               const res = await fetch(GOOGLE_SCRIPT_URL, {
                   method: 'POST',
                   headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -284,7 +263,6 @@ export const api = {
               });
               const data = await res.json();
               
-              // Also update cache if possible
               if(DATA_CACHE.entries) {
                 const entry = DATA_CACHE.entries.find(e => e.id === payload.id);
                 if(entry) {
@@ -295,17 +273,13 @@ export const api = {
                     if(data.screenshotUrl) entry.paymentScreenshotUrl = data.screenshotUrl;
                 }
               }
-
               return data;
-          } catch(e) {
-              console.error("Failed to update follow up", e);
-              throw e;
-          }
+          } catch(e) { throw e; }
       }
       return { status: "success" };
   },
 
-  // --- APPOINTMENTS ---
+  // --- APPOINTMENTS (WITH BRANCH FILTER) ---
   getAppointments: async (forceRefresh = false) => {
     let allAppts: Appointment[] = [];
     const now = Date.now();
@@ -323,7 +297,6 @@ export const api = {
                 DATA_CACHE.lastFetch['appointments'] = now;
             }
            } catch (e) {
-             // Fallback
              allAppts = DATA_CACHE.appointments || [...MOCK_APPOINTMENTS];
            }
         } else {
@@ -331,11 +304,17 @@ export const api = {
         }
     }
 
-    // Merge Local Appointments
     const serverIds = new Set(allAppts.map(a => a.id));
     const uniqueLocal = LOCAL_NEW_APPOINTMENTS.filter(a => !serverIds.has(a.id));
+    let combinedAppts = [...uniqueLocal, ...allAppts];
+
+    // --- SECURITY: BRANCH FILTER ---
+    const userBranch = getCurrentUserBranch();
+    if (userBranch) {
+        combinedAppts = combinedAppts.filter(a => a.branch === userBranch);
+    }
     
-    return [...uniqueLocal, ...allAppts];
+    return combinedAppts;
   },
 
   addAppointment: async (appt: Omit<Appointment, 'id'>) => {
@@ -343,11 +322,9 @@ export const api = {
     const tempId = 'temp_' + Date.now() + Math.random().toString(36).substr(2, 5);
     const newAppt = { ...appt, id: tempId };
     
-    // Add to local cache immediately so it shows in UI
     LOCAL_NEW_APPOINTMENTS.push(newAppt as Appointment);
     
     if (isLive) {
-        // Fire & Forget but capture ID update
         fetch(GOOGLE_SCRIPT_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -357,21 +334,17 @@ export const api = {
         .then(result => {
              if (result.status === 'success' && result.id) {
                  const localIndex = LOCAL_NEW_APPOINTMENTS.findIndex(a => a.id === tempId);
-                 if (localIndex !== -1) {
-                     LOCAL_NEW_APPOINTMENTS[localIndex].id = result.id;
-                 }
+                 if (localIndex !== -1) LOCAL_NEW_APPOINTMENTS[localIndex].id = result.id;
              }
         })
         .catch(e => console.error("BG Appt Error", e));
     } else {
         MOCK_APPOINTMENTS.push(newAppt as Appointment);
     }
-    
     return newAppt;
   },
   
   updateAppointmentStatus: async (id: string, status: Appointment['status']) => {
-    // Update local caches immediately
     const localEntry = LOCAL_NEW_APPOINTMENTS.find(a => a.id === id);
     if(localEntry) localEntry.status = status;
 
@@ -381,31 +354,22 @@ export const api = {
     }
 
     if (isLive) {
-        // Fire & Forget
         fetch(GOOGLE_SCRIPT_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify({ action: 'updateAppointmentStatus', id, status })
         }).catch(e => console.error("BG Appt Update Error", e));
-    } else {
-        const appt = MOCK_APPOINTMENTS.find(a => a.id === id);
-        if (appt) appt.status = status;
-    }
+    } 
     return { id, status };
   },
 
   deleteAppointment: async (id: string) => {
-    // Remove from local cache immediately
     const localIndex = LOCAL_NEW_APPOINTMENTS.findIndex(a => a.id === id);
-    if (localIndex !== -1) {
-        LOCAL_NEW_APPOINTMENTS.splice(localIndex, 1);
-    }
+    if (localIndex !== -1) LOCAL_NEW_APPOINTMENTS.splice(localIndex, 1);
     
     if(DATA_CACHE.appointments) {
         const cacheIndex = DATA_CACHE.appointments.findIndex(a => a.id === id);
-        if (cacheIndex !== -1) {
-            DATA_CACHE.appointments.splice(cacheIndex, 1);
-        }
+        if (cacheIndex !== -1) DATA_CACHE.appointments.splice(cacheIndex, 1);
     }
 
     if (isLive) {
@@ -414,16 +378,11 @@ export const api = {
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify({ action: 'deleteAppointment', id })
       });
-    } else {
-        const index = MOCK_APPOINTMENTS.findIndex(a => a.id === id);
-        if (index !== -1) {
-            MOCK_APPOINTMENTS.splice(index, 1);
-        }
     }
     return true;
   },
 
-  // --- PACKAGE METHODS ---
+  // --- PACKAGES ---
   getPackages: async (forceRefresh = false) => {
       const now = Date.now();
       if (!forceRefresh && DATA_CACHE.packages && (now - (DATA_CACHE.lastFetch['packages'] || 0) < CACHE_DURATION)) {
@@ -432,12 +391,9 @@ export const api = {
 
       if (isLive) {
           try {
-              // Add timestamp to bypass browser caching of GET requests
               const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getPackages&t=${now}`);
               const data = await response.json();
               if (Array.isArray(data)) {
-                  // Ensure status defaults to PENDING if undefined
-                  // Ensure oldServiceCount defaults to 0 and packageType defaults to NEW
                   const formattedData = data.map((pkg: any) => ({
                       ...pkg,
                       startDate: normalizeToISO(pkg.startDate),
@@ -458,10 +414,9 @@ export const api = {
   },
 
   addPackage: async (pkg: Omit<ServicePackage, 'id'>) => {
-      DATA_CACHE.packages = null; // Invalidate cache immediately
-      
+      DATA_CACHE.packages = null; 
       const formatted = { ...pkg, startDate: toDDMMYYYY(pkg.startDate) };
-      const pkgPayload = { ...formatted, status: 'PENDING' }; // Always default to PENDING
+      const pkgPayload = { ...formatted, status: 'PENDING' }; 
       
       if (isLive) {
         const res = await fetch(GOOGLE_SCRIPT_URL, {
@@ -470,92 +425,63 @@ export const api = {
             body: JSON.stringify({ action: 'addPackage', ...pkgPayload })
         });
         const result = await res.json();
-        // Check if server returned explicit error
         if (result.error) throw new Error(result.error);
         return true; 
       }
-      
-      // Mock mode only
-      const newPkg = { ...pkgPayload, id: 'pkg_' + MOCK_PACKAGES.length };
-      MOCK_PACKAGES.push(newPkg as ServicePackage);
-      return newPkg;
+      return true;
   },
 
   updatePackageStatus: async (id: string, status: ServicePackage['status']) => {
-      DATA_CACHE.packages = null; // Invalidate cache
-
+      DATA_CACHE.packages = null; 
       if (isLive) {
           await fetch(GOOGLE_SCRIPT_URL, {
               method: 'POST',
               headers: { 'Content-Type': 'text/plain;charset=utf-8' },
               body: JSON.stringify({ action: 'updatePackageStatus', id, status })
           });
-      } else {
-          const pkg = MOCK_PACKAGES.find(p => p.id === id);
-          if (pkg) pkg.status = status;
-      }
+      } 
       return true;
   },
   
   deletePackage: async (id: string) => {
-      DATA_CACHE.packages = null; // Invalidate cache
-      
+      DATA_CACHE.packages = null; 
       if (isLive) {
           await fetch(GOOGLE_SCRIPT_URL, {
               method: 'POST',
               headers: { 'Content-Type': 'text/plain;charset=utf-8' },
               body: JSON.stringify({ action: 'deletePackage', id })
           });
-      } else {
-          const index = MOCK_PACKAGES.findIndex(p => p.id === id);
-          if (index !== -1) {
-              MOCK_PACKAGES.splice(index, 1);
-          }
-      }
+      } 
       return true;
   },
 
   editPackage: async (pkg: ServicePackage) => {
-      DATA_CACHE.packages = null; // Invalidate cache
+      DATA_CACHE.packages = null; 
       const formatted = { ...pkg, startDate: toDDMMYYYY(pkg.startDate) };
-
       if (isLive) {
           await fetch(GOOGLE_SCRIPT_URL, {
               method: 'POST',
               headers: { 'Content-Type': 'text/plain;charset=utf-8' },
               body: JSON.stringify({ action: 'editPackage', ...formatted })
           });
-      } else {
-          const index = MOCK_PACKAGES.findIndex(p => p.id === pkg.id);
-          if (index !== -1) {
-              MOCK_PACKAGES[index] = { ...MOCK_PACKAGES[index], ...pkg };
-          }
-      }
+      } 
       return true;
   },
 
   checkClientPackage: async (clientName: string) => {
       if (!clientName) return null;
       const normalizedName = clientName.trim().toLowerCase();
-
-      // 1. Fetch latest packages (Use Cache!)
       const packages = await api.getPackages();
-      
-      // 2. Find active package
       const pkg = packages.find((p: any) => p.clientName.trim().toLowerCase() === normalizedName && (p.status === 'ACTIVE' || p.status === 'APPROVED'));
-      
       if (!pkg) return null;
 
-      // 3. Count entries
       const entries = await api.getEntries();
-      
       const pkgStartDate = new Date(pkg.startDate);
       pkgStartDate.setHours(0,0,0,0);
 
       const dbUsedCount = entries.filter((e: any) => {
           const entryDate = new Date(e.date);
           entryDate.setHours(0,0,0,0);
-          
           return (
              e.clientName.trim().toLowerCase() === normalizedName && 
              entryDate >= pkgStartDate &&
@@ -564,8 +490,6 @@ export const api = {
           );
       }).length;
 
-      // 4. Return status
-      // Add old service count if package type is OLD
       const initialCount = pkg.packageType === 'OLD' ? (pkg.oldServiceCount || 0) : 0;
       const usedCount = dbUsedCount + initialCount;
       
@@ -601,11 +525,7 @@ export const api = {
   },
 
   addUser: async (user: User & { password: string }) => {
-      const payload = {
-          ...user,
-          permissions: user.permissions ? user.permissions.join(',') : ''
-      };
-
+      const payload = { ...user, permissions: user.permissions ? user.permissions.join(',') : '' };
       if (isLive) {
           try {
              await fetch(GOOGLE_SCRIPT_URL, {
@@ -614,10 +534,7 @@ export const api = {
                   body: JSON.stringify({ action: 'addUser', ...payload })
              });
              return true;
-          } catch (e) {
-              console.error("Failed to add user", e);
-              return false;
-          }
+          } catch (e) { return false; }
       }
       return true; 
   },
@@ -631,10 +548,7 @@ export const api = {
                   body: JSON.stringify({ action: 'deleteUser', username })
              });
              return true;
-          } catch (e) {
-              console.error("Failed to delete user", e);
-              return false;
-          }
+          } catch (e) { return false; }
       }
       return true; 
   },
@@ -659,6 +573,7 @@ export const api = {
   },
 
   getDashboardStats: async (): Promise<DashboardStats> => {
+    // This calls getEntries, which is now filtered by Branch
     const entries = await api.getEntries();
     
     const totalClients = new Set(entries.map((e: any) => e.clientName)).size;
@@ -667,18 +582,11 @@ export const api = {
     const newClientsToday = entries.filter((e: any) => e.date === today && e.serviceType === 'NEW').length;
     const serviceCount = entries.length;
 
-    // Calculate Total Outstanding
     const totalOutstanding = entries.reduce((sum: number, e: any) => {
         const due = e.paymentMethod === 'PENDING' ? Number(e.amount || 0) : Number(e.pendingAmount || 0);
         return sum + due;
     }, 0);
 
-    return {
-      totalClients,
-      totalAmount,
-      newClientsToday,
-      serviceCount,
-      totalOutstanding
-    };
+    return { totalClients, totalAmount, newClientsToday, serviceCount, totalOutstanding };
   }
 };

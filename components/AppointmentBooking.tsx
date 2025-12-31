@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
-import { Appointment, Client } from '../types';
+import { Appointment, Client, User, Role } from '../types';
 import { Calendar, CheckCircle, Clock, Filter, Activity, CheckSquare, Plus, Search, Phone, MessageCircle, RefreshCw, CalendarClock, History, ArrowRightCircle, Megaphone, UserCheck, XCircle, MapPin, Trash2, AlertTriangle } from 'lucide-react';
 
 const AppointmentBooking: React.FC = () => {
@@ -12,8 +12,12 @@ const AppointmentBooking: React.FC = () => {
   // Tabs: 'SCHEDULE' (Pending), 'LEADS' (Followup), 'HISTORY' (Closed)
   const [activeTab, setActiveTab] = useState<'SCHEDULE' | 'LEADS' | 'HISTORY'>('SCHEDULE');
   const [searchFilter, setSearchFilter] = useState('');
+  const [branchFilter, setBranchFilter] = useState('ALL');
   const [deletingId, setDeletingId] = useState<string | null>(null);
   
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [userBranch, setUserBranch] = useState<'RPR' | 'JDP' | null>(null);
+
   // Time Parts State for 12H Format
   const [timeParts, setTimeParts] = useState({
       hour: '10',
@@ -35,6 +39,23 @@ const AppointmentBooking: React.FC = () => {
   const todayStr = new Date().toISOString().split('T')[0];
 
   useEffect(() => {
+    try {
+        const saved = localStorage.getItem('mahaveer_user');
+        if (saved) {
+            const user: User = JSON.parse(saved);
+            if (user.role === Role.ADMIN) {
+                setIsAdmin(true);
+            } else {
+                setIsAdmin(false);
+                const dept = (user.department || '').toUpperCase();
+                let branch: 'RPR' | 'JDP' = 'RPR';
+                if (dept.includes('JDP') || dept.includes('JAGDALPUR')) branch = 'JDP';
+                setUserBranch(branch);
+                setNewAppt(prev => ({ ...prev, branch: branch }));
+            }
+        }
+    } catch(e) {}
+    
     loadData();
   }, []);
 
@@ -63,6 +84,8 @@ const AppointmentBooking: React.FC = () => {
 
   const handleRecall = (appt: Appointment) => {
       // Logic to "Re-book" a past client (Creates NEW record)
+      const branchToUse = isAdmin ? (appt.branch || 'RPR') : (userBranch || 'RPR');
+      
       setNewAppt({
           date: todayStr, // Default to today
           clientName: appt.clientName,
@@ -70,7 +93,7 @@ const AppointmentBooking: React.FC = () => {
           address: appt.address,
           note: `Re-booking: Last visit was on ${appt.date}`,
           status: 'PENDING',
-          branch: appt.branch || 'RPR',
+          branch: branchToUse,
           time: '10:00 AM'
       });
       setTimeParts({ hour: '10', minute: '00', period: 'AM' });
@@ -93,7 +116,8 @@ const AppointmentBooking: React.FC = () => {
             contact: '', 
             address: '', 
             note: '',
-            time: '10:00 AM'
+            time: '10:00 AM',
+            branch: isAdmin ? newAppt.branch : userBranch || 'RPR'
         }); 
         setTimeParts({ hour: '10', minute: '00', period: 'AM' });
         await loadData();
@@ -125,6 +149,9 @@ const AppointmentBooking: React.FC = () => {
 
   // Filter Logic
   const filteredAppointments = appointments.filter(a => {
+      // Branch Filter
+      if (branchFilter !== 'ALL' && a.branch !== branchFilter) return false;
+
       // Search Logic
       const searchSafe = searchFilter.toLowerCase();
       const matchesSearch = (a.clientName || '').toLowerCase().includes(searchSafe) || String(a.contact || '').includes(searchFilter);
@@ -142,10 +169,12 @@ const AppointmentBooking: React.FC = () => {
   const todayAppointments = filteredAppointments.filter(a => a.date === todayStr && activeTab === 'SCHEDULE');
   const otherAppointments = filteredAppointments.filter(a => a.date !== todayStr && activeTab === 'SCHEDULE');
   
-  // Stats
-  const todayCount = appointments.filter(a => a.date === todayStr && a.status === 'PENDING').length;
-  const pendingCount = appointments.filter(a => a.status === 'PENDING').length;
-  const followupCount = appointments.filter(a => a.status === 'FOLLOWUP').length;
+  // Stats - Update these to respect current branch filter or keep as total? keeping as total for overview
+  // But maybe better to respect the filter for stats too? Let's use filtered list for logic
+  const filteredForStats = appointments.filter(a => branchFilter === 'ALL' || a.branch === branchFilter);
+  const todayCount = filteredForStats.filter(a => a.date === todayStr && a.status === 'PENDING').length;
+  const pendingCount = filteredForStats.filter(a => a.status === 'PENDING').length;
+  const followupCount = filteredForStats.filter(a => a.status === 'FOLLOWUP').length;
 
   const renderAppointmentCard = (appt: Appointment, isToday: boolean = false) => {
       const isOverdue = !isToday && new Date(appt.date) < new Date(todayStr) && appt.status === 'PENDING';
@@ -452,11 +481,12 @@ const AppointmentBooking: React.FC = () => {
                                 <button
                                     type="button"
                                     key={b}
-                                    onClick={() => setNewAppt(prev => ({ ...prev, branch: b }))}
+                                    onClick={() => isAdmin && setNewAppt(prev => ({ ...prev, branch: b }))}
+                                    disabled={!isAdmin && newAppt.branch !== b}
                                     className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all border
                                     ${newAppt.branch === b 
                                         ? 'bg-white text-indigo-700 shadow-sm border-indigo-200' 
-                                        : 'text-slate-400 hover:text-slate-600 border-transparent'}
+                                        : 'text-slate-400 border-transparent ' + (isAdmin ? 'hover:text-slate-600' : 'opacity-50 cursor-not-allowed')}
                                     `}
                                 >
                                     {b}
@@ -550,15 +580,28 @@ const AppointmentBooking: React.FC = () => {
                     </button>
                 </div>
 
-                <div className="relative w-full sm:w-64">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <input 
-                        type="text" 
-                        placeholder="Search name or number..." 
-                        value={searchFilter}
-                        onChange={(e) => setSearchFilter(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50"
-                    />
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                    {/* Branch Filter for Appointments */}
+                    <select 
+                        value={branchFilter}
+                        onChange={(e) => setBranchFilter(e.target.value)}
+                        className="px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    >
+                        <option value="ALL">All Branches</option>
+                        <option value="RPR">Raipur</option>
+                        <option value="JDP">Jagdalpur</option>
+                    </select>
+
+                    <div className="relative w-full sm:w-64">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <input 
+                            type="text" 
+                            placeholder="Search name or number..." 
+                            value={searchFilter}
+                            onChange={(e) => setSearchFilter(e.target.value)}
+                            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50"
+                        />
+                    </div>
                 </div>
             </div>
 

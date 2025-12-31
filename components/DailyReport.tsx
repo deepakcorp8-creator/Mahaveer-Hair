@@ -20,6 +20,7 @@ const DailyReport: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [serviceFilter, setServiceFilter] = useState('ALL');
   const [paymentFilter, setPaymentFilter] = useState('ALL');
+  const [branchFilter, setBranchFilter] = useState('ALL'); // NEW: Branch Filter
   const [searchTerm, setSearchTerm] = useState('');
 
   // UI States for Toolbar
@@ -113,22 +114,24 @@ const DailyReport: React.FC = () => {
   const resetFilters = () => {
       setServiceFilter('ALL');
       setPaymentFilter('ALL');
+      setBranchFilter('ALL');
       setShowFilters(false);
   };
 
   const filteredData = entries.filter(entry => {
     if (entry.date !== selectedDate) return false;
+    if (branchFilter !== 'ALL' && entry.branch !== branchFilter) return false; // Filter Logic
     if (serviceFilter !== 'ALL' && entry.serviceType !== serviceFilter) return false;
     if (paymentFilter !== 'ALL' && entry.paymentMethod !== paymentFilter) return false;
     if (searchTerm && !entry.clientName.toLowerCase().includes(searchTerm.toLowerCase())) return false;
     return true;
   });
 
-  const dailyEntries = entries.filter(e => e.date === selectedDate);
+  const dailyEntries = filteredData; // Use filtered data for summary to reflect branch selection
   const totalDailyRevenue = dailyEntries.reduce((sum, e) => sum + Number(e.amount || 0), 0);
   const totalTxns = dailyEntries.length;
 
-  // Detailed Counts
+  // Detailed Counts based on filtered data
   const serviceStats = {
     NEW: dailyEntries.filter(e => e.serviceType === 'NEW').length,
     SERVICE: dailyEntries.filter(e => e.serviceType === 'SERVICE').length,
@@ -249,11 +252,25 @@ const DailyReport: React.FC = () => {
                     )}
                 </div>
 
-                {/* FILTERS (Service & Payment) */}
+                {/* FILTERS (Branch, Service & Payment) */}
                 <div className={`transition-all duration-300 ease-in-out ${showFilters ? 'w-full sm:w-auto max-w-[90vw]' : 'w-auto'}`}>
                     {showFilters ? (
                         <div className="bg-white p-2 rounded-2xl shadow-xl border border-slate-200 flex flex-col sm:flex-row gap-2 animate-in fade-in zoom-in-95 items-center overflow-x-auto">
                             
+                            {/* Branch Filter */}
+                            <div className="relative w-full sm:w-auto min-w-[120px]">
+                                <select 
+                                    value={branchFilter}
+                                    onChange={e => setBranchFilter(e.target.value)}
+                                    className="w-full appearance-none bg-slate-50 border border-slate-100 rounded-xl pl-3 pr-8 py-2 text-xs font-bold text-slate-700 focus:ring-0 focus:border-indigo-500 outline-none cursor-pointer hover:bg-slate-100 transition-colors"
+                                >
+                                    <option value="ALL">All Branches</option>
+                                    <option value="RPR">Raipur</option>
+                                    <option value="JDP">Jagdalpur</option>
+                                </select>
+                                <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400 pointer-events-none" />
+                            </div>
+
                             {/* Service Filter */}
                             <div className="relative w-full sm:w-auto min-w-[120px]">
                                 <select 
@@ -308,11 +325,11 @@ const DailyReport: React.FC = () => {
                     ) : (
                         <button 
                             onClick={() => setShowFilters(true)} 
-                            className={`p-3 bg-white rounded-2xl shadow-lg border transition-all hover:scale-105 active:scale-95 group relative ${serviceFilter !== 'ALL' || paymentFilter !== 'ALL' ? 'border-indigo-300 text-indigo-600 ring-2 ring-indigo-100' : 'border-slate-200 text-slate-500 hover:text-indigo-600'}`}
+                            className={`p-3 bg-white rounded-2xl shadow-lg border transition-all hover:scale-105 active:scale-95 group relative ${serviceFilter !== 'ALL' || paymentFilter !== 'ALL' || branchFilter !== 'ALL' ? 'border-indigo-300 text-indigo-600 ring-2 ring-indigo-100' : 'border-slate-200 text-slate-500 hover:text-indigo-600'}`}
                             title="More Filters"
                         >
                             <Filter className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                            {(serviceFilter !== 'ALL' || paymentFilter !== 'ALL') && (
+                            {(serviceFilter !== 'ALL' || paymentFilter !== 'ALL' || branchFilter !== 'ALL') && (
                                 <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-indigo-500 rounded-full border-2 border-white animate-pulse"></span>
                             )}
                         </button>
@@ -486,6 +503,9 @@ const DailyReport: React.FC = () => {
                                                     title={`Method: ${entry.patchMethod || 'N/A'}`}
                                                 >
                                                     {entry.patchMethod || 'N/A'}
+                                                </span>
+                                                <span className="text-[10px] font-bold text-slate-500 bg-white px-1.5 py-0.5 rounded border border-slate-200 uppercase">
+                                                    {entry.branch}
                                                 </span>
                                             </div>
 
