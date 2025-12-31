@@ -6,7 +6,8 @@ import {
 } from 'recharts';
 import { 
   Calendar, Filter, ChevronDown, Trophy, TrendingUp, Users, ShoppingBag, 
-  ArrowRight, X, User, MapPin, IndianRupee, Activity, Crown, Search, Star
+  ArrowRight, X, User, MapPin, IndianRupee, Activity, Crown, Search, Star,
+  RotateCcw
 } from 'lucide-react';
 import { api } from '../services/api';
 import { Entry } from '../types';
@@ -28,6 +29,7 @@ const ReportsAnalytics: React.FC = () => {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [customStart, setCustomStart] = useState('');
   const [customEnd, setCustomEnd] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
 
   // Drill Down States
   const [selectedTechnician, setSelectedTechnician] = useState<string | null>(null);
@@ -237,8 +239,8 @@ const ReportsAnalytics: React.FC = () => {
   return (
     <div className="space-y-8 animate-in fade-in duration-500 pb-20">
       
-      {/* 1. FILTER HEADER */}
-      <div className="sticky top-4 z-30 bg-white/90 backdrop-blur-xl p-4 rounded-[2rem] shadow-xl border border-white/50 flex flex-col xl:flex-row justify-between items-center gap-4">
+      {/* 1. HEADER SECTION */}
+      <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-200 relative z-10 flex flex-col md:flex-row justify-between items-center gap-4">
           <div className="flex items-center gap-4 px-2">
               <div className="p-3.5 bg-gradient-to-br from-indigo-600 to-violet-700 text-white rounded-2xl shadow-lg shadow-indigo-200">
                   <Activity className="w-6 h-6" />
@@ -248,44 +250,72 @@ const ReportsAnalytics: React.FC = () => {
                   <p className="text-xs font-bold text-slate-500 uppercase tracking-[0.2em]">Business Intelligence</p>
               </div>
           </div>
+      </div>
 
-          <div className="flex flex-col sm:flex-row items-center gap-3 w-full xl:w-auto">
-              <div className="flex flex-wrap justify-center items-center gap-2 bg-slate-100 p-1.5 rounded-2xl border border-slate-200 w-full sm:w-auto">
-                  {['ALL', 'MONTH', 'YEAR', 'CUSTOM'].map((type) => (
-                      <button 
-                        key={type}
-                        onClick={() => setFilterType(type as any)} 
-                        className={`px-5 py-2.5 rounded-xl text-[10px] font-black transition-all uppercase tracking-wider flex-1 sm:flex-none
-                        ${filterType === type ? 'bg-white text-indigo-700 shadow-md transform scale-105' : 'text-slate-500 hover:text-slate-700'}`}
-                      >
-                          {type}
-                      </button>
-                  ))}
-              </div>
+      {/* 2. FLOATING FILTER BAR (Sticky Icon) */}
+      <div className="sticky top-4 z-40 flex justify-end pointer-events-none mb-6">
+          <div className="pointer-events-auto">
+              <div className={`transition-all duration-300 ease-in-out ${showFilters ? 'w-full max-w-[95vw] sm:max-w-fit' : 'w-auto'}`}>
+                  {showFilters ? (
+                      <div className="bg-white/90 backdrop-blur-xl p-2 rounded-[2rem] shadow-2xl border border-white/50 flex items-center gap-3 animate-in fade-in zoom-in-95 overflow-x-auto no-scrollbar">
+                          
+                          {/* FILTER TYPES */}
+                          <div className="flex bg-slate-100/80 p-1 rounded-xl flex-shrink-0">
+                              {['ALL', 'MONTH', 'YEAR', 'CUSTOM'].map((type) => (
+                                  <button 
+                                    key={type}
+                                    onClick={() => setFilterType(type as any)} 
+                                    className={`px-4 py-2 rounded-lg text-[10px] font-black transition-all uppercase tracking-wider
+                                    ${filterType === type ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                                  >
+                                      {type}
+                                  </button>
+                              ))}
+                          </div>
 
-              {/* DYNAMIC INPUTS */}
-              <div className="flex gap-2 animate-in fade-in slide-in-from-right-4 bg-slate-50 p-1.5 rounded-2xl border border-slate-200">
-                  {filterType === 'MONTH' && (
-                      <>
-                        <select value={selectedMonth} onChange={(e) => setSelectedMonth(Number(e.target.value))} className="px-4 py-2.5 rounded-xl border-none bg-white font-bold text-xs text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm cursor-pointer hover:bg-slate-50">
-                            {MONTHS.map((m, i) => <option key={m} value={i}>{m}</option>)}
-                        </select>
-                        <select value={selectedYear} onChange={(e) => setSelectedYear(Number(e.target.value))} className="px-4 py-2.5 rounded-xl border-none bg-white font-bold text-xs text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm cursor-pointer hover:bg-slate-50">
-                            {Array.from({length: 5}, (_, i) => new Date().getFullYear() - i).map(y => <option key={y} value={y}>{y}</option>)}
-                        </select>
-                      </>
-                  )}
-                  {filterType === 'YEAR' && (
-                       <select value={selectedYear} onChange={(e) => setSelectedYear(Number(e.target.value))} className="px-4 py-2.5 rounded-xl border-none bg-white font-bold text-xs text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm cursor-pointer hover:bg-slate-50 w-full sm:w-32">
-                            {Array.from({length: 5}, (_, i) => new Date().getFullYear() - i).map(y => <option key={y} value={y}>{y}</option>)}
-                        </select>
-                  )}
-                  {filterType === 'CUSTOM' && (
-                      <div className="flex items-center gap-2 px-2">
-                        <input type="date" value={customStart} onChange={(e) => setCustomStart(e.target.value)} className="px-3 py-2 rounded-xl border-none bg-white font-bold text-xs shadow-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
-                        <span className="font-black text-slate-300">-</span>
-                        <input type="date" value={customEnd} onChange={(e) => setCustomEnd(e.target.value)} className="px-3 py-2 rounded-xl border-none bg-white font-bold text-xs shadow-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
+                          {/* DYNAMIC INPUTS */}
+                          <div className="flex gap-2 flex-shrink-0">
+                              {filterType === 'MONTH' && (
+                                  <>
+                                    <select value={selectedMonth} onChange={(e) => setSelectedMonth(Number(e.target.value))} className="px-4 py-2.5 rounded-xl border-none bg-slate-50 font-bold text-xs text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm cursor-pointer hover:bg-white min-w-[100px]">
+                                        {MONTHS.map((m, i) => <option key={m} value={i}>{m}</option>)}
+                                    </select>
+                                    <select value={selectedYear} onChange={(e) => setSelectedYear(Number(e.target.value))} className="px-4 py-2.5 rounded-xl border-none bg-slate-50 font-bold text-xs text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm cursor-pointer hover:bg-white">
+                                        {Array.from({length: 5}, (_, i) => new Date().getFullYear() - i).map(y => <option key={y} value={y}>{y}</option>)}
+                                    </select>
+                                  </>
+                              )}
+                              {filterType === 'YEAR' && (
+                                  <select value={selectedYear} onChange={(e) => setSelectedYear(Number(e.target.value))} className="px-4 py-2.5 rounded-xl border-none bg-slate-50 font-bold text-xs text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm cursor-pointer hover:bg-white w-24">
+                                        {Array.from({length: 5}, (_, i) => new Date().getFullYear() - i).map(y => <option key={y} value={y}>{y}</option>)}
+                                    </select>
+                              )}
+                              {filterType === 'CUSTOM' && (
+                                  <div className="flex items-center gap-2 px-2 bg-slate-50 rounded-xl border border-slate-100 p-1">
+                                    <input type="date" value={customStart} onChange={(e) => setCustomStart(e.target.value)} className="px-2 py-1.5 rounded-lg border-none bg-white font-bold text-[10px] shadow-sm focus:ring-1 focus:ring-indigo-500 outline-none w-28" />
+                                    <span className="font-black text-slate-300">-</span>
+                                    <input type="date" value={customEnd} onChange={(e) => setCustomEnd(e.target.value)} className="px-2 py-1.5 rounded-lg border-none bg-white font-bold text-[10px] shadow-sm focus:ring-1 focus:ring-indigo-500 outline-none w-28" />
+                                  </div>
+                              )}
+                          </div>
+
+                          <div className="h-6 w-px bg-slate-200 mx-1 flex-shrink-0"></div>
+
+                          <button onClick={() => setShowFilters(false)} className="p-2 hover:bg-slate-100 rounded-full text-slate-400 hover:text-red-500 transition-colors flex-shrink-0">
+                              <X className="w-5 h-5" />
+                          </button>
                       </div>
+                  ) : (
+                      <button 
+                          onClick={() => setShowFilters(true)} 
+                          className="flex items-center justify-center bg-white/90 backdrop-blur-md text-indigo-600 p-4 rounded-full shadow-xl border border-white/50 hover:scale-110 transition-all font-black group shadow-indigo-500/20"
+                          title="Open Filters"
+                      >
+                          <Filter className="w-6 h-6 group-hover:rotate-180 transition-transform duration-500" />
+                          {filterType !== 'ALL' && (
+                              <span className="absolute top-0 right-0 w-3.5 h-3.5 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
+                          )}
+                      </button>
                   )}
               </div>
           </div>
