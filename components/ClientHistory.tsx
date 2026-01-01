@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { Entry } from '../types';
-import { History, Search, UserSearch, RotateCcw, FileDown, Printer, User, Wallet, Calendar, ArrowUpRight, Filter, ArrowRight } from 'lucide-react';
+import { History, Search, UserSearch, RotateCcw, FileDown, Printer, User, Wallet, Calendar, ArrowUpRight, Filter, ArrowRight, ChevronDown, CalendarCheck, ListFilter, X } from 'lucide-react';
 import { generateInvoice } from '../utils/invoiceGenerator';
 
 const ClientHistory: React.FC = () => {
@@ -153,27 +153,74 @@ const ClientHistory: React.FC = () => {
                 </div>
            </div>
 
-            <div className="flex w-full xl:w-auto items-center gap-2 p-1.5 bg-slate-100 rounded-[1.5rem] border border-slate-200 overflow-x-auto">
-                <button onClick={() => setPreset('TODAY')} className={`px-6 py-3.5 rounded-2xl text-xs font-black transition-all flex-shrink-0 uppercase tracking-wide border shadow-sm ${startDate === new Date().toISOString().split('T')[0] && endDate === startDate ? 'bg-indigo-600 text-white border-indigo-700 shadow-indigo-300' : 'bg-white text-slate-500 border-slate-200 hover:text-indigo-600'}`}>Today</button>
-                <button onClick={() => setPreset('CLIENT_SEARCH')} className={`px-6 py-3.5 rounded-2xl text-xs font-black transition-all flex-shrink-0 uppercase tracking-wide border shadow-sm flex items-center justify-center whitespace-nowrap ${!startDate && !endDate && searchTerm ? 'bg-violet-600 text-white border-violet-700' : 'bg-white text-slate-500 border-slate-200 hover:text-violet-600'}`}><UserSearch className="w-4 h-4 mr-2" />All Data</button>
-                 <button onClick={() => setPreset('ALL')} className="p-3.5 rounded-2xl border border-slate-200 bg-white text-slate-400 hover:text-red-500 transition-colors shadow-sm flex-shrink-0"><RotateCcw className="w-4 h-4" /></button>
+            <div className="flex w-full xl:w-auto items-center gap-2 p-1.5 bg-white/50 backdrop-blur-sm rounded-[1.5rem] border border-slate-200 shadow-sm overflow-x-auto">
+                <button 
+                    onClick={() => setPreset('TODAY')} 
+                    className={`p-3.5 rounded-2xl transition-all border shadow-sm flex-shrink-0 ${startDate === new Date().toISOString().split('T')[0] && endDate === startDate ? 'bg-indigo-600 text-white border-indigo-700' : 'bg-white text-slate-500 border-slate-200 hover:text-indigo-600'}`}
+                    title="Today's Data"
+                >
+                    <CalendarCheck className="w-5 h-5" />
+                </button>
+                <button 
+                    onClick={() => setPreset('CLIENT_SEARCH')} 
+                    className={`p-3.5 rounded-2xl transition-all border shadow-sm flex-shrink-0 ${!startDate && !endDate && searchTerm ? 'bg-violet-600 text-white border-violet-700' : 'bg-white text-slate-500 border-slate-200 hover:text-violet-600'}`}
+                    title="Show All Records"
+                >
+                    <ListFilter className="w-5 h-5" />
+                </button>
+                <button 
+                    onClick={() => setPreset('ALL')} 
+                    className="p-3.5 rounded-2xl border border-slate-200 bg-white text-slate-400 hover:text-red-500 transition-colors shadow-sm flex-shrink-0"
+                    title="Reset Filters"
+                >
+                    <RotateCcw className="w-5 h-5" />
+                </button>
             </div>
       </div>
 
-      <div className="sticky top-0 z-20 -mx-4 px-4 md:-mx-8 md:px-8 bg-[#F8FAFC]/90 backdrop-blur-md py-4 flex flex-col md:flex-row gap-2">
-            <select 
-                value={branchFilter}
-                onChange={(e) => setBranchFilter(e.target.value)}
-                className="md:w-48 px-4 py-4 bg-white border-2 border-white focus:border-indigo-500 rounded-[1.5rem] text-sm font-bold shadow-sm focus:ring-4 focus:ring-indigo-100 outline-none text-indigo-700"
-            >
-                <option value="ALL">All Branches</option>
-                <option value="RPR">Raipur</option>
-                <option value="JDP">Jagdalpur</option>
-            </select>
+      <div className="sticky top-0 z-20 -mx-4 px-4 md:-mx-8 md:px-8 bg-[#F8FAFC]/90 backdrop-blur-md py-4 flex flex-col md:flex-row justify-between items-center gap-4 border-b border-slate-200/50 mb-6">
+            
+            {/* Branch Filter with improved UI */}
+            <div className="relative w-full md:w-auto group">
+                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors pointer-events-none">
+                    <Filter className="w-4 h-4" />
+                </div>
+                <select 
+                    value={branchFilter}
+                    onChange={(e) => setBranchFilter(e.target.value)}
+                    className="w-full md:w-56 pl-10 pr-10 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-bold shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-slate-700 appearance-none cursor-pointer transition-all hover:border-indigo-300"
+                >
+                    <option value="ALL">All Branches</option>
+                    <option value="RPR">Raipur</option>
+                    <option value="JDP">Jagdalpur</option>
+                </select>
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+                    <ChevronDown className="w-4 h-4" />
+                </div>
+            </div>
 
-            <div className="relative group shadow-xl shadow-indigo-900/5 rounded-[1.5rem] flex-1">
-                <div className="absolute left-5 top-1/2 transform -translate-y-1/2 pointer-events-none p-2 bg-indigo-50 rounded-xl"><Search className="w-5 h-5 text-indigo-600 transition-transform group-hover:scale-110" /></div>
-                <input id="history-search-input" type="text" placeholder="Search Client Name or Contact Number..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-16 pr-6 py-4 bg-white border-2 border-white focus:border-indigo-500 rounded-[1.5rem] text-base focus:ring-4 focus:ring-indigo-100 font-bold shadow-sm transition-all text-slate-800" />
+            {/* Search Input - Compact, Stylish, Icon-focused */}
+            <div className="relative group w-full max-w-[280px]"> 
+                <div className="absolute left-1 top-1/2 -translate-y-1/2 p-2 bg-white rounded-xl shadow-sm border border-slate-100 text-indigo-500 pointer-events-none transition-transform group-focus-within:scale-110">
+                    <Search className="w-4 h-4" />
+                </div>
+                <input 
+                    id="history-search-input" 
+                    type="text" 
+                    placeholder="Search..." 
+                    value={searchTerm} 
+                    onChange={(e) => setSearchTerm(e.target.value)} 
+                    className="w-full pl-12 pr-10 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-bold shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white focus:border-transparent transition-all text-slate-700 placeholder:text-slate-400 hover:border-indigo-300" 
+                />
+                {searchTerm && (
+                    <button 
+                        onClick={() => setSearchTerm('')} 
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 hover:text-red-500 p-1 rounded-full hover:bg-red-50 transition-colors"
+                        title="Clear Search"
+                    >
+                        <X className="w-4 h-4" />
+                    </button>
+                )}
             </div>
       </div>
 
