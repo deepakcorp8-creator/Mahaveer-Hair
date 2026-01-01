@@ -553,7 +553,7 @@ const Dashboard: React.FC = () => {
                           <h4 className="text-xs font-black uppercase text-slate-400 tracking-widest">High Value (Tier 3)</h4>
                           <div>
                               <label className="text-[10px] font-bold text-slate-500 block">Above Tier 2 Limit</label>
-                              <div className="py-1 text-sm font-bold text-slate-400 italic">Automatic (> {incentiveConfig.newPatchTier2Limit})</div>
+                              <div className="py-1 text-sm font-bold text-slate-400 italic">Automatic ({'>'} {incentiveConfig.newPatchTier2Limit})</div>
                           </div>
                           <div>
                               <label className="text-[10px] font-bold text-slate-500 block">Incentive (₹)</label>
