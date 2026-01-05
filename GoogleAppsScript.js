@@ -1,6 +1,6 @@
 
 // =====================================================================================
-// ⚠️ MAHAVEER WEB APP - BACKEND SCRIPT (V7 - Base64 Logo Fix)
+// ⚠️ MAHAVEER WEB APP - BACKEND SCRIPT (V8 - Date Fix)
 // =====================================================================================
 
 function doGet(e) {
@@ -301,8 +301,22 @@ function createInvoice(data) {
     }
 
     // 3. Generate Date Strings
-    var invoiceDate = data.date ? toSheetDate(data.date) : getTodayInSheetFormat();
     var invNum = "INV-" + new Date().getFullYear() + "-" + Math.floor(Math.random() * 9000 + 1000);
+    
+    // FORMAT DATE FOR INVOICE PDF DISPLAY
+    var invoiceDate = "";
+    if (data.date) {
+        if (data.date.includes('-')) {
+            // Convert YYYY-MM-DD to DD/MM/YYYY for PDF
+            var p = data.date.split('-');
+            if (p.length === 3) invoiceDate = p[2] + "/" + p[1] + "/" + p[0];
+            else invoiceDate = data.date;
+        } else {
+            invoiceDate = data.date;
+        }
+    } else {
+        invoiceDate = getTodayInSheetFormat();
+    }
 
     // 4. Build HTML - ROBUST TABLE LAYOUT for Google PDF Engine
     var html = `
@@ -490,10 +504,14 @@ function createInvoice(data) {
 function toSheetDate(dateStr) {
   if (!dateStr || typeof dateStr !== 'string' || dateStr === "") return "";
   if (dateStr.includes('/') && dateStr.split('/').length === 3) return dateStr;
+  
+  // IMPORTANT FIX: If date is YYYY-MM-DD, return it as-is. 
+  // Google Sheets parses YYYY-MM-DD correctly as Y-M-D regardless of locale.
+  // Converting it to DD/MM/YYYY text manually here causes ambiguity if locale is US (MM/DD).
   if (dateStr.includes('-')) {
-    const parts = dateStr.split('-'); 
-    if (parts.length === 3 && parts[0].length === 4) return parts[2] + "/" + parts[1] + "/" + parts[0];
+    return dateStr;
   }
+  
   return dateStr;
 }
 

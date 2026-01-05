@@ -48,14 +48,6 @@ const getCurrentUserBranch = (): string | null => {
     }
 };
 
-const toDDMMYYYY = (dateStr: string) => {
-    if (!dateStr) return "";
-    if (dateStr.includes('/')) return dateStr;
-    const parts = dateStr.split('-');
-    if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
-    return dateStr;
-};
-
 const normalizeToISO = (dateStr: string) => {
     if (!dateStr) return "";
     if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
@@ -138,7 +130,8 @@ export const api = {
 
   // --- ENTRIES (WITH BRANCH FILTER) ---
   addEntry: async (entry: Omit<Entry, 'id'>) => {
-    const formatted = { ...entry, date: toDDMMYYYY(entry.date) };
+    // Send Date directly (YYYY-MM-DD) to Backend
+    const formatted = { ...entry };
     const tempId = 'temp_' + Date.now() + Math.random().toString(36).substr(2, 5);
     const newEntry = { ...entry, id: tempId };
     
@@ -168,7 +161,8 @@ export const api = {
 
   updateEntry: async (entry: Entry) => {
     DATA_CACHE.entries = null;
-    const formatted = { ...entry, date: toDDMMYYYY(entry.date) };
+    // Send Date directly (YYYY-MM-DD)
+    const formatted = { ...entry };
     if (isLive) {
       await fetch(GOOGLE_SCRIPT_URL, {
         method: 'POST',
@@ -225,8 +219,6 @@ export const api = {
     // --- SECURITY: BRANCH FILTER ---
     const userBranch = getCurrentUserBranch();
     if (userBranch) {
-        // If userBranch is 'JDP', only show 'JDP' entries.
-        // We handle exact match.
         combinedEntries = combinedEntries.filter(e => e.branch === userBranch);
     }
 
@@ -253,7 +245,8 @@ export const api = {
   },
   
   updatePaymentFollowUp: async (payload: any) => {
-      const formatted = { ...payload, nextCallDate: toDDMMYYYY(payload.nextCallDate || '') };
+      // Send Date directly
+      const formatted = { ...payload };
       if (isLive) {
           try {
               const res = await fetch(GOOGLE_SCRIPT_URL, {
@@ -318,7 +311,8 @@ export const api = {
   },
 
   addAppointment: async (appt: Omit<Appointment, 'id'>) => {
-    const formatted = { ...appt, date: toDDMMYYYY(appt.date) };
+    // Send Date directly
+    const formatted = { ...appt };
     const tempId = 'temp_' + Date.now() + Math.random().toString(36).substr(2, 5);
     const newAppt = { ...appt, id: tempId };
     
@@ -415,7 +409,8 @@ export const api = {
 
   addPackage: async (pkg: Omit<ServicePackage, 'id'>) => {
       DATA_CACHE.packages = null; 
-      const formatted = { ...pkg, startDate: toDDMMYYYY(pkg.startDate) };
+      // Send Date directly
+      const formatted = { ...pkg };
       const pkgPayload = { ...formatted, status: 'PENDING' }; 
       
       if (isLive) {
@@ -457,7 +452,8 @@ export const api = {
 
   editPackage: async (pkg: ServicePackage) => {
       DATA_CACHE.packages = null; 
-      const formatted = { ...pkg, startDate: toDDMMYYYY(pkg.startDate) };
+      // Send Date directly
+      const formatted = { ...pkg };
       if (isLive) {
           await fetch(GOOGLE_SCRIPT_URL, {
               method: 'POST',
