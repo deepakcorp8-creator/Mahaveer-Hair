@@ -1,6 +1,6 @@
 
 // =====================================================================================
-// ⚠️ MAHAVEER WEB APP - BACKEND SCRIPT (V8 - Date Fix)
+// ⚠️ MAHAVEER WEB APP - BACKEND SCRIPT (Date Fix Applied)
 // =====================================================================================
 
 function doGet(e) {
@@ -43,6 +43,8 @@ function doPost(e) {
           String(data.packageType || 'NEW')
         ];
         pkgSheet.appendRow(row);
+        // FORCE DATE FORMAT
+        pkgSheet.getRange(pkgSheet.getLastRow(), 1).setNumberFormat("dd/mm/yyyy");
         return response({status: "success", message: "Package created successfully"});
       } catch (err) {
         return response({error: "Failed to create package: " + err.toString()});
@@ -63,7 +65,7 @@ function doPost(e) {
       const pkgSheet = getSheet(ss, "PACKAGE PLAN");
       const rowId = parseInt(data.id.split('_')[1]);
       if (rowId > 0) {
-          pkgSheet.getRange(rowId, 1).setValue(toSheetDate(data.startDate));
+          pkgSheet.getRange(rowId, 1).setValue(toSheetDate(data.startDate)).setNumberFormat("dd/mm/yyyy");
           pkgSheet.getRange(rowId, 3).setValue(data.packageName);
           pkgSheet.getRange(rowId, 4).setValue(data.totalCost);
           pkgSheet.getRange(rowId, 5).setValue(data.totalServices);
@@ -100,6 +102,7 @@ function doPost(e) {
     ];
     const nextRow = getSafeLastRow(dbSheet, 2) + 1;
     dbSheet.getRange(nextRow, 1, 1, newRow.length).setValues([newRow]);
+    // FORCE DATE FORMAT
     dbSheet.getRange(nextRow, 1).setNumberFormat("dd/mm/yyyy");
     return response({status: "success", invoiceUrl: invoiceUrl, id: 'row_' + nextRow});
   }
@@ -136,6 +139,7 @@ function doPost(e) {
     const clientRow = [data.name, data.contact, data.address, data.gender, data.email, toSheetDate(data.dob)];
     const nextCl = getSafeLastRow(clientSheet, 1) + 1;
     clientSheet.getRange(nextCl, 1, 1, clientRow.length).setValues([clientRow]);
+    // FORCE DATE FORMAT (DOB is col 6)
     clientSheet.getRange(nextCl, 6).setNumberFormat("dd/mm/yyyy");
     return response({status: "success"});
   }
@@ -153,6 +157,7 @@ function doPost(e) {
       if (rowIndex !== -1) {
           const updatedRow = [data.name, data.contact, data.address, data.gender, data.email, toSheetDate(data.dob)];
           clientSheet.getRange(rowIndex, 1, 1, 6).setValues([updatedRow]);
+          clientSheet.getRange(rowIndex, 6).setNumberFormat("dd/mm/yyyy");
           return response({status: "success"});
       }
       return response({error: "Client not found"});
@@ -164,6 +169,8 @@ function doPost(e) {
       const id = 'apt_' + new Date().getTime();
       const row = [id, toSheetDate(data.date), data.clientName, data.contact, data.address, data.note, data.status, data.branch, data.time];
       apptSheet.appendRow(row);
+      // FORCE DATE FORMAT (Date is col 2)
+      apptSheet.getRange(apptSheet.getLastRow(), 2).setNumberFormat("dd/mm/yyyy");
       return response({status: "success", id: id});
   }
 
@@ -263,9 +270,14 @@ function doPost(e) {
               dbSheet.getRange(rowId, 11).setValue(data.paymentMethod);
               dbSheet.getRange(rowId, 12).setValue(String(data.remark || ""));
               
-              const today = getTodayInSheetFormat();
+              // Use explicit date object for "Today"
+              const today = new Date();
               const collectionRow = [data.id, today, data.clientName, data.contactNo || '', data.address || '', data.pendingAmount || 0, Number(data.paidAmount || 0), screenshotUrl, String(data.remark || ""), toSheetDate(data.nextCallDate) || '', new Date().toString()];
               collectionSheet.appendRow(collectionRow);
+              // FORCE FORMAT Date (col 2) and Next Call Date (col 10)
+              collectionSheet.getRange(collectionSheet.getLastRow(), 2).setNumberFormat("dd/mm/yyyy");
+              if (data.nextCallDate) collectionSheet.getRange(collectionSheet.getLastRow(), 10).setNumberFormat("dd/mm/yyyy");
+              
               return response({status: "success", screenshotUrl: screenshotUrl});
           }
       } catch(e) { return response({error: e.message}); }
@@ -315,7 +327,8 @@ function createInvoice(data) {
             invoiceDate = data.date;
         }
     } else {
-        invoiceDate = getTodayInSheetFormat();
+        var d = new Date();
+        invoiceDate = ("0" + d.getDate()).slice(-2) + "/" + ("0" + (d.getMonth() + 1)).slice(-2) + "/" + d.getFullYear();
     }
 
     // 4. Build HTML - ROBUST TABLE LAYOUT for Google PDF Engine
@@ -500,19 +513,23 @@ function createInvoice(data) {
   }
 }
 
-// ... helper functions (toSheetDate, fromSheetDate, getSafeLastRow, etc.) ...
+// ==========================================
+// DATE HELPERS - STRICT DD/MM/YYYY
+// ==========================================
+
 function toSheetDate(dateStr) {
-  if (!dateStr || typeof dateStr !== 'string' || dateStr === "") return "";
-  if (dateStr.includes('/') && dateStr.split('/').length === 3) return dateStr;
+  if (!dateStr || dateStr === "") return "";
+  var str = String(dateStr);
   
-  // IMPORTANT FIX: If date is YYYY-MM-DD, return it as-is. 
-  // Google Sheets parses YYYY-MM-DD correctly as Y-M-D regardless of locale.
-  // Converting it to DD/MM/YYYY text manually here causes ambiguity if locale is US (MM/DD).
-  if (dateStr.includes('-')) {
-    return dateStr;
+  // Handle YYYY-MM-DD (ISO from frontend) -> Convert to Date Object
+  if (str.match(/^\d{4}-\d{2}-\d{2}$/)) {
+    var parts = str.split('-');
+    // Return Date object (Year, MonthIndex, Day). 
+    // Uses 12:00:00 to avoid timezone rolling date back/forward.
+    return new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]), 12, 0, 0);
   }
   
-  return dateStr;
+  return str;
 }
 
 function fromSheetDate(val) {
@@ -522,11 +539,6 @@ function fromSheetDate(val) {
      return ("0" + d.getDate()).slice(-2) + "/" + ("0" + (d.getMonth() + 1)).slice(-2) + "/" + d.getFullYear();
   }
   return String(val).trim();
-}
-
-function getTodayInSheetFormat() {
-  const d = new Date();
-  return ("0" + d.getDate()).slice(-2) + "/" + ("0" + (d.getMonth() + 1)).slice(-2) + "/" + d.getFullYear();
 }
 
 function getSafeLastRow(sheet, colIndex) {
