@@ -1,6 +1,6 @@
 
 // =====================================================================================
-// ⚠️ MAHAVEER WEB APP - BACKEND SCRIPT (Date Fix Applied)
+// ⚠️ MAHAVEER WEB APP - BACKEND SCRIPT (Date & Time Fix Applied)
 // =====================================================================================
 
 function doGet(e) {
@@ -169,8 +169,13 @@ function doPost(e) {
       const id = 'apt_' + new Date().getTime();
       const row = [id, toSheetDate(data.date), data.clientName, data.contact, data.address, data.note, data.status, data.branch, data.time];
       apptSheet.appendRow(row);
+      
+      const lastRow = apptSheet.getLastRow();
       // FORCE DATE FORMAT (Date is col 2)
-      apptSheet.getRange(apptSheet.getLastRow(), 2).setNumberFormat("dd/mm/yyyy");
+      apptSheet.getRange(lastRow, 2).setNumberFormat("dd/mm/yyyy");
+      // FORCE TIME AS PLAIN TEXT (Time is col 9)
+      apptSheet.getRange(lastRow, 9).setNumberFormat("@");
+      
       return response({status: "success", id: id});
   }
 
@@ -307,7 +312,7 @@ function createInvoice(data) {
         var blob = resp.getBlob();
         logoBase64 = "data:image/png;base64," + Utilities.base64Encode(blob.getBytes());
     } catch(e) {
-        // Fallback to URL if fetch fails (might not show in PDF but safer)
+        // Fallback to URL if fetch fails (might not show in PDF)
         logoBase64 = logoUrl;
         Logger.log("Logo fetch failed: " + e.toString());
     }
@@ -514,7 +519,7 @@ function createInvoice(data) {
 }
 
 // ==========================================
-// DATE HELPERS - STRICT DD/MM/YYYY
+// DATE & TIME HELPERS - STRICT DD/MM/YYYY
 // ==========================================
 
 function toSheetDate(dateStr) {
@@ -537,6 +542,24 @@ function fromSheetDate(val) {
   if (Object.prototype.toString.call(val) === '[object Date]') {
      const d = new Date(val);
      return ("0" + d.getDate()).slice(-2) + "/" + ("0" + (d.getMonth() + 1)).slice(-2) + "/" + d.getFullYear();
+  }
+  return String(val).trim();
+}
+
+/**
+ * Correctly formats Time objects from sheet cells (e.g. HH:MM AM/PM)
+ */
+function fromSheetTime(val) {
+  if (!val) return "";
+  if (Object.prototype.toString.call(val) === '[object Date]') {
+    const d = new Date(val);
+    let hours = d.getHours();
+    let minutes = d.getMinutes();
+    let ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    hours = hours ? hours : 12; // the hour '0' should be '12'
+    minutes = minutes < 10 ? '0' + minutes : minutes;
+    return hours + ':' + minutes + ' ' + ampm;
   }
   return String(val).trim();
 }
@@ -631,9 +654,18 @@ function getPackages(ss) {
 function getAppointments(ss) {
     const sheet = getSheet(ss, "APPOINTMENT");
     if (!sheet || sheet.getLastRow() <= 1) return response([]);
-    const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 9).getValues();
+    // Use getDisplayValues to get time strings exactly as seen
+    const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 9).getDisplayValues();
     return response(data.map((row) => ({
-      id: row[0], date: fromSheetDate(row[1]), clientName: row[2], contact: row[3], address: row[4], note: row[5], status: row[6] || 'PENDING', branch: row[7] || '', time: row[8] ? String(row[8]) : '' 
+      id: row[0], 
+      date: row[1], 
+      clientName: row[2], 
+      contact: row[3], 
+      address: row[4], 
+      note: row[5], 
+      status: row[6] || 'PENDING', 
+      branch: row[7] || '', 
+      time: row[8] // DIRECT USE OF DISPLAY STRING
     })));
 }
 

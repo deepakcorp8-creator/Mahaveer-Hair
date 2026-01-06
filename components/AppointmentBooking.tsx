@@ -82,6 +82,38 @@ const AppointmentBooking: React.FC = () => {
     setClients(options.clients);
   };
 
+  /**
+   * Extremely robust time formatter.
+   * Handles "10:00 AM" (Correct)
+   * Handles "SAT DEC 30 1899 23:21:10 GMT+0521" (Google Sheet Date Object)
+   */
+  const formatTimeDisplay = (timeStr: any) => {
+      if (!timeStr) return "N/A";
+      const str = String(timeStr).trim();
+      
+      // If it looks like a standard simple time already, return it
+      if (/^\d{1,2}:\d{2}\s?(AM|PM|am|pm)$/.test(str)) {
+          return str.toUpperCase();
+      }
+
+      // If it's a long date string OR contains timezone info
+      if (str.includes(':') && (str.length > 15 || str.includes('GMT') || str.includes('IST'))) {
+          try {
+              const d = new Date(str);
+              if (!isNaN(d.getTime())) {
+                  let hours = d.getHours();
+                  const minutes = d.getMinutes().toString().padStart(2, '0');
+                  const ampm = hours >= 12 ? 'PM' : 'AM';
+                  hours = hours % 12;
+                  hours = hours ? hours : 12; // Handle 0 as 12
+                  return `${hours}:${minutes} ${ampm}`;
+              }
+          } catch (e) {}
+      }
+      
+      return str;
+  };
+
   const handleRecall = (appt: Appointment) => {
       // Logic to "Re-book" a past client (Creates NEW record)
       const branchToUse = isAdmin ? (appt.branch || 'RPR') : (userBranch || 'RPR');
@@ -169,8 +201,7 @@ const AppointmentBooking: React.FC = () => {
   const todayAppointments = filteredAppointments.filter(a => a.date === todayStr && activeTab === 'SCHEDULE');
   const otherAppointments = filteredAppointments.filter(a => a.date !== todayStr && activeTab === 'SCHEDULE');
   
-  // Stats - Update these to respect current branch filter or keep as total? keeping as total for overview
-  // But maybe better to respect the filter for stats too? Let's use filtered list for logic
+  // Stats
   const filteredForStats = appointments.filter(a => branchFilter === 'ALL' || a.branch === branchFilter);
   const todayCount = filteredForStats.filter(a => a.date === todayStr && a.status === 'PENDING').length;
   const pendingCount = filteredForStats.filter(a => a.status === 'PENDING').length;
@@ -231,7 +262,7 @@ const AppointmentBooking: React.FC = () => {
                             <span>{appt.contact}</span>
                             {appt.time && (
                                 <span className="flex items-center text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100 text-xs uppercase">
-                                    <Clock className="w-3 h-3 mr-1" /> {appt.time}
+                                    <Clock className="w-3 h-3 mr-1" /> {formatTimeDisplay(appt.time)}
                                 </span>
                             )}
                             {appt.branch && (
