@@ -1,6 +1,8 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import * as ReactRouterDOM from 'react-router-dom';
+// Fix: Use named imports for react-router-dom as namespace destructuring was failing
+import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
+const Router = HashRouter;
 import Layout from './components/Layout';
 import Dashboard from './components/Dashboard';
 import NewEntryForm from './components/NewEntryForm';
@@ -16,8 +18,6 @@ import Login from './components/Login';
 import { User, Role } from './types';
 import { Clock } from 'lucide-react';
 import { api } from './services/api';
-
-const { HashRouter, Routes, Route, Navigate } = ReactRouterDOM;
 
 // Define props for ProtectedRoute
 interface ProtectedRouteProps {
@@ -65,10 +65,10 @@ function App() {
   // Pre-fetch data on load
   useEffect(() => {
     if (user) {
-        // Initial fetch to populate cache with error handling
-        api.getOptions().catch(console.error);
-        api.getEntries().catch(console.error);
-        api.getAppointments().catch(console.error);
+        // Initial fetch to populate cache
+        api.getOptions();
+        api.getEntries();
+        api.getAppointments();
     }
   }, [user]);
 
@@ -125,7 +125,7 @@ function App() {
   }
 
   return (
-    <HashRouter>
+    <Router>
        {showTimeoutWarning && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-sm w-full mx-4 border border-slate-200">
@@ -203,7 +203,7 @@ function App() {
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </Layout>
-    </HashRouter>
+    </Router>
   );
 }
 

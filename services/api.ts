@@ -48,19 +48,43 @@ const getCurrentUserBranch = (): string | null => {
     }
 };
 
-const normalizeToISO = (dateStr: string) => {
+const toDDMMYYYY = (dateStr: string) => {
     if (!dateStr) return "";
-    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
-    if (dateStr.includes('/')) {
-        const parts = dateStr.split('/');
+    // If already dd/mm/yyyy
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateStr)) return dateStr;
+    // If yyyy-mm-dd
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+        const [y, m, d] = dateStr.split('-');
+        return `${d}/${m}/${y}`;
+    }
+    return dateStr;
+};
+
+const normalizeToISO = (dateStr: any): string => {
+    if (!dateStr) return "";
+    const str = String(dateStr).trim();
+    
+    // Already yyyy-mm-dd
+    if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+    
+    // Handle dd/mm/yyyy or d/m/yyyy
+    if (str.includes('/')) {
+        const parts = str.split('/');
         if (parts.length === 3) {
             const day = parts[0].padStart(2, '0');
             const month = parts[1].padStart(2, '0');
-            const year = parts[2];
+            const year = parts[2].length === 2 ? `20${parts[2]}` : parts[2];
             return `${year}-${month}-${day}`;
         }
     }
-    return dateStr;
+    
+    // Handle dd-mm-yyyy
+    if (/^\d{2}-\d{2}-\d{4}$/.test(str)) {
+        const parts = str.split('-');
+        return `${parts[2]}-${parts[1]}-${parts[0]}`;
+    }
+
+    return str;
 };
 
 export const api = {
@@ -77,7 +101,7 @@ export const api = {
         const data = await response.json();
         if (data && data.clients) {
             const result = {
-                clients: data.clients,
+                clients: data.clients.map((c: any) => ({ ...c, dob: normalizeToISO(c.dob) })),
                 technicians: data.technicians || MOCK_TECHNICIANS,
                 items: data.items || MOCK_ITEMS
             };
@@ -91,7 +115,7 @@ export const api = {
     }
     
     return {
-      clients: MOCK_CLIENTS,
+      clients: MOCK_CLIENTS.map(c => ({ ...c, dob: normalizeToISO(c.dob) })),
       technicians: MOCK_TECHNICIANS,
       items: MOCK_ITEMS
     };
@@ -104,11 +128,12 @@ export const api = {
 
   addClient: async (client: Client) => {
     DATA_CACHE.options = null;
+    const formattedClient = { ...client, dob: toDDMMYYYY(client.dob) };
     if (isLive) {
         fetch(GOOGLE_SCRIPT_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({ action: 'addClient', ...client })
+          body: JSON.stringify({ action: 'addClient', ...formattedClient })
         }).catch(err => console.error("BG Sync Error", err));
     } else {
         MOCK_CLIENTS.push(client);
@@ -118,22 +143,26 @@ export const api = {
 
   updateClient: async (client: Client, originalName: string) => {
     DATA_CACHE.options = null;
+    const formattedClient = { ...client, dob: toDDMMYYYY(client.dob) };
     if (isLive) {
       await fetch(GOOGLE_SCRIPT_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: 'editClient', ...client, originalName })
+        body: JSON.stringify({ action: 'editClient', ...formattedClient, originalName })
       });
     }
     return true;
   },
 
-  // --- ENTRIES (WITH BRANCH FILTER) ---
+  // --- ENTRIES ---
   addEntry: async (entry: Omit<Entry, 'id'>) => {
-    // Send Date directly (YYYY-MM-DD) to Backend
-    const formatted = { ...entry };
+    const formatted = { 
+        ...entry, 
+        date: toDDMMYYYY(entry.date),
+        nextCallDate: entry.nextCallDate ? toDDMMYYYY(entry.nextCallDate) : ''
+    };
     const tempId = 'temp_' + Date.now() + Math.random().toString(36).substr(2, 5);
-    const newEntry = { ...entry, id: tempId };
+    const newEntry = { ...entry, id: tempId, date: normalizeToISO(entry.date) };
     
     LOCAL_NEW_ENTRIES.push(newEntry as Entry);
     
@@ -161,8 +190,11 @@ export const api = {
 
   updateEntry: async (entry: Entry) => {
     DATA_CACHE.entries = null;
-    // Send Date directly (YYYY-MM-DD)
-    const formatted = { ...entry };
+    const formatted = { 
+        ...entry, 
+        date: toDDMMYYYY(entry.date),
+        nextCallDate: entry.nextCallDate ? toDDMMYYYY(entry.nextCallDate) : ''
+    };
     if (isLive) {
       await fetch(GOOGLE_SCRIPT_URL, {
         method: 'POST',
@@ -200,15 +232,19 @@ export const api = {
             const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getEntries`);
             const data = await response.json();
             if (Array.isArray(data)) {
-                allEntries = data.map((e: any) => ({ ...e, date: normalizeToISO(e.date) }));
+                allEntries = data.map((e: any) => ({ 
+                    ...e, 
+                    date: normalizeToISO(e.date),
+                    nextCallDate: normalizeToISO(e.nextCallDate)
+                }));
                 DATA_CACHE.entries = allEntries;
                 DATA_CACHE.lastFetch['entries'] = now;
             }
            } catch (e) {
-             allEntries = DATA_CACHE.entries || [...MOCK_ENTRIES];
+             allEntries = (DATA_CACHE.entries || [...MOCK_ENTRIES]).map(e => ({ ...e, date: normalizeToISO(e.date) }));
            }
         } else {
-            allEntries = [...MOCK_ENTRIES];
+            allEntries = MOCK_ENTRIES.map(e => ({ ...e, date: normalizeToISO(e.date) }));
         }
     }
 
@@ -245,8 +281,10 @@ export const api = {
   },
   
   updatePaymentFollowUp: async (payload: any) => {
-      // Send Date directly
-      const formatted = { ...payload };
+      const formatted = { 
+          ...payload, 
+          nextCallDate: toDDMMYYYY(payload.nextCallDate || '') 
+      };
       if (isLive) {
           try {
               const res = await fetch(GOOGLE_SCRIPT_URL, {
@@ -261,7 +299,7 @@ export const api = {
                 if(entry) {
                     if(payload.paymentMethod) entry.paymentMethod = payload.paymentMethod as any;
                     if(payload.pendingAmount !== undefined) entry.pendingAmount = payload.pendingAmount;
-                    if(payload.nextCallDate) entry.nextCallDate = payload.nextCallDate;
+                    if(payload.nextCallDate) entry.nextCallDate = normalizeToISO(payload.nextCallDate);
                     if(payload.remark) entry.remark = payload.remark;
                     if(data.screenshotUrl) entry.paymentScreenshotUrl = data.screenshotUrl;
                 }
@@ -272,7 +310,7 @@ export const api = {
       return { status: "success" };
   },
 
-  // --- APPOINTMENTS (WITH BRANCH FILTER) ---
+  // --- APPOINTMENTS ---
   getAppointments: async (forceRefresh = false) => {
     let allAppts: Appointment[] = [];
     const now = Date.now();
@@ -286,14 +324,14 @@ export const api = {
             const data = await response.json();
             if (Array.isArray(data)) {
                 allAppts = data.map((a: any) => ({ ...a, date: normalizeToISO(a.date) }));
-                DATA_CACHE.appointments = data;
+                DATA_CACHE.appointments = allAppts;
                 DATA_CACHE.lastFetch['appointments'] = now;
             }
            } catch (e) {
-             allAppts = DATA_CACHE.appointments || [...MOCK_APPOINTMENTS];
+             allAppts = (DATA_CACHE.appointments || [...MOCK_APPOINTMENTS]).map(a => ({ ...a, date: normalizeToISO(a.date) }));
            }
         } else {
-             allAppts = [...MOCK_APPOINTMENTS];
+             allAppts = MOCK_APPOINTMENTS.map(a => ({ ...a, date: normalizeToISO(a.date) }));
         }
     }
 
@@ -301,7 +339,6 @@ export const api = {
     const uniqueLocal = LOCAL_NEW_APPOINTMENTS.filter(a => !serverIds.has(a.id));
     let combinedAppts = [...uniqueLocal, ...allAppts];
 
-    // --- SECURITY: BRANCH FILTER ---
     const userBranch = getCurrentUserBranch();
     if (userBranch) {
         combinedAppts = combinedAppts.filter(a => a.branch === userBranch);
@@ -311,10 +348,9 @@ export const api = {
   },
 
   addAppointment: async (appt: Omit<Appointment, 'id'>) => {
-    // Send Date directly
-    const formatted = { ...appt };
+    const formatted = { ...appt, date: toDDMMYYYY(appt.date) };
     const tempId = 'temp_' + Date.now() + Math.random().toString(36).substr(2, 5);
-    const newAppt = { ...appt, id: tempId };
+    const newAppt = { ...appt, id: tempId, date: normalizeToISO(appt.date) };
     
     LOCAL_NEW_APPOINTMENTS.push(newAppt as Appointment);
     
@@ -404,13 +440,12 @@ export const api = {
               console.warn("Failed to fetch packages", e);
           }
       }
-      return [...MOCK_PACKAGES];
+      return MOCK_PACKAGES.map(p => ({ ...p, startDate: normalizeToISO(p.startDate) }));
   },
 
   addPackage: async (pkg: Omit<ServicePackage, 'id'>) => {
       DATA_CACHE.packages = null; 
-      // Send Date directly
-      const formatted = { ...pkg };
+      const formatted = { ...pkg, startDate: toDDMMYYYY(pkg.startDate) };
       const pkgPayload = { ...formatted, status: 'PENDING' }; 
       
       if (isLive) {
@@ -452,8 +487,7 @@ export const api = {
 
   editPackage: async (pkg: ServicePackage) => {
       DATA_CACHE.packages = null; 
-      // Send Date directly
-      const formatted = { ...pkg };
+      const formatted = { ...pkg, startDate: toDDMMYYYY(pkg.startDate) };
       if (isLive) {
           await fetch(GOOGLE_SCRIPT_URL, {
               method: 'POST',
@@ -510,6 +544,7 @@ export const api = {
               if (Array.isArray(data)) {
                   return data.map((u: any) => ({
                       ...u,
+                      dob: normalizeToISO(u.dob),
                       permissions: u.permissions ? u.permissions.split(',') : []
                   }));
               }
@@ -521,7 +556,7 @@ export const api = {
   },
 
   addUser: async (user: User & { password: string }) => {
-      const payload = { ...user, permissions: user.permissions ? user.permissions.join(',') : '' };
+      const payload = { ...user, dob: toDDMMYYYY(user.dob || ''), permissions: user.permissions ? user.permissions.join(',') : '' };
       if (isLive) {
           try {
              await fetch(GOOGLE_SCRIPT_URL, {
@@ -550,28 +585,28 @@ export const api = {
   },
   
   updateUser: async (payload: any) => {
+    const formatted = { ...payload, dob: toDDMMYYYY(payload.dob || '') };
     if (isLive) {
       await fetch(GOOGLE_SCRIPT_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: 'updateUser', ...payload, permissions: payload.permissions?.join(',') })
+        body: JSON.stringify({ action: 'updateUser', ...formatted, permissions: payload.permissions?.join(',') })
       });
     }
     return true;
   },
 
   updateUserProfile: async (payload: any) => {
+    const formatted = { ...payload, dob: toDDMMYYYY(payload.dob || '') };
     if (isLive) {
-        const res = await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'updateUserProfile', ...payload }) });
+        const res = await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'updateUserProfile', ...formatted }) });
         return await res.json();
     }
     return true;
   },
 
   getDashboardStats: async (): Promise<DashboardStats> => {
-    // This calls getEntries, which is now filtered by Branch
     const entries = await api.getEntries();
-    
     const totalClients = new Set(entries.map((e: any) => e.clientName)).size;
     const totalAmount = entries.reduce((sum: number, e: any) => sum + Number(e.amount || 0), 0);
     const today = new Date().toISOString().split('T')[0];
