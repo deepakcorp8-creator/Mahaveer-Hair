@@ -130,18 +130,21 @@ const ServicePackages: React.FC = () => {
       if (loading) return;
       
       const isDelete = action === 'REJECT';
-      if(window.confirm(isDelete ? "REJECT and DELETE this package?" : "APPROVE this package?")) {
-          setLoading(true);
-          try {
-              if (isDelete) await api.deletePackage(id);
-              else await api.updatePackageStatus(id, 'APPROVED');
-              setTimeout(async () => {
-                  await loadData();
-                  setLoading(false);
-              }, 1200); 
-          } catch (e) {
+      // Only confirm if rejecting (deleting)
+      if(isDelete && !window.confirm("REJECT and DELETE this package?")) return;
+
+      setLoading(true);
+      try {
+          if (isDelete) await api.deletePackage(id);
+          else await api.updatePackageStatus(id, 'APPROVED');
+          
+          setTimeout(async () => {
+              await loadData();
               setLoading(false);
-          }
+          }, 1000); 
+      } catch (e) {
+          setLoading(false);
+          alert("Action failed.");
       }
   }
 
@@ -180,6 +183,26 @@ const ServicePackages: React.FC = () => {
 
   const pendingPackages = filteredPackages.filter(p => p.status === 'PENDING' || !p.status);
   const activePackages = filteredPackages.filter(p => p.status !== 'PENDING' && !!p.status);
+
+  // Bulk Approve Handler
+  const handleBulkApprove = async () => {
+      if (pendingPackages.length === 0) return;
+      if (!window.confirm(`Approve all ${pendingPackages.length} pending packages?`)) return;
+
+      setLoading(true);
+      try {
+          await Promise.all(pendingPackages.map(p => api.updatePackageStatus(p.id, 'APPROVED')));
+          setTimeout(async () => {
+              await loadData();
+              setLoading(false);
+              alert("All pending packages approved!");
+          }, 1200);
+      } catch (e) {
+          console.error(e);
+          setLoading(false);
+          alert("Some approvals might have failed.");
+      }
+  };
 
   // Helper to render card
   const renderCard = (pkg: ServicePackage) => {
@@ -333,10 +356,10 @@ const ServicePackages: React.FC = () => {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in duration-500 pb-20">
       
-      {/* Create Package Form */}
+      {/* Create Package Form - ADJUSTED SCROLLING */}
       <div className="lg:col-span-1">
-        <div className="bg-white rounded-[2rem] shadow-[0_20px_50px_-12px_rgba(0,0,0,0.1)] border border-slate-200 sticky top-6 overflow-hidden backdrop-blur-md">
-            <div className="px-8 py-8 bg-gradient-to-br from-slate-900 to-indigo-900 relative overflow-hidden">
+        <div className="bg-white rounded-[2rem] shadow-[0_20px_50px_-12px_rgba(0,0,0,0.1)] border border-slate-200 sticky top-6 max-h-[calc(100vh-6rem)] overflow-y-auto backdrop-blur-md">
+            <div className="px-8 py-8 bg-gradient-to-br from-slate-900 to-indigo-900 relative overflow-hidden shrink-0">
                 <div className="absolute top-0 right-0 w-40 h-40 bg-white/5 rounded-full -mr-10 -mt-10 blur-3xl"></div>
                 <div className="relative z-10 flex items-center text-white">
                     <div className="p-3 bg-white/10 rounded-2xl mr-4 border border-white/10 backdrop-blur-sm shadow-inner">
@@ -496,11 +519,22 @@ const ServicePackages: React.FC = () => {
         {/* SECTION 1: PENDING APPROVALS */}
         {pendingPackages.length > 0 && (
             <div className="animate-in fade-in slide-in-from-bottom-2">
-                <div className="flex items-center gap-2 mb-4">
-                    <div className="p-1.5 bg-amber-100 rounded-lg text-amber-600">
-                        <ShieldAlert className="w-4 h-4" />
+                <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                        <div className="p-1.5 bg-amber-100 rounded-lg text-amber-600">
+                            <ShieldAlert className="w-4 h-4" />
+                        </div>
+                        <h3 className="text-sm font-black text-slate-700 uppercase tracking-widest">Pending Approvals ({pendingPackages.length})</h3>
                     </div>
-                    <h3 className="text-sm font-black text-slate-700 uppercase tracking-widest">Pending Approvals ({pendingPackages.length})</h3>
+                    {currentUser?.role === Role.ADMIN && (
+                        <button 
+                            onClick={handleBulkApprove}
+                            disabled={loading}
+                            className="text-[10px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-700 px-3 py-1.5 rounded-lg hover:bg-emerald-200 transition-colors flex items-center shadow-sm border border-emerald-200"
+                        >
+                            <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Approve All
+                        </button>
+                    )}
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     {pendingPackages.map(pkg => renderCard(pkg))}
