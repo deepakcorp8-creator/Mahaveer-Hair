@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { api } from '../services/api';
 import { ServicePackage, Client, Entry, Role, User } from '../types';
-import { PackageCheck, Plus, Search, User as UserIcon, Clock, Pencil, X, ShieldAlert, Sparkles, CheckCircle2, AlertTriangle, CalendarRange, IndianRupee, Layers, Rewind, Loader2, Zap, ArrowRight, BatteryWarning } from 'lucide-react';
+import { PackageCheck, Plus, Search, User as UserIcon, Clock, Pencil, X, ShieldAlert, Sparkles, CheckCircle2, AlertTriangle, CalendarRange, IndianRupee, Layers, Rewind, Loader2, Zap, ArrowRight, BatteryWarning, RefreshCw, PlusCircle, History } from 'lucide-react';
 import { SearchableSelect } from './SearchableSelect';
 
 const ServicePackages: React.FC = () => {
@@ -18,6 +18,19 @@ const ServicePackages: React.FC = () => {
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingPackage, setEditingPackage] = useState<ServicePackage | null>(null);
+
+  // --- NEW STATES FOR RENEWAL & ADDON ---
+  const [isAddOnModalOpen, setIsAddOnModalOpen] = useState(false);
+  const [isRenewModalOpen, setIsRenewModalOpen] = useState(false);
+  const [selectedPkgForAction, setSelectedPkgForAction] = useState<ServicePackage | null>(null);
+  
+  const [addonForm, setAddonForm] = useState({ count: 0, cost: 0 });
+  const [renewForm, setRenewForm] = useState<Partial<ServicePackage>>({
+      startDate: new Date().toISOString().split('T')[0],
+      totalCost: 0,
+      totalServices: 12,
+      packageName: ''
+  });
 
   const [newPkg, setNewPkg] = useState<Partial<ServicePackage>>({
     clientName: '',
@@ -147,6 +160,84 @@ const ServicePackages: React.FC = () => {
       }
   }
 
+  // --- ADD-ON LOGIC ---
+  const openAddOnModal = (pkg: ServicePackage) => {
+      setSelectedPkgForAction(pkg);
+      setAddonForm({ count: 0, cost: 0 });
+      setIsAddOnModalOpen(true);
+  };
+
+  const handleAddOnSubmit = async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!selectedPkgForAction) return;
+      
+      setLoading(true);
+      try {
+          const updatedPkg = {
+              ...selectedPkgForAction,
+              totalServices: Number(selectedPkgForAction.totalServices) + Number(addonForm.count),
+              totalCost: Number(selectedPkgForAction.totalCost) + Number(addonForm.cost)
+          };
+          
+          await api.editPackage(updatedPkg);
+          await loadData();
+          setIsAddOnModalOpen(false);
+          setSelectedPkgForAction(null);
+          alert(`✅ Added ${addonForm.count} services to package!`);
+      } catch (e) {
+          console.error(e);
+          alert("Failed to add-on services.");
+      } finally {
+          setLoading(false);
+      }
+  };
+
+  // --- RENEWAL LOGIC ---
+  const openRenewModal = (pkg: ServicePackage) => {
+      setSelectedPkgForAction(pkg);
+      setRenewForm({
+          packageName: pkg.packageName, // Default to same name
+          totalCost: 0,
+          totalServices: 12,
+          startDate: new Date().toISOString().split('T')[0],
+          packageType: 'NEW',
+          oldServiceCount: 0
+      });
+      setIsRenewModalOpen(true);
+  };
+
+  const handleRenewSubmit = async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!selectedPkgForAction) return;
+
+      setLoading(true);
+      try {
+          // 1. Mark old package as COMPLETED/EXPIRED
+          await api.updatePackageStatus(selectedPkgForAction.id, 'COMPLETED');
+
+          // 2. Create new package
+          const payload = {
+              ...renewForm,
+              clientName: selectedPkgForAction.clientName,
+              contact: selectedPkgForAction.contact,
+              status: 'APPROVED', // Auto-approve renewals
+              packageType: 'NEW'
+          } as ServicePackage;
+
+          await api.addPackage(payload);
+          
+          await loadData();
+          setIsRenewModalOpen(false);
+          setSelectedPkgForAction(null);
+          alert("✅ Package Renewed Successfully!");
+      } catch (e) {
+          console.error(e);
+          alert("Failed to renew package.");
+      } finally {
+          setLoading(false);
+      }
+  };
+
   const getPackageUsage = (pkg: ServicePackage) => {
       const pkgName = (pkg.clientName || '').trim().toLowerCase();
       const pkgStart = new Date(pkg.startDate);
@@ -188,7 +279,7 @@ const ServicePackages: React.FC = () => {
       });
 
       return { total, pending, active, expiring };
-  }, [packages, entries]); // Recalculate if packages or entries change
+  }, [packages, entries]); 
 
   // --- LIST FILTERING ---
   const filteredPackages = packages.filter(p => {
@@ -354,21 +445,41 @@ const ServicePackages: React.FC = () => {
                 </div>
 
                 {/* Footer */}
-                <div className="pt-4 border-t border-slate-100 flex justify-between items-center mt-1">
-                    <div className="flex items-center gap-1.5 text-slate-600">
-                        <div className="bg-slate-100 p-1 rounded-md text-slate-500"><IndianRupee className="w-3 h-3" /></div>
-                        <div>
-                            <span className="text-[9px] uppercase font-black text-slate-400 block tracking-wider leading-none mb-0.5">Cost</span>
-                            <span className="text-xs font-black text-slate-800 leading-none">₹{pkg.totalCost}</span>
+                <div className="pt-4 border-t border-slate-100 flex flex-col gap-3">
+                    <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-1.5 text-slate-600">
+                            <div className="bg-slate-100 p-1 rounded-md text-slate-500"><IndianRupee className="w-3 h-3" /></div>
+                            <div>
+                                <span className="text-[9px] uppercase font-black text-slate-400 block tracking-wider leading-none mb-0.5">Cost</span>
+                                <span className="text-xs font-black text-slate-800 leading-none">₹{pkg.totalCost}</span>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-1.5 text-slate-600">
+                            <div className="text-right">
+                                <span className="text-[9px] uppercase font-black text-slate-400 block tracking-wider leading-none mb-0.5">Started</span>
+                                <span className="text-xs font-bold text-slate-600 leading-none">{pkg.startDate}</span>
+                            </div>
+                            <div className="bg-slate-100 p-1 rounded-md text-slate-500"><CalendarRange className="w-3 h-3" /></div>
                         </div>
                     </div>
-                    <div className="flex items-center gap-1.5 text-slate-600">
-                        <div className="text-right">
-                            <span className="text-[9px] uppercase font-black text-slate-400 block tracking-wider leading-none mb-0.5">Started</span>
-                            <span className="text-xs font-bold text-slate-600 leading-none">{pkg.startDate}</span>
+
+                    {/* NEW ACTION BUTTONS FOR ACTIVE PACKAGES */}
+                    {!isPending && (
+                        <div className="flex gap-2 pt-1">
+                            <button 
+                                onClick={() => openAddOnModal(pkg)}
+                                className="flex-1 py-2 rounded-lg bg-blue-50 text-blue-600 font-bold text-xs hover:bg-blue-100 transition-colors border border-blue-100 flex items-center justify-center"
+                            >
+                                <PlusCircle className="w-3.5 h-3.5 mr-1.5" /> Add-on
+                            </button>
+                            <button 
+                                onClick={() => openRenewModal(pkg)}
+                                className="flex-1 py-2 rounded-lg bg-emerald-50 text-emerald-600 font-bold text-xs hover:bg-emerald-100 transition-colors border border-emerald-100 flex items-center justify-center"
+                            >
+                                <RefreshCw className="w-3.5 h-3.5 mr-1.5" /> Renew
+                            </button>
                         </div>
-                        <div className="bg-slate-100 p-1 rounded-md text-slate-500"><CalendarRange className="w-3 h-3" /></div>
-                    </div>
+                    )}
                 </div>
 
                  {/* Edit Button (Absolute) */}
@@ -770,6 +881,118 @@ const ServicePackages: React.FC = () => {
                           >
                               {loading ? 'Saving...' : 'Save Changes'}
                           </button>
+                      </div>
+                  </form>
+              </div>
+          </div>
+      )}
+
+      {/* --- ADDON MODAL --- */}
+      {isAddOnModalOpen && selectedPkgForAction && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+              <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in-95 border border-white/20">
+                  <div className="bg-gradient-to-r from-blue-600 to-indigo-700 px-8 py-6 text-white">
+                      <h3 className="font-black text-lg flex items-center tracking-tight">
+                          <PlusCircle className="w-5 h-5 mr-3 text-blue-200" /> Add Services
+                      </h3>
+                      <p className="text-blue-100 text-xs font-bold mt-1">Top-up {selectedPkgForAction.packageName}</p>
+                  </div>
+                  <form onSubmit={handleAddOnSubmit} className="p-8 space-y-6">
+                      <div className="space-y-4">
+                          <div>
+                              <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Additional Services</label>
+                              <input 
+                                  type="number"
+                                  value={addonForm.count}
+                                  onChange={e => setAddonForm({...addonForm, count: Number(e.target.value)})}
+                                  className="w-full rounded-xl border-slate-200 bg-slate-50 px-4 py-3 font-bold focus:ring-2 focus:ring-blue-500 outline-none"
+                                  min="1"
+                                  required
+                              />
+                          </div>
+                          <div>
+                              <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Additional Cost (₹)</label>
+                              <input 
+                                  type="number"
+                                  value={addonForm.cost}
+                                  onChange={e => setAddonForm({...addonForm, cost: Number(e.target.value)})}
+                                  className="w-full rounded-xl border-slate-200 bg-slate-50 px-4 py-3 font-bold focus:ring-2 focus:ring-blue-500 outline-none"
+                                  min="0"
+                                  required
+                              />
+                          </div>
+                      </div>
+                      <div className="flex gap-3 pt-2">
+                          <button type="button" onClick={() => setIsAddOnModalOpen(false)} className="flex-1 py-3 border border-slate-200 rounded-xl font-bold text-slate-500">Cancel</button>
+                          <button type="submit" disabled={loading} className="flex-1 py-3 bg-blue-600 text-white rounded-xl font-bold shadow-lg hover:bg-blue-700">{loading ? 'Saving...' : 'Add Services'}</button>
+                      </div>
+                  </form>
+              </div>
+          </div>
+      )}
+
+      {/* --- RENEWAL MODAL --- */}
+      {isRenewModalOpen && selectedPkgForAction && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+              <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 border border-white/20">
+                  <div className="bg-gradient-to-r from-emerald-600 to-teal-700 px-8 py-6 text-white">
+                      <h3 className="font-black text-lg flex items-center tracking-tight">
+                          <RefreshCw className="w-5 h-5 mr-3 text-emerald-200" /> Renew Package
+                      </h3>
+                      <p className="text-emerald-100 text-xs font-bold mt-1">Start new cycle for {selectedPkgForAction.clientName}</p>
+                  </div>
+                  <form onSubmit={handleRenewSubmit} className="p-8 space-y-5">
+                      <div>
+                          <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">New Package Name</label>
+                          <input 
+                              type="text"
+                              value={renewForm.packageName}
+                              onChange={e => setRenewForm({...renewForm, packageName: e.target.value})}
+                              className="w-full rounded-xl border-slate-200 bg-slate-50 px-4 py-3 font-bold focus:ring-2 focus:ring-emerald-500 outline-none"
+                              required
+                          />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                          <div>
+                              <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">New Cost</label>
+                              <input 
+                                  type="number"
+                                  value={renewForm.totalCost}
+                                  onChange={e => setRenewForm({...renewForm, totalCost: Number(e.target.value)})}
+                                  className="w-full rounded-xl border-slate-200 bg-slate-50 px-4 py-3 font-bold focus:ring-2 focus:ring-emerald-500 outline-none"
+                                  required
+                              />
+                          </div>
+                          <div>
+                              <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Services</label>
+                              <input 
+                                  type="number"
+                                  value={renewForm.totalServices}
+                                  onChange={e => setRenewForm({...renewForm, totalServices: Number(e.target.value)})}
+                                  className="w-full rounded-xl border-slate-200 bg-slate-50 px-4 py-3 font-bold focus:ring-2 focus:ring-emerald-500 outline-none"
+                                  required
+                              />
+                          </div>
+                      </div>
+                      <div>
+                          <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Start Date</label>
+                          <input 
+                              type="date"
+                              value={renewForm.startDate}
+                              onChange={e => setRenewForm({...renewForm, startDate: e.target.value})}
+                              className="w-full rounded-xl border-slate-200 bg-slate-50 px-4 py-3 font-bold focus:ring-2 focus:ring-emerald-500 outline-none"
+                              required
+                          />
+                      </div>
+                      
+                      <div className="bg-emerald-50 p-3 rounded-xl border border-emerald-100 text-xs text-emerald-700 font-medium flex items-start gap-2">
+                          <CheckCircle2 className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                          <p>This will close the current package and start a fresh count.</p>
+                      </div>
+
+                      <div className="flex gap-3 pt-2">
+                          <button type="button" onClick={() => setIsRenewModalOpen(false)} className="flex-1 py-3 border border-slate-200 rounded-xl font-bold text-slate-500">Cancel</button>
+                          <button type="submit" disabled={loading} className="flex-1 py-3 bg-emerald-600 text-white rounded-xl font-bold shadow-lg hover:bg-emerald-700">{loading ? 'Processing...' : 'Confirm Renewal'}</button>
                       </div>
                   </form>
               </div>
