@@ -3,7 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { api } from '../services/api';
 import { ServicePackage, Client, Entry, Role, User } from '../types';
 import { PackageCheck, Plus, Search, User as UserIcon, Clock, Pencil, X, ShieldAlert, Sparkles, CheckCircle2, AlertTriangle, CalendarRange, IndianRupee, Layers, Rewind, Loader2, Zap, ArrowRight, BatteryWarning, RefreshCw, PlusCircle, History } from 'lucide-react';
-import { SearchableSelect } from './SearchableSelect';
+import { SearchableSelect, Option } from './SearchableSelect';
 
 const ServicePackages: React.FC = () => {
   const [packages, setPackages] = useState<ServicePackage[]>([]);
@@ -63,8 +63,19 @@ const ServicePackages: React.FC = () => {
     setEntries(entriesData);
   };
 
-  const handleClientChange = (name: string) => {
-      const client = clients.find(c => c.name.toLowerCase() === name.toLowerCase());
+  const handleClientChange = (name: string, selectedOption?: Option) => {
+      let client: Client | undefined;
+
+      // 1. Precise lookup if option selected
+      if (selectedOption && selectedOption.subtext) {
+          client = clients.find(c => c.name === selectedOption.label && c.contact === selectedOption.subtext);
+      } 
+      
+      // 2. Fallback lookup by name
+      if (!client) {
+          client = clients.find(c => c.name.toLowerCase() === name.toLowerCase());
+      }
+
       if (client) {
           setNewPkg(prev => ({ ...prev, clientName: client.name, contact: client.contact }));
       } else {

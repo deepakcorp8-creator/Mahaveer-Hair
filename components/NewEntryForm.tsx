@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { Client, Item, Technician, Entry, ServicePackage, Role, User } from '../types';
 import { Save, AlertCircle, User as UserIcon, CreditCard, Scissors, Calendar, MapPin, RefreshCw, CheckCircle2, Ticket, FileDown, ShieldCheck, Search, PenSquare, Wallet, X, Clock, AlertTriangle, Loader2, IndianRupee, Sparkles, Layers, UserPlus } from 'lucide-react';
-import { SearchableSelect } from './SearchableSelect';
+import { SearchableSelect, Option } from './SearchableSelect';
 import { generateInvoice } from '../utils/invoiceGenerator';
 
 const NewEntryForm: React.FC = () => {
@@ -133,16 +133,30 @@ const NewEntryForm: React.FC = () => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleClientChange = (clientName: string) => {
+  const handleClientChange = (clientName: string, selectedOption?: Option) => {
     setFormData(prev => ({ ...prev, clientName: clientName }));
     setActivePackage(null);
+    
     if (!clientName) return;
-    const client = clients.find(c => c.name.toLowerCase() === clientName.toLowerCase());
+
+    let client: Client | undefined;
+
+    // IF an option was explicitly selected, use contact number (subtext) to disambiguate
+    if (selectedOption && selectedOption.subtext) {
+        client = clients.find(c => c.name === selectedOption.label && c.contact === selectedOption.subtext);
+    } 
+    
+    // Fallback if typed manually or subtext mismatch
+    if (!client) {
+        client = clients.find(c => c.name.toLowerCase() === clientName.toLowerCase());
+    }
+
     let contactToUse = '';
     if (client) {
       setFormData(prev => ({ ...prev, clientName: client.name, contactNo: client.contact, address: client.address }));
       contactToUse = client.contact;
     }
+    
     checkPackage(client ? client.name : clientName, contactToUse);
   };
 

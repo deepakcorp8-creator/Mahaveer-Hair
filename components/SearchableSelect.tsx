@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { ChevronDown, Check, X, Search, Crown, UserPlus } from 'lucide-react';
 
-interface Option {
+export interface Option {
   label: string;
   value: string;
   subtext?: string;
@@ -12,7 +12,7 @@ interface Option {
 interface SearchableSelectProps {
   options: Option[];
   value: string;
-  onChange: (value: string) => void;
+  onChange: (value: string, option?: Option) => void;
   onCreateNew?: (value: string) => void; // NEW PROP
   placeholder?: string;
   label?: string;
@@ -63,8 +63,8 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
     return result.slice(0, 50);
   }, [options, value]);
 
-  const handleSelect = (optValue: string) => {
-      onChange(optValue);
+  const handleSelect = (option: Option) => {
+      onChange(option.label, option);
       setIsOpen(false);
       inputRef.current?.blur();
   };
@@ -140,7 +140,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
                                     : 'text-gray-700 hover:bg-gray-50 border border-transparent'}
                                 ${opt.isHighlight ? 'bg-amber-50 hover:bg-amber-100 border-amber-100' : ''}
                             `}
-                            onClick={() => handleSelect(opt.label)}
+                            onClick={() => handleSelect(opt)}
                         >
                             <div className="flex items-center gap-3 overflow-hidden">
                                 {opt.isHighlight && (
