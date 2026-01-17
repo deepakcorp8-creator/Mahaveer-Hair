@@ -80,7 +80,7 @@ const Dashboard: React.FC = () => {
   const activeInPeriod = new Set(filteredEntries.map(e => e.clientName)).size;
 
   // Process data for charts
-  const serviceTypeData = filteredEntries.reduce((acc: any[], curr) => {
+  const rawServiceData = filteredEntries.reduce((acc: any[], curr) => {
     const found = acc.find(item => item.name === curr.serviceType);
     if (found) {
       found.value++;
@@ -89,6 +89,15 @@ const Dashboard: React.FC = () => {
     }
     return acc;
   }, []);
+
+  // Calculate Total for Percentages
+  const totalServicesCount = rawServiceData.reduce((sum: number, item: any) => sum + item.value, 0);
+
+  // Add Percentage to Name for Legend Display
+  const serviceTypeData = rawServiceData.map((item: any) => ({
+      ...item,
+      name: `${item.name} (${totalServicesCount > 0 ? ((item.value / totalServicesCount) * 100).toFixed(0) : 0}%)`
+  })).sort((a: any, b: any) => b.value - a.value);
 
   // SALES DATA PROCESSING
   const salesMap = new Map<string, number>();
@@ -436,7 +445,7 @@ const Dashboard: React.FC = () => {
           </div>
            <div className="mt-4 p-4 bg-slate-50 rounded-2xl border border-slate-200 text-center shadow-inner">
               <p className="text-xs text-slate-500 font-bold uppercase tracking-wider mb-1">Top Performing Service</p>
-              <p className="text-xl font-black text-slate-800">{serviceTypeData.sort((a,b) => b.value - a.value)[0]?.name || 'N/A'}</p>
+              <p className="text-xl font-black text-slate-800">{serviceTypeData[0]?.name || 'N/A'}</p>
           </div>
         </div>
       </div>

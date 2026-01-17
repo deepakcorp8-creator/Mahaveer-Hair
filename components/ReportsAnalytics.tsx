@@ -130,6 +130,16 @@ const ReportsAnalytics: React.FC = () => {
     return sorted;
   }, [filteredData]);
 
+  // --- CALCULATE PERCENTAGES FOR PIE ---
+  const totalItems = useMemo(() => productStats.reduce((a, b) => a + b.value, 0), [productStats]);
+  
+  const pieData = useMemo(() => {
+      return productStats.map(item => ({
+          ...item,
+          displayName: `${item.name} (${((item.value / totalItems) * 100).toFixed(0)}%)`
+      }));
+  }, [productStats, totalItems]);
+
   // --- DERIVED METRICS ---
   
   const topRevenueTechs = [...techStats].sort((a, b) => b.revenue - a.revenue).slice(0, 5); // Increased to 5
@@ -407,7 +417,7 @@ const ReportsAnalytics: React.FC = () => {
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 
-                {/* 3. PRODUCT MIX (PIE) - CLEANER */}
+                {/* 3. PRODUCT MIX (PIE) - UPDATED TO SHOW PERCENTAGES */}
                 <div className={`${card3D} p-8 lg:col-span-1 flex flex-col`}>
                     <div className="flex items-center justify-between mb-2">
                         <div>
@@ -423,22 +433,24 @@ const ReportsAnalytics: React.FC = () => {
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
                                 <Pie
-                                    data={productStats}
+                                    data={pieData}
                                     cx="50%"
                                     cy="50%"
                                     innerRadius={70}
                                     outerRadius={95}
                                     paddingAngle={6}
                                     dataKey="value"
+                                    nameKey="displayName"
                                     cornerRadius={6}
                                 >
-                                    {productStats.map((entry, index) => (
+                                    {pieData.map((entry, index) => (
                                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} strokeWidth={0} />
                                     ))}
                                 </Pie>
                                 <Tooltip 
                                     contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 10px 40px -10px rgba(0,0,0,0.15)', fontWeight: 'bold'}}
                                     itemStyle={{color: '#1e293b'}}
+                                    formatter={(value: number) => [`${value} Count`, 'Quantity']}
                                 />
                                 <Legend 
                                     verticalAlign="bottom" 
@@ -451,7 +463,7 @@ const ReportsAnalytics: React.FC = () => {
                         </ResponsiveContainer>
                         {/* Center Text */}
                         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none pb-8">
-                            <span className="text-3xl font-black text-slate-800 block">{productStats.reduce((a, b) => a + b.value, 0)}</span>
+                            <span className="text-3xl font-black text-slate-800 block">{totalItems}</span>
                             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Items</span>
                         </div>
                     </div>
