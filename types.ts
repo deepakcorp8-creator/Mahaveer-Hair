@@ -43,7 +43,7 @@ export interface Entry {
   patchSize?: string; // Optional, only if NEW
   invoiceUrl?: string; // PDF Link
   pendingAmount?: number; // Partial payments
-  
+
   // NEW FIELDS FOR FOLLOW UP
   paymentScreenshotUrl?: string; // Col Q
   nextCallDate?: string; // Col R
@@ -56,7 +56,7 @@ export interface Appointment {
   contact: string;
   address: string;
   note: string;
-  status: 'PENDING' | 'FOLLOWUP' | 'CLOSED';
+  status: 'PENDING' | 'FOLLOWUP' | 'CLOSED' | 'CANCELLED';
   branch?: string;
   time?: string;
 }

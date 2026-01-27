@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 // Fix: Use named imports for react-router-dom as namespace destructuring was failing
-import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
-const Router = HashRouter;
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+const Router = BrowserRouter;
 import Layout from './components/Layout';
 import Dashboard from './components/Dashboard';
 import NewEntryForm from './components/NewEntryForm';
@@ -10,7 +10,7 @@ import ClientMaster from './components/ClientMaster';
 import AppointmentBooking from './components/AppointmentBooking';
 import ServicePackages from './components/ServicePackages';
 import DailyReport from './components/DailyReport';
-import ClientHistory from './components/ClientHistory'; 
+import ClientHistory from './components/ClientHistory';
 import PendingPayments from './components/PendingPayments';
 import AdminPanel from './components/AdminPanel';
 import ReportsAnalytics from './components/ReportsAnalytics';
@@ -28,18 +28,18 @@ interface ProtectedRouteProps {
 
 // ProtectedRoute Logic
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ user, children, path }) => {
-     if (user.role === Role.ADMIN) return children;
-     
-     // Auth service now guarantees permissions array is populated (even with defaults)
-     const userPerms = user.permissions || [];
-     
-     if (userPerms.includes(path)) {
-         return children;
-     }
+  if (user.role === Role.ADMIN) return children;
 
-     // If denied, redirect to the first allowed page or empty
-     const firstAllowed = userPerms[0] || '/';
-     return <Navigate to={firstAllowed} replace />;
+  // Auth service now guarantees permissions array is populated (even with defaults)
+  const userPerms = user.permissions || [];
+
+  if (userPerms.includes(path)) {
+    return children;
+  }
+
+  // If denied, redirect to the first allowed page or empty
+  const firstAllowed = userPerms[0] || '/';
+  return <Navigate to={firstAllowed} replace />;
 };
 
 function App() {
@@ -58,17 +58,17 @@ function App() {
   const checkIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // UPDATED TIME: 20 Minutes Total
-  const TIMEOUT_DURATION = 20 * 60 * 1000; 
-  const WARNING_DURATION = 19 * 60 * 1000; 
-  const CHECK_INTERVAL = 10 * 1000; 
+  const TIMEOUT_DURATION = 20 * 60 * 1000;
+  const WARNING_DURATION = 19 * 60 * 1000;
+  const CHECK_INTERVAL = 10 * 1000;
 
   // Pre-fetch data on load
   useEffect(() => {
     if (user) {
-        // Initial fetch to populate cache
-        api.getOptions();
-        api.getEntries();
-        api.getAppointments();
+      // Initial fetch to populate cache
+      api.getOptions();
+      api.getEntries();
+      api.getAppointments();
     }
   }, [user]);
 
@@ -95,8 +95,8 @@ function App() {
       }
     };
 
-    const events = ['mousedown', 'keydown', 'scroll', 'touchstart', 'mousemove'];
-    events.forEach(event => window.addEventListener(event, updateActivity));
+    const events = ['mousedown', 'keydown', 'scroll', 'touchstart', 'mousemove', 'wheel', 'click'];
+    events.forEach(event => window.addEventListener(event, updateActivity, true));
 
     checkIntervalRef.current = setInterval(() => {
       const now = Date.now();
@@ -110,7 +110,7 @@ function App() {
     }, CHECK_INTERVAL);
 
     return () => {
-      events.forEach(event => window.removeEventListener(event, updateActivity));
+      events.forEach(event => window.removeEventListener(event, updateActivity, true));
       if (checkIntervalRef.current) clearInterval(checkIntervalRef.current);
     };
   }, [user, showTimeoutWarning, handleLogout]);
@@ -126,7 +126,7 @@ function App() {
 
   return (
     <Router>
-       {showTimeoutWarning && (
+      {showTimeoutWarning && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-sm w-full mx-4 border border-slate-200">
             <div className="flex flex-col items-center text-center">
@@ -138,13 +138,13 @@ function App() {
                 You have been inactive for a while. For security, you will be logged out in <span className="font-bold text-amber-600">1 minute</span>.
               </p>
               <div className="flex gap-3 w-full">
-                <button 
+                <button
                   onClick={handleLogout}
                   className="flex-1 py-2.5 px-4 rounded-xl border border-slate-200 text-slate-600 font-bold text-sm hover:bg-slate-50 transition-colors"
                 >
                   Log Out
                 </button>
-                <button 
+                <button
                   onClick={stayLoggedIn}
                   className="flex-1 py-2.5 px-4 rounded-xl bg-indigo-600 text-white font-bold text-sm hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-colors"
                 >
@@ -158,46 +158,46 @@ function App() {
 
       <Layout user={user} onLogout={handleLogout}>
         <Routes>
-          <Route 
-            path="/" 
-            element={user.role === Role.ADMIN ? <Dashboard /> : <Navigate to="/new-entry" replace />} 
+          <Route
+            path="/"
+            element={user.role === Role.ADMIN ? <Dashboard /> : <Navigate to="/new-entry" replace />}
           />
-          
+
           <Route path="/new-entry" element={
-              <ProtectedRoute user={user} path="/new-entry"><NewEntryForm /></ProtectedRoute>
+            <ProtectedRoute user={user} path="/new-entry"><NewEntryForm /></ProtectedRoute>
           } />
-          
+
           <Route path="/pending-dues" element={
-              <ProtectedRoute user={user} path="/pending-dues"><PendingPayments /></ProtectedRoute>
+            <ProtectedRoute user={user} path="/pending-dues"><PendingPayments /></ProtectedRoute>
           } />
 
           <Route path="/daily-report" element={
-              <ProtectedRoute user={user} path="/daily-report"><DailyReport /></ProtectedRoute>
+            <ProtectedRoute user={user} path="/daily-report"><DailyReport /></ProtectedRoute>
           } />
-          
+
           <Route path="/appointments" element={
-              <ProtectedRoute user={user} path="/appointments"><AppointmentBooking /></ProtectedRoute>
+            <ProtectedRoute user={user} path="/appointments"><AppointmentBooking /></ProtectedRoute>
           } />
 
           <Route path="/history" element={
-              <ProtectedRoute user={user} path="/history"><ClientHistory /></ProtectedRoute>
+            <ProtectedRoute user={user} path="/history"><ClientHistory /></ProtectedRoute>
           } />
-          
+
           <Route path="/packages" element={
-              <ProtectedRoute user={user} path="/packages"><ServicePackages /></ProtectedRoute>
-          } /> 
-          
-          <Route path="/clients" element={
-              <ProtectedRoute user={user} path="/clients"><ClientMaster /></ProtectedRoute>
+            <ProtectedRoute user={user} path="/packages"><ServicePackages /></ProtectedRoute>
           } />
-          
-          <Route 
-            path="/admin" 
-            element={user.role === Role.ADMIN ? <AdminPanel /> : <Navigate to="/new-entry" />} 
+
+          <Route path="/clients" element={
+            <ProtectedRoute user={user} path="/clients"><ClientMaster /></ProtectedRoute>
+          } />
+
+          <Route
+            path="/admin"
+            element={user.role === Role.ADMIN ? <AdminPanel /> : <Navigate to="/new-entry" />}
           />
-          <Route 
-            path="/reports" 
-            element={user.role === Role.ADMIN ? <ReportsAnalytics /> : <Navigate to="/new-entry" />} 
+          <Route
+            path="/reports"
+            element={user.role === Role.ADMIN ? <ReportsAnalytics /> : <Navigate to="/new-entry" />}
           />
 
           <Route path="*" element={<Navigate to="/" />} />
