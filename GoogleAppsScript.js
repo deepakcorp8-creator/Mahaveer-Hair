@@ -12,6 +12,7 @@ function doGet(e) {
   if (action == 'getEntries') return getEntries(ss);
   if (action == 'getUsers') return getUsers(ss);
   if (action == 'getAppointments') return getAppointments(ss);
+  if (action == 'getPaymentHistory') return getPaymentHistory(ss);
 
   return response({error: "Invalid GET action: " + action});
 }
@@ -678,4 +679,21 @@ function getUsers(ss) {
       dob: fromSheetDate(row[7]), 
       address: row[8] 
     })));
+}
+
+function getPaymentHistory(ss) {
+    const sheet = getSheet(ss, "PAYMENT COLLECTION");
+    if (!sheet || sheet.getLastRow() <= 1) return response([]);
+    // Fetch data including Col G (Paid Amount)
+    const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 12).getValues();
+    return response(data.map((row, index) => ({
+      id: row[0] || ('hist_' + index), 
+      date: fromSheetDate(row[1]), 
+      clientName: row[2], 
+      contact: row[3],
+      // Col G is index 6
+      paidAmount: Number(row[6] || 0),
+      remark: row[8],
+      paymentMethod: row[11] || 'Received' 
+    })).reverse().filter(p => p.paidAmount > 0));
 }

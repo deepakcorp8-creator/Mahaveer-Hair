@@ -156,24 +156,27 @@ const ClientHistory: React.FC = () => {
             <div className="flex w-full xl:w-auto items-center gap-2 p-1.5 bg-white/50 backdrop-blur-sm rounded-[1.5rem] border border-slate-200 shadow-sm overflow-x-auto">
                 <button 
                     onClick={() => setPreset('TODAY')} 
-                    className={`p-3.5 rounded-2xl transition-all border shadow-sm flex-shrink-0 ${startDate === new Date().toISOString().split('T')[0] && endDate === startDate ? 'bg-indigo-600 text-white border-indigo-700' : 'bg-white text-slate-500 border-slate-200 hover:text-indigo-600'}`}
+                    className={`flex items-center gap-2 px-5 py-3 rounded-2xl transition-all border shadow-sm flex-shrink-0 ${startDate === new Date().toISOString().split('T')[0] && endDate === startDate ? 'bg-indigo-600 text-white border-indigo-700' : 'bg-white text-slate-500 border-slate-200 hover:text-indigo-600'}`}
                     title="Today's Data"
                 >
                     <CalendarCheck className="w-5 h-5" />
+                    <span className="font-bold">Today</span>
                 </button>
                 <button 
                     onClick={() => setPreset('CLIENT_SEARCH')} 
-                    className={`p-3.5 rounded-2xl transition-all border shadow-sm flex-shrink-0 ${!startDate && !endDate && searchTerm ? 'bg-violet-600 text-white border-violet-700' : 'bg-white text-slate-500 border-slate-200 hover:text-violet-600'}`}
+                    className={`flex items-center gap-2 px-5 py-3 rounded-2xl transition-all border shadow-sm flex-shrink-0 ${!startDate && !endDate && searchTerm ? 'bg-violet-600 text-white border-violet-700' : 'bg-white text-slate-500 border-slate-200 hover:text-violet-600'}`}
                     title="Show All Records"
                 >
                     <ListFilter className="w-5 h-5" />
+                    <span className="font-bold">All</span>
                 </button>
                 <button 
                     onClick={() => setPreset('ALL')} 
-                    className="p-3.5 rounded-2xl border border-slate-200 bg-white text-slate-400 hover:text-red-500 transition-colors shadow-sm flex-shrink-0"
+                    className="flex items-center gap-2 px-5 py-3 rounded-2xl border border-slate-200 bg-white text-slate-400 hover:text-red-500 transition-colors shadow-sm flex-shrink-0"
                     title="Reset Filters"
                 >
                     <RotateCcw className="w-5 h-5" />
+                    <span className="font-bold">Reset</span>
                 </button>
             </div>
       </div>

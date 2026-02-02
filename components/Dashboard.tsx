@@ -253,144 +253,144 @@ const Dashboard: React.FC = () => {
   }
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500 pb-10">
+    <div className="space-y-6 animate-in fade-in duration-500 pb-10">
 
       {/* Header Section */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center relative z-10 gap-4">
         <div>
-          <h2 className="text-4xl font-black text-slate-800 tracking-tight flex items-center">
+          <h2 className="text-3xl font-black text-slate-800 tracking-tight flex items-center">
             Dashboard
-            <Sparkles className="w-6 h-6 text-yellow-500 ml-3 animate-pulse" />
+            <Sparkles className="w-5 h-5 text-yellow-500 ml-2 animate-pulse" />
           </h2>
-          <p className="text-slate-600 mt-2 font-semibold text-lg">Business Analytics & Overview</p>
+          <p className="text-slate-600 mt-1 font-semibold text-sm">Business Analytics & Overview</p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2">
           {/* Branch Filter */}
           <div className="relative group">
-            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-indigo-500 z-10 pointer-events-none">
-              <MapPin className="w-4 h-4" />
+            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-indigo-500 z-10 pointer-events-none">
+              <MapPin className="w-3.5 h-3.5" />
             </div>
             <select
               value={selectedBranch}
               onChange={(e) => setSelectedBranch(e.target.value)}
-              className="appearance-none bg-white border-2 border-indigo-100 pl-11 pr-10 py-3 rounded-2xl shadow-lg shadow-indigo-50 text-indigo-700 text-sm font-black focus:outline-none focus:ring-4 focus:ring-indigo-500/10 cursor-pointer hover:border-indigo-400 transition-all"
+              className="appearance-none bg-white border border-indigo-100 pl-9 pr-8 py-2.5 rounded-xl shadow-sm shadow-indigo-50 text-indigo-700 text-xs font-black focus:outline-none focus:ring-2 focus:ring-indigo-500/10 cursor-pointer hover:border-indigo-400 transition-all"
             >
               <option value="ALL">All Branches</option>
               <option value="RPR">Raipur (RPR)</option>
               <option value="JDP">Jagdalpur (JDP)</option>
             </select>
-            <div className="absolute right-4 top-1/2 -translate-y-1/2 text-indigo-500 pointer-events-none">
-              <ChevronDown className="w-4 h-4" />
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 text-indigo-500 pointer-events-none">
+              <ChevronDown className="w-3.5 h-3.5" />
             </div>
           </div>
 
           {/* Year Filter */}
           <div className="relative group">
-            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-indigo-500 z-10 pointer-events-none">
-              <Calendar className="w-4 h-4" />
+            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-indigo-500 z-10 pointer-events-none">
+              <Calendar className="w-3.5 h-3.5" />
             </div>
             <select
               value={selectedYear}
               onChange={(e) => setSelectedYear(Number(e.target.value))}
-              className="appearance-none bg-white border-2 border-indigo-100 pl-11 pr-10 py-3 rounded-2xl shadow-lg shadow-indigo-50 text-indigo-700 text-sm font-black focus:outline-none focus:ring-4 focus:ring-indigo-500/10 cursor-pointer hover:border-indigo-400 transition-all"
+              className="appearance-none bg-white border border-indigo-100 pl-9 pr-8 py-2.5 rounded-xl shadow-sm shadow-indigo-50 text-indigo-700 text-xs font-black focus:outline-none focus:ring-2 focus:ring-indigo-500/10 cursor-pointer hover:border-indigo-400 transition-all"
             >
               {availableYears.map(year => (
                 <option key={year} value={year}>{year}</option>
               ))}
             </select>
-            <div className="absolute right-4 top-1/2 -translate-y-1/2 text-indigo-500 pointer-events-none">
-              <ChevronDown className="w-4 h-4" />
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 text-indigo-500 pointer-events-none">
+              <ChevronDown className="w-3.5 h-3.5" />
             </div>
           </div>
 
           <div className="relative group">
-            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-indigo-500 z-10 pointer-events-none">
-              <Calendar className="w-4 h-4" />
+            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-indigo-500 z-10 pointer-events-none">
+              <Calendar className="w-3.5 h-3.5" />
             </div>
             <select
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(e.target.value)}
-              className="appearance-none bg-white border-2 border-indigo-100 pl-11 pr-10 py-3 rounded-2xl shadow-lg shadow-indigo-50 text-indigo-700 text-sm font-black focus:outline-none focus:ring-4 focus:ring-indigo-500/10 cursor-pointer hover:border-indigo-400 transition-all"
+              className="appearance-none bg-white border border-indigo-100 pl-9 pr-8 py-2.5 rounded-xl shadow-sm shadow-indigo-50 text-indigo-700 text-xs font-black focus:outline-none focus:ring-2 focus:ring-indigo-500/10 cursor-pointer hover:border-indigo-400 transition-all"
             >
               {MONTHS.map(m => <option key={m} value={m}>{m}</option>)}
             </select>
-            <div className="absolute right-4 top-1/2 -translate-y-1/2 text-indigo-500 pointer-events-none">
-              <ChevronDown className="w-4 h-4" />
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 text-indigo-500 pointer-events-none">
+              <ChevronDown className="w-3.5 h-3.5" />
             </div>
           </div>
         </div>
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Total Registered Clients Card (FROM CLIENT MASTER) */}
-        <div className="relative bg-white rounded-3xl p-6 border-b-4 border-b-blue-500 shadow-[0_15px_30px_-5px_rgba(59,130,246,0.15)] transition-transform hover:-translate-y-2 group overflow-hidden border-x border-t border-slate-100">
+        <div className="relative bg-white rounded-2xl p-4 border-b-4 border-b-blue-500 shadow-[0_10px_20px_-5px_rgba(59,130,246,0.15)] transition-transform hover:-translate-y-1 group overflow-hidden border-x border-t border-slate-100">
           <div className="relative z-10 flex justify-between items-start">
             <div>
-              <p className="text-slate-500 text-xs font-black uppercase tracking-widest mb-2">Total Clients</p>
-              <h3 className="text-4xl font-black text-slate-800">{totalRegisteredClients}</h3>
+              <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-1">Total Clients</p>
+              <h3 className="text-3xl font-black text-slate-800">{totalRegisteredClients}</h3>
             </div>
-            <div className="p-3 bg-blue-100 text-blue-600 rounded-xl shadow-inner border border-blue-200">
-              <Users className="w-7 h-7" />
+            <div className="p-2 bg-blue-100 text-blue-600 rounded-lg shadow-inner border border-blue-200">
+              <Users className="w-5 h-5" />
             </div>
           </div>
-          <div className="mt-4 flex items-center text-xs font-bold text-slate-400">
-            <span className="text-blue-600 bg-blue-50 px-2 py-1 rounded-md mr-2 flex items-center">
+          <div className="mt-3 flex items-center text-[10px] font-bold text-slate-400">
+            <span className="text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded mr-2 flex items-center">
               Verified
             </span>
             <span>In Master List</span>
           </div>
         </div>
 
-        <div className="relative rounded-3xl p-6 bg-slate-900 text-white shadow-[0_20px_40px_-10px_rgba(15,23,42,0.6)] border border-slate-700 transition-transform hover:-translate-y-2 overflow-hidden">
+        <div className="relative rounded-2xl p-4 bg-slate-900 text-white shadow-[0_15px_30px_-10px_rgba(15,23,42,0.6)] border border-slate-700 transition-transform hover:-translate-y-1 overflow-hidden">
           <div className="relative z-10 flex justify-between items-start">
             <div>
-              <p className="text-slate-400 text-xs font-black uppercase tracking-widest mb-2">Total Revenue</p>
-              <h3 className="text-4xl font-black tracking-tight text-white">₹{totalRevenue.toLocaleString()}</h3>
+              <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-1">Total Revenue</p>
+              <h3 className="text-3xl font-black tracking-tight text-white">₹{totalRevenue.toLocaleString()}</h3>
             </div>
-            <div className="p-3 bg-white/10 backdrop-blur-md rounded-xl border border-white/20 shadow-inner">
-              <IndianRupee className="w-7 h-7 text-emerald-400" />
+            <div className="p-2 bg-white/10 backdrop-blur-md rounded-lg border border-white/20 shadow-inner">
+              <IndianRupee className="w-5 h-5 text-emerald-400" />
             </div>
           </div>
-          <div className="mt-4 flex items-center text-xs font-bold text-slate-400">
-            <span className="text-emerald-300 bg-emerald-500/20 border border-emerald-500/30 px-2 py-1 rounded-md mr-2 flex items-center">
+          <div className="mt-3 flex items-center text-[10px] font-bold text-slate-400">
+            <span className="text-emerald-300 bg-emerald-500/20 border border-emerald-500/30 px-1.5 py-0.5 rounded mr-2 flex items-center">
               <ArrowUpRight className="w-3 h-3 mr-1" /> Active
             </span>
             <span>{selectedMonth} Earnings</span>
           </div>
         </div>
 
-        <div className="relative bg-white rounded-3xl p-6 border-b-4 border-b-red-500 shadow-[0_15px_30px_-5px_rgba(239,68,68,0.15)] transition-transform hover:-translate-y-2 group overflow-hidden border-x border-t border-slate-100">
+        <div className="relative bg-white rounded-2xl p-4 border-b-4 border-b-red-500 shadow-[0_10px_20px_-5px_rgba(239,68,68,0.15)] transition-transform hover:-translate-y-1 group overflow-hidden border-x border-t border-slate-100">
           <div className="relative z-10 flex justify-between items-start">
             <div>
-              <p className="text-slate-500 text-xs font-black uppercase tracking-widest mb-2">Total Outstanding</p>
-              <h3 className="text-4xl font-black text-slate-800">₹{totalOutstanding.toLocaleString()}</h3>
+              <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-1">Total Outstanding</p>
+              <h3 className="text-3xl font-black text-slate-800">₹{totalOutstanding.toLocaleString()}</h3>
             </div>
-            <div className="p-3 bg-red-100 text-red-600 rounded-xl shadow-inner border border-red-200">
-              <AlertCircle className="w-7 h-7" />
+            <div className="p-2 bg-red-100 text-red-600 rounded-lg shadow-inner border border-red-200">
+              <AlertCircle className="w-5 h-5" />
             </div>
           </div>
-          <div className="mt-4 flex items-center text-xs font-bold text-slate-400">
-            <span className="text-red-600 bg-red-50 px-2 py-1 rounded-md mr-2 flex items-center border border-red-100">
+          <div className="mt-3 flex items-center text-[10px] font-bold text-slate-400">
+            <span className="text-red-600 bg-red-50 px-1.5 py-0.5 rounded mr-2 flex items-center border border-red-100">
               Pending
             </span>
             <span>Unpaid amount</span>
           </div>
         </div>
 
-        <div className="relative bg-white rounded-3xl p-6 border-b-4 border-b-orange-500 shadow-[0_15px_30px_-5px_rgba(249,115,22,0.15)] transition-transform hover:-translate-y-2 group overflow-hidden border-x border-t border-slate-100">
+        <div className="relative bg-white rounded-2xl p-4 border-b-4 border-b-orange-500 shadow-[0_10px_20px_-5px_rgba(249,115,22,0.15)] transition-transform hover:-translate-y-1 group overflow-hidden border-x border-t border-slate-100">
           <div className="relative z-10 flex justify-between items-start">
             <div>
-              <p className="text-slate-500 text-xs font-black uppercase tracking-widest mb-2">Total Services</p>
-              <h3 className="text-4xl font-black text-slate-800">{filteredEntries.length}</h3>
+              <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-1">Total Services</p>
+              <h3 className="text-3xl font-black text-slate-800">{filteredEntries.length}</h3>
             </div>
-            <div className="p-3 bg-orange-100 text-orange-600 rounded-xl shadow-inner border border-orange-200">
-              <ShoppingBag className="w-7 h-7" />
+            <div className="p-2 bg-orange-100 text-orange-600 rounded-lg shadow-inner border border-orange-200">
+              <ShoppingBag className="w-5 h-5" />
             </div>
           </div>
-          <div className="mt-4 flex items-center text-xs font-bold text-slate-400">
-            <span className="text-orange-600 bg-orange-50 px-2 py-1 rounded-md mr-2 flex items-center">
+          <div className="mt-3 flex items-center text-[10px] font-bold text-slate-400">
+            <span className="text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded mr-2 flex items-center">
               Volume
             </span>
             <span>Services Done</span>
@@ -399,19 +399,19 @@ const Dashboard: React.FC = () => {
       </div>
 
       {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className={`${card3D} lg:col-span-2 p-8 border-t-4 border-t-indigo-500`}>
-          <div className="flex justify-between items-center mb-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className={`${card3D} lg:col-span-2 p-6 border-t-4 border-t-indigo-500`}>
+          <div className="flex justify-between items-center mb-6">
             <div>
-              <h3 className="text-xl font-bold text-slate-800 flex items-center">
-                <TrendingUp className="w-6 h-6 mr-2 text-indigo-600" />
+              <h3 className="text-lg font-bold text-slate-800 flex items-center">
+                <TrendingUp className="w-5 h-5 mr-2 text-indigo-600" />
                 Revenue Trend: {selectedMonth}
               </h3>
-              <p className="text-slate-500 text-sm font-medium">Daily income patterns</p>
+              <p className="text-slate-500 text-xs font-medium">Daily income patterns</p>
             </div>
-            <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-xl border border-indigo-200 shadow-sm">{selectedMonth}</span>
+            <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-200 shadow-sm">{selectedMonth}</span>
           </div>
-          <div className="h-[350px] w-full">
+          <div className="h-[280px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
                 <defs>
@@ -423,7 +423,7 @@ const Dashboard: React.FC = () => {
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                 <XAxis
                   dataKey="date"
-                  tick={{ fontSize: 11, fill: '#475569', fontWeight: 700 }}
+                  tick={{ fontSize: 10, fill: '#475569', fontWeight: 700 }}
                   axisLine={false}
                   tickLine={false}
                   dy={10}
@@ -431,13 +431,13 @@ const Dashboard: React.FC = () => {
                   interval="preserveStartEnd"
                 />
                 <YAxis
-                  tick={{ fontSize: 12, fill: '#475569', fontWeight: 700 }}
+                  tick={{ fontSize: 10, fill: '#475569', fontWeight: 700 }}
                   axisLine={false}
                   tickLine={false}
                   dx={-10}
                 />
                 <RechartsTooltip
-                  contentStyle={{ borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 10px 40px -10px rgba(0,0,0,0.1)', background: 'rgba(255, 255, 255, 0.95)', fontWeight: 'bold' }}
+                  contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 10px 30px -10px rgba(0,0,0,0.1)', background: 'rgba(255, 255, 255, 0.95)', fontWeight: 'bold', fontSize: '12px' }}
                   labelFormatter={(label) => new Date(label).toLocaleDateString()}
                   formatter={(value) => [`₹${Number(value).toLocaleString()}`, 'Revenue']}
                 />
@@ -445,7 +445,7 @@ const Dashboard: React.FC = () => {
                   type="monotone"
                   dataKey="amount"
                   stroke="#4f46e5"
-                  strokeWidth={4}
+                  strokeWidth={3}
                   fillOpacity={1}
                   fill="url(#colorAmount)"
                   animationDuration={1500}
@@ -455,92 +455,92 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
 
-        <div className={`${card3D} p-8 border-t-4 border-t-purple-500`}>
-          <h3 className="text-xl font-bold text-slate-800 mb-2">Service Mix</h3>
-          <p className="text-slate-500 text-sm font-medium mb-6">Type distribution for {selectedMonth}</p>
-          <div className="h-[280px]">
+        <div className={`${card3D} p-6 border-t-4 border-t-purple-500`}>
+          <h3 className="text-lg font-bold text-slate-800 mb-1">Service Mix</h3>
+          <p className="text-slate-500 text-xs font-medium mb-4">Type distribution for {selectedMonth}</p>
+          <div className="h-[240px]">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
                   data={serviceTypeData}
                   cx="50%"
                   cy="50%"
-                  innerRadius={65}
-                  outerRadius={90}
-                  paddingAngle={6}
+                  innerRadius={55}
+                  outerRadius={75}
+                  paddingAngle={5}
                   dataKey="value"
-                  cornerRadius={8}
+                  cornerRadius={6}
                 >
                   {serviceTypeData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} strokeWidth={0} />
                   ))}
                 </Pie>
-                <RechartsTooltip contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 10px 30px rgba(0,0,0,0.1)', fontWeight: 'bold' }} />
-                <Legend verticalAlign="bottom" height={36} iconType="circle" />
+                <RechartsTooltip contentStyle={{ borderRadius: '10px', border: '1px solid #e2e8f0', boxShadow: '0 8px 24px rgba(0,0,0,0.1)', fontWeight: 'bold', fontSize: '12px' }} />
+                <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '10px', fontWeight: 'bold' }} />
               </PieChart>
             </ResponsiveContainer>
           </div>
-          <div className="mt-4 p-4 bg-slate-50 rounded-2xl border border-slate-200 text-center shadow-inner">
-            <p className="text-xs text-slate-500 font-bold uppercase tracking-wider mb-1">Top Performing Service</p>
-            <p className="text-xl font-black text-slate-800">{serviceTypeData[0]?.name || 'N/A'}</p>
+          <div className="mt-2 p-3 bg-slate-50 rounded-xl border border-slate-200 text-center shadow-inner">
+            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-0.5">Top Performing Service</p>
+            <p className="text-lg font-black text-slate-800">{serviceTypeData[0]?.name || 'N/A'}</p>
           </div>
         </div>
       </div>
 
       {/* Technician Table */}
       <div className={`${card3D} overflow-hidden p-0 border-none`}>
-        <div className="px-8 py-6 border-b border-slate-200 flex flex-col sm:flex-row justify-between items-start sm:items-center bg-gradient-to-r from-white to-slate-50 gap-4">
+        <div className="px-6 py-4 border-b border-slate-200 flex flex-col sm:flex-row justify-between items-start sm:items-center bg-gradient-to-r from-white to-slate-50 gap-4">
           <div>
-            <h3 className="text-xl font-bold text-slate-800">Technician Performance</h3>
-            <p className="text-slate-500 text-sm font-medium">Monthly Stats: {selectedMonth}</p>
+            <h3 className="text-lg font-bold text-slate-800">Technician Performance</h3>
+            <p className="text-slate-500 text-xs font-medium">Monthly Stats: {selectedMonth}</p>
           </div>
-          <div className="bg-indigo-50 px-4 py-2 rounded-xl border border-indigo-100 flex items-center gap-2">
-            <Filter className="w-4 h-4 text-indigo-500" />
-            <span className="text-sm font-black text-indigo-700">{selectedMonth}</span>
+          <div className="bg-indigo-50 px-3 py-1.5 rounded-lg border border-indigo-100 flex items-center gap-2">
+            <Filter className="w-3.5 h-3.5 text-indigo-500" />
+            <span className="text-xs font-black text-indigo-700">{selectedMonth}</span>
           </div>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm text-slate-600">
-            <thead className="bg-slate-50/50 text-slate-600 uppercase font-black text-[10px] tracking-widest border-b border-slate-200">
+          <table className="w-full text-left text-xs text-slate-600">
+            <thead className="bg-slate-50/50 text-slate-600 uppercase font-black text-[9px] tracking-widest border-b border-slate-200">
               <tr>
-                <th className="px-8 py-5">Technician</th>
-                <th className="px-8 py-5 text-center">New Patches</th>
-                <th className="px-8 py-5 text-center">Total Visits</th>
-                <th className="px-8 py-5 text-center">Activity Status</th>
-                <th className="px-8 py-5 text-right">Total Revenue</th>
+                <th className="px-6 py-3">Technician</th>
+                <th className="px-6 py-3 text-center">New Patches</th>
+                <th className="px-6 py-3 text-center">Total Visits</th>
+                <th className="px-6 py-3 text-center">Activity Status</th>
+                <th className="px-6 py-3 text-right">Total Revenue</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {technicianPerformance.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-8 py-20 text-center text-slate-400 font-bold italic">No data available for {selectedMonth}</td>
+                  <td colSpan={5} className="px-6 py-12 text-center text-slate-400 font-bold italic">No data available for {selectedMonth}</td>
                 </tr>
               ) : (
                 technicianPerformance.map((tech: any, idx) => (
                   <tr key={idx} className="hover:bg-slate-50/80 transition-colors group">
-                    <td className="px-8 py-5">
+                    <td className="px-6 py-3">
                       <div className="flex items-center">
-                        <div className="h-10 w-10 rounded-2xl bg-gradient-to-br from-indigo-50 to-purple-600 flex items-center justify-center text-xs font-bold text-white mr-4 shadow-lg shadow-indigo-200 border border-indigo-400">
+                        <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-indigo-50 to-purple-600 flex items-center justify-center text-[10px] font-bold text-white mr-3 shadow-md shadow-indigo-200 border border-indigo-400">
                           {tech.name.charAt(0)}
                         </div>
-                        <span className="font-bold text-slate-800 text-base">{tech.name}</span>
+                        <span className="font-bold text-slate-800 text-sm">{tech.name}</span>
                       </div>
                     </td>
-                    <td className="px-8 py-5 text-center">
-                      <div className="inline-flex items-center px-3 py-1.5 bg-emerald-50 text-emerald-700 font-black rounded-xl border border-emerald-100 shadow-sm text-base">
+                    <td className="px-6 py-3 text-center">
+                      <div className="inline-flex items-center px-2 py-1 bg-emerald-50 text-emerald-700 font-black rounded-lg border border-emerald-100 shadow-sm text-sm">
                         {tech.newPatches}
-                        <Sparkles className="w-3.5 h-3.5 ml-1.5 text-emerald-400" />
+                        <Sparkles className="w-3 h-3 ml-1 text-emerald-400" />
                       </div>
                     </td>
-                    <td className="px-8 py-5 text-center font-bold text-slate-700 text-base">{tech.clients}</td>
-                    <td className="px-8 py-5 text-center">
+                    <td className="px-6 py-3 text-center font-bold text-slate-700 text-sm">{tech.clients}</td>
+                    <td className="px-6 py-3 text-center">
                       <div className="flex items-center justify-center">
-                        <div className="w-24 h-2.5 bg-slate-100 rounded-full overflow-hidden shadow-inner border border-slate-200">
+                        <div className="w-20 h-2 bg-slate-100 rounded-full overflow-hidden shadow-inner border border-slate-200">
                           <div className={`h-full bg-gradient-to-r from-green-400 to-emerald-600 rounded-full shadow-sm`} style={{ width: `${Math.min(tech.clients * 5, 100)}%` }}></div>
                         </div>
                       </div>
                     </td>
-                    <td className="px-8 py-5 text-right font-black text-slate-900 text-base">₹{tech.revenue.toLocaleString()}</td>
+                    <td className="px-6 py-3 text-right font-black text-slate-900 text-sm">₹{tech.revenue.toLocaleString()}</td>
                   </tr>
                 ))
               )}
@@ -550,72 +550,72 @@ const Dashboard: React.FC = () => {
       </div>
 
       {/* NEW: INCENTIVE CALCULATION SECTION */}
-      <div className={`${card3D} overflow-hidden p-0 border-none mb-10`}>
-        <div className="px-8 py-6 border-b border-slate-200 bg-gradient-to-r from-emerald-50 to-white flex justify-between items-center">
+      <div className={`${card3D} overflow-hidden p-0 border-none mb-8`}>
+        <div className="px-6 py-4 border-b border-slate-200 bg-gradient-to-r from-emerald-50 to-white flex justify-between items-center">
           <div>
-            <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-              <Calculator className="w-6 h-6 text-emerald-600" />
+            <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+              <Calculator className="w-5 h-5 text-emerald-600" />
               Incentive Calculation
             </h3>
-            <p className="text-slate-500 text-sm font-medium mt-1">Based on New Patches, Demos & Packages</p>
+            <p className="text-slate-500 text-xs font-medium mt-0.5">Based on New Patches, Demos & Packages</p>
           </div>
           <button
             onClick={() => setShowIncentiveSettings(!showIncentiveSettings)}
-            className={`p-2.5 rounded-xl border transition-all ${showIncentiveSettings ? 'bg-emerald-600 text-white border-emerald-700' : 'bg-white text-slate-500 border-slate-200 hover:text-emerald-600'}`}
+            className={`p-2 rounded-lg border transition-all ${showIncentiveSettings ? 'bg-emerald-600 text-white border-emerald-700' : 'bg-white text-slate-500 border-slate-200 hover:text-emerald-600'}`}
             title="Configure Incentive Rates"
           >
-            <SlidersHorizontal className="w-5 h-5" />
+            <SlidersHorizontal className="w-4 h-4" />
           </button>
         </div>
 
         {showIncentiveSettings && (
-          <div className="p-6 bg-slate-50 border-b border-slate-200 animate-in slide-in-from-top-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <div className="space-y-3 p-4 bg-white rounded-2xl border border-slate-200 shadow-sm">
-                <h4 className="text-xs font-black uppercase text-slate-400 tracking-widest">New Patch - Tier 1</h4>
+          <div className="p-4 bg-slate-50 border-b border-slate-200 animate-in slide-in-from-top-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="space-y-2 p-3 bg-white rounded-xl border border-slate-200 shadow-sm">
+                <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-widest">New Patch - Tier 1</h4>
                 <div>
-                  <label className="text-[10px] font-bold text-slate-500 block">Up to Amount</label>
-                  <input type="number" value={incentiveConfig.newPatchTier1Limit} onChange={e => setIncentiveConfig({ ...incentiveConfig, newPatchTier1Limit: Number(e.target.value) })} className="w-full border-b border-slate-200 text-sm font-black focus:outline-none focus:border-emerald-500 py-1" />
+                  <label className="text-[9px] font-bold text-slate-500 block">Up to Amount</label>
+                  <input type="number" value={incentiveConfig.newPatchTier1Limit} onChange={e => setIncentiveConfig({ ...incentiveConfig, newPatchTier1Limit: Number(e.target.value) })} className="w-full border-b border-slate-200 text-xs font-black focus:outline-none focus:border-emerald-500 py-1" />
                 </div>
                 <div>
-                  <label className="text-[10px] font-bold text-slate-500 block">Incentive (₹)</label>
-                  <input type="number" value={incentiveConfig.newPatchTier1Amount} onChange={e => setIncentiveConfig({ ...incentiveConfig, newPatchTier1Amount: Number(e.target.value) })} className="w-full border-b border-slate-200 text-sm font-black text-emerald-600 focus:outline-none focus:border-emerald-500 py-1" />
-                </div>
-              </div>
-
-              <div className="space-y-3 p-4 bg-white rounded-2xl border border-slate-200 shadow-sm">
-                <h4 className="text-xs font-black uppercase text-slate-400 tracking-widest">New Patch - Tier 2</h4>
-                <div>
-                  <label className="text-[10px] font-bold text-slate-500 block">Up to Amount</label>
-                  <input type="number" value={incentiveConfig.newPatchTier2Limit} onChange={e => setIncentiveConfig({ ...incentiveConfig, newPatchTier2Limit: Number(e.target.value) })} className="w-full border-b border-slate-200 text-sm font-black focus:outline-none focus:border-emerald-500 py-1" />
-                </div>
-                <div>
-                  <label className="text-[10px] font-bold text-slate-500 block">Incentive (₹)</label>
-                  <input type="number" value={incentiveConfig.newPatchTier2Amount} onChange={e => setIncentiveConfig({ ...incentiveConfig, newPatchTier2Amount: Number(e.target.value) })} className="w-full border-b border-slate-200 text-sm font-black text-emerald-600 focus:outline-none focus:border-emerald-500 py-1" />
+                  <label className="text-[9px] font-bold text-slate-500 block">Incentive (₹)</label>
+                  <input type="number" value={incentiveConfig.newPatchTier1Amount} onChange={e => setIncentiveConfig({ ...incentiveConfig, newPatchTier1Amount: Number(e.target.value) })} className="w-full border-b border-slate-200 text-xs font-black text-emerald-600 focus:outline-none focus:border-emerald-500 py-1" />
                 </div>
               </div>
 
-              <div className="space-y-3 p-4 bg-white rounded-2xl border border-slate-200 shadow-sm">
-                <h4 className="text-xs font-black uppercase text-slate-400 tracking-widest">High Value (Tier 3)</h4>
+              <div className="space-y-2 p-3 bg-white rounded-xl border border-slate-200 shadow-sm">
+                <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-widest">New Patch - Tier 2</h4>
                 <div>
-                  <label className="text-[10px] font-bold text-slate-500 block">Above Tier 2 Limit</label>
-                  <div className="py-1 text-sm font-bold text-slate-400 italic">Automatic ({'>'} {incentiveConfig.newPatchTier2Limit})</div>
+                  <label className="text-[9px] font-bold text-slate-500 block">Up to Amount</label>
+                  <input type="number" value={incentiveConfig.newPatchTier2Limit} onChange={e => setIncentiveConfig({ ...incentiveConfig, newPatchTier2Limit: Number(e.target.value) })} className="w-full border-b border-slate-200 text-xs font-black focus:outline-none focus:border-emerald-500 py-1" />
                 </div>
                 <div>
-                  <label className="text-[10px] font-bold text-slate-500 block">Incentive (₹)</label>
-                  <input type="number" value={incentiveConfig.newPatchTier3Amount} onChange={e => setIncentiveConfig({ ...incentiveConfig, newPatchTier3Amount: Number(e.target.value) })} className="w-full border-b border-slate-200 text-sm font-black text-emerald-600 focus:outline-none focus:border-emerald-500 py-1" />
+                  <label className="text-[9px] font-bold text-slate-500 block">Incentive (₹)</label>
+                  <input type="number" value={incentiveConfig.newPatchTier2Amount} onChange={e => setIncentiveConfig({ ...incentiveConfig, newPatchTier2Amount: Number(e.target.value) })} className="w-full border-b border-slate-200 text-xs font-black text-emerald-600 focus:outline-none focus:border-emerald-500 py-1" />
                 </div>
               </div>
 
-              <div className="space-y-3 p-4 bg-white rounded-2xl border border-slate-200 shadow-sm">
-                <h4 className="text-xs font-black uppercase text-slate-400 tracking-widest">Other Incentives</h4>
+              <div className="space-y-2 p-3 bg-white rounded-xl border border-slate-200 shadow-sm">
+                <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-widest">High Value (Tier 3)</h4>
                 <div>
-                  <label className="text-[10px] font-bold text-slate-500 block">Demo Incentive (₹)</label>
-                  <input type="number" value={incentiveConfig.demoAmount} onChange={e => setIncentiveConfig({ ...incentiveConfig, demoAmount: Number(e.target.value) })} className="w-full border-b border-slate-200 text-sm font-black text-emerald-600 focus:outline-none focus:border-emerald-500 py-1" />
+                  <label className="text-[9px] font-bold text-slate-500 block">Above Tier 2 Limit</label>
+                  <div className="py-1 text-xs font-bold text-slate-400 italic">Automatic ({'>'} {incentiveConfig.newPatchTier2Limit})</div>
                 </div>
                 <div>
-                  <label className="text-[10px] font-bold text-slate-500 block">Package Bonus (₹)</label>
-                  <input type="number" value={incentiveConfig.packageAmount} onChange={e => setIncentiveConfig({ ...incentiveConfig, packageAmount: Number(e.target.value) })} className="w-full border-b border-slate-200 text-sm font-black text-emerald-600 focus:outline-none focus:border-emerald-500 py-1" placeholder="Optional" />
+                  <label className="text-[9px] font-bold text-slate-500 block">Incentive (₹)</label>
+                  <input type="number" value={incentiveConfig.newPatchTier3Amount} onChange={e => setIncentiveConfig({ ...incentiveConfig, newPatchTier3Amount: Number(e.target.value) })} className="w-full border-b border-slate-200 text-xs font-black text-emerald-600 focus:outline-none focus:border-emerald-500 py-1" />
+                </div>
+              </div>
+
+              <div className="space-y-2 p-3 bg-white rounded-xl border border-slate-200 shadow-sm">
+                <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Other Incentives</h4>
+                <div>
+                  <label className="text-[9px] font-bold text-slate-500 block">Demo Incentive (₹)</label>
+                  <input type="number" value={incentiveConfig.demoAmount} onChange={e => setIncentiveConfig({ ...incentiveConfig, demoAmount: Number(e.target.value) })} className="w-full border-b border-slate-200 text-xs font-black text-emerald-600 focus:outline-none focus:border-emerald-500 py-1" />
+                </div>
+                <div>
+                  <label className="text-[9px] font-bold text-slate-500 block">Package Bonus (₹)</label>
+                  <input type="number" value={incentiveConfig.packageAmount} onChange={e => setIncentiveConfig({ ...incentiveConfig, packageAmount: Number(e.target.value) })} className="w-full border-b border-slate-200 text-xs font-black text-emerald-600 focus:outline-none focus:border-emerald-500 py-1" placeholder="Optional" />
                 </div>
               </div>
             </div>
@@ -623,34 +623,34 @@ const Dashboard: React.FC = () => {
         )}
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm text-slate-600">
-            <thead className="bg-slate-50/50 text-slate-600 uppercase font-black text-[10px] tracking-widest border-b border-slate-200">
+          <table className="w-full text-left text-xs text-slate-600">
+            <thead className="bg-slate-50/50 text-slate-600 uppercase font-black text-[9px] tracking-widest border-b border-slate-200">
               <tr>
-                <th className="px-8 py-5">Technician</th>
-                <th className="px-8 py-5 text-center">New Patches</th>
-                <th className="px-8 py-5 text-center">Demos</th>
-                <th className="px-8 py-5 text-center">Packages</th>
-                <th className="px-8 py-5 text-right text-emerald-600">Total Incentive</th>
-                <th className="px-8 py-5 text-center">Details</th>
+                <th className="px-6 py-3">Technician</th>
+                <th className="px-6 py-3 text-center">New Patches</th>
+                <th className="px-6 py-3 text-center">Demos</th>
+                <th className="px-6 py-3 text-center">Packages</th>
+                <th className="px-6 py-3 text-right text-emerald-600">Total Incentive</th>
+                <th className="px-6 py-3 text-center">Details</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {incentiveData.length === 0 ? (
-                <tr><td colSpan={6} className="px-8 py-10 text-center text-slate-400 font-bold italic">No incentive data for selected filters.</td></tr>
+                <tr><td colSpan={6} className="px-6 py-8 text-center text-slate-400 font-bold italic">No incentive data for selected filters.</td></tr>
               ) : (
                 incentiveData.map((data: any, idx: number) => (
                   <tr key={idx} className="hover:bg-emerald-50/30 transition-colors">
-                    <td className="px-8 py-5 font-bold text-slate-800">{data.name}</td>
-                    <td className="px-8 py-5 text-center font-bold">{data.newPatchCount}</td>
-                    <td className="px-8 py-5 text-center font-bold">{data.demoCount}</td>
-                    <td className="px-8 py-5 text-center font-bold">{data.packageCount > 0 ? data.packageCount : '-'}</td>
-                    <td className="px-8 py-5 text-right font-black text-lg text-emerald-600">₹{data.totalIncentive.toLocaleString()}</td>
-                    <td className="px-8 py-5 text-center">
+                    <td className="px-6 py-3 font-bold text-slate-800">{data.name}</td>
+                    <td className="px-6 py-3 text-center font-bold">{data.newPatchCount}</td>
+                    <td className="px-6 py-3 text-center font-bold">{data.demoCount}</td>
+                    <td className="px-6 py-3 text-center font-bold">{data.packageCount > 0 ? data.packageCount : '-'}</td>
+                    <td className="px-6 py-3 text-right font-black text-base text-emerald-600">₹{data.totalIncentive.toLocaleString()}</td>
+                    <td className="px-6 py-3 text-center">
                       <button
                         onClick={() => setIncentiveDetailTech(data.name)}
-                        className="p-2 bg-white border border-slate-200 rounded-lg text-slate-400 hover:text-emerald-600 hover:border-emerald-200 transition-colors shadow-sm"
+                        className="p-1.5 bg-white border border-slate-200 rounded-lg text-slate-400 hover:text-emerald-600 hover:border-emerald-200 transition-colors shadow-sm"
                       >
-                        <Eye className="w-4 h-4" />
+                        <Eye className="w-3.5 h-3.5" />
                       </button>
                     </td>
                   </tr>
@@ -665,43 +665,43 @@ const Dashboard: React.FC = () => {
       {incentiveDetailTech && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in">
           <div className="bg-white rounded-[2rem] w-full max-w-2xl overflow-hidden shadow-2xl animate-in zoom-in-95">
-            <div className="px-8 py-6 bg-slate-900 text-white flex justify-between items-center">
+            <div className="px-6 py-4 bg-slate-900 text-white flex justify-between items-center">
               <div>
-                <h3 className="text-xl font-black">{incentiveDetailTech}</h3>
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Incentive Breakdown</p>
+                <h3 className="text-lg font-black">{incentiveDetailTech}</h3>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Incentive Breakdown</p>
               </div>
-              <button onClick={() => setIncentiveDetailTech(null)} className="p-2 hover:bg-white/10 rounded-full transition-colors"><X className="w-5 h-5" /></button>
+              <button onClick={() => setIncentiveDetailTech(null)} className="p-1.5 hover:bg-white/10 rounded-full transition-colors"><X className="w-4 h-4" /></button>
             </div>
             <div className="p-0 max-h-[60vh] overflow-y-auto">
-              <table className="w-full text-left text-sm">
-                <thead className="bg-slate-50 text-slate-500 font-bold text-xs uppercase border-b border-slate-200 sticky top-0">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50 text-slate-500 font-bold text-[10px] uppercase border-b border-slate-200 sticky top-0">
                   <tr>
-                    <th className="px-6 py-4">Date</th>
-                    <th className="px-6 py-4">Client / Type</th>
-                    <th className="px-6 py-4">Bill Amount</th>
-                    <th className="px-6 py-4">Logic Applied</th>
-                    <th className="px-6 py-4 text-right">Incentive</th>
+                    <th className="px-5 py-3">Date</th>
+                    <th className="px-5 py-3">Client / Type</th>
+                    <th className="px-5 py-3">Bill Amount</th>
+                    <th className="px-5 py-3">Logic Applied</th>
+                    <th className="px-5 py-3 text-right">Incentive</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {incentiveData.find((d: any) => d.name === incentiveDetailTech)?.breakdown.map((item: any, i: number) => (
                     <tr key={i} className="hover:bg-slate-50">
-                      <td className="px-6 py-4 font-medium text-slate-600">{formatDateTick(item.date)}</td>
-                      <td className="px-6 py-4">
+                      <td className="px-5 py-3 font-medium text-slate-600">{formatDateTick(item.date)}</td>
+                      <td className="px-5 py-3">
                         <div className="font-bold text-slate-800">{item.client}</div>
-                        <div className="text-[10px] font-black uppercase text-slate-400 tracking-wider">{item.type}</div>
+                        <div className="text-[9px] font-black uppercase text-slate-400 tracking-wider">{item.type}</div>
                       </td>
-                      <td className="px-6 py-4 font-medium">₹{item.bill}</td>
-                      <td className="px-6 py-4 text-xs font-medium text-slate-500">{item.reason}</td>
-                      <td className="px-6 py-4 text-right font-black text-emerald-600">+ ₹{item.incentive}</td>
+                      <td className="px-5 py-3 font-medium">₹{item.bill}</td>
+                      <td className="px-5 py-3 text-[10px] font-medium text-slate-500">{item.reason}</td>
+                      <td className="px-5 py-3 text-right font-black text-emerald-600">+ ₹{item.incentive}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-            <div className="p-6 bg-slate-50 border-t border-slate-200 text-right">
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-widest mr-3">Total Earned</span>
-              <span className="text-2xl font-black text-slate-800">₹{incentiveData.find((d: any) => d.name === incentiveDetailTech)?.totalIncentive.toLocaleString()}</span>
+            <div className="p-4 bg-slate-50 border-t border-slate-200 text-right">
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mr-3">Total Earned</span>
+              <span className="text-xl font-black text-slate-800">₹{incentiveData.find((d: any) => d.name === incentiveDetailTech)?.totalIncentive.toLocaleString()}</span>
             </div>
           </div>
         </div>

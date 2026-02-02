@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-// Fix: Use named imports for react-router-dom as namespace destructuring was failing
+// Fix: Use BrowserRouter for clean URLs (proper routing)
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 const Router = BrowserRouter;
 import Layout from './components/Layout';

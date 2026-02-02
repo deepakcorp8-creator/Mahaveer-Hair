@@ -272,6 +272,31 @@ export const api = {
     return { status: "success" };
   },
 
+  getPaymentHistory: async (forceRefresh = false) => {
+    // Basic cache logic
+    if (isLive) {
+      try {
+        const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getPaymentHistory`);
+        const data = await response.json();
+        
+        // DETECT BACKEND ERROR (e.g. Action not found)
+        if (data.error) throw new Error(data.error);
+
+        // Filter for Paid Amount > 0 as per requirement
+        if (Array.isArray(data)) {
+           return data.filter((p: any) => Number(p.paidAmount) > 0).map((p: any) => ({
+             ...p,
+             date: normalizeToISO(p.date)
+           }));
+        }
+      } catch (e) {
+        console.warn("Failed to fetch payment history", e);
+        throw e; // Propagate error to UI
+      }
+    }
+    return [];
+  },
+
   // --- APPOINTMENTS (WITH BRANCH FILTER) ---
   getAppointments: async (forceRefresh = false) => {
     let allAppts: Appointment[] = [];

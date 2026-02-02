@@ -93,3 +93,12 @@ export interface ServicePackage {
   packageType?: 'NEW' | 'OLD';
   oldServiceCount?: number; // Count of services completed before this system
 }
+
+export interface PaymentHistory {
+  id: string;
+  date: string; // Col A
+  clientName: string; // Col B
+  paymentMethod: string; // Col E (Cash/UPI)
+  paidAmount: number; // Col G
+  remark?: string;
+}

@@ -212,37 +212,40 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
       )}
 
       <aside className={`
-        fixed lg:static inset-y-0 left-0 z-[100] w-[280px] 
-        bg-[#0B1120] text-slate-100 
-        shadow-[20px_0_50px_-10px_rgba(0,0,0,0.6)] border-r border-slate-800/50
+        fixed lg:static inset-y-0 left-0 z-[100] w-[240px] 
+        bg-[#020617] text-slate-100 
+        shadow-2xl border-r border-white/5
         transform transition-transform duration-300 flex flex-col
         ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
       `}>
-        {/* Dynamic Background Elements */}
+        {/* Dynamic Background Elements - Enhanced */}
         <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
-          <div className="absolute top-[-20%] left-[-20%] w-[150%] h-[50%] bg-indigo-900/10 blur-[90px] rounded-full animate-pulse"></div>
-          <div className="absolute bottom-[-10%] right-[-20%] w-[100%] h-[40%] bg-purple-900/10 blur-[80px] rounded-full"></div>
+          <div className="absolute top-[-10%] left-[-20%] w-[120%] h-[40%] bg-indigo-600/10 blur-[100px] rounded-full mix-blend-screen"></div>
+          <div className="absolute bottom-[-10%] right-[-10%] w-[100%] h-[40%] bg-purple-600/10 blur-[100px] rounded-full mix-blend-screen"></div>
+          <div className="absolute top-[40%] left-[20%] w-[50%] h-[20%] bg-blue-500/5 blur-[80px] rounded-full mix-blend-screen"></div>
         </div>
 
         <button onClick={() => setIsMobileMenuOpen(false)} className="lg:hidden absolute top-4 right-4 text-slate-400 p-2 z-50 hover:text-white transition-colors"><X className="w-6 h-6" /></button>
 
-        <div className="pt-8 pb-6 px-6 relative z-10 shrink-0">
-          <div className="w-full bg-white/5 backdrop-blur-sm rounded-2xl p-1 shadow-2xl border border-white/10 group overflow-hidden relative hover:border-white/20 transition-all duration-500">
-            <div className="bg-white rounded-xl flex items-center justify-center h-24 w-full overflow-hidden p-2 group-hover:scale-[1.02] transition-transform duration-500">
+        <div className="pt-6 pb-4 px-4 relative z-10 shrink-0">
+          <div className="w-full bg-gradient-to-br from-white/10 to-transparent backdrop-blur-md rounded-2xl p-[1px] shadow-2xl relative group overflow-hidden transition-all duration-500 hover:shadow-indigo-500/20">
+            <div className="bg-white/95 rounded-2xl flex items-center justify-center h-16 w-full overflow-hidden p-3 group-hover:bg-white transition-colors duration-500 relative">
+               {/* Enhanced Shine Effect */}
+               <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/40 to-transparent skew-x-12 translate-x-[-150%] group-hover:translate-x-[150%] transition-transform duration-1000"></div>
               <img
                 src={LOGO_URL}
                 alt="Mahaveer Logo"
-                className="w-full h-full object-contain drop-shadow-md"
+                className="w-full h-full object-contain drop-shadow-lg relative z-10"
                 onError={(e) => { e.currentTarget.style.display = 'none'; }}
               />
             </div>
           </div>
         </div>
 
-        <nav className="flex-1 overflow-y-auto px-4 py-3 space-y-2 scrollbar-hide relative z-10">
-          <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 mb-4 px-2 pt-2 flex items-center gap-2">
-            <span className="opacity-70">Menu</span>
-            <div className="h-px bg-gradient-to-r from-slate-800 to-transparent flex-1"></div>
+        <nav className="flex-1 overflow-y-auto px-2 py-2 space-y-1 scrollbar-hide relative z-10">
+          <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 mb-3 px-3 pt-2 flex items-center gap-2">
+            <span className="opacity-80">Nav</span>
+            <div className="h-px bg-gradient-to-r from-slate-800 via-slate-700 to-transparent flex-1"></div>
           </div>
           {menuItems.map((item, idx) => {
             const active = isActive(item.path);
@@ -255,69 +258,42 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
                 key={item.path}
                 to={item.path}
                 onClick={() => setIsMobileMenuOpen(false)}
-                style={{ animationDelay: `${idx * 50}ms` }}
-                className={`relative group flex items-center px-4 py-3.5 rounded-xl transition-all duration-300 animate-in slide-in-from-left-4 fade-in fill-mode-backwards
+                style={{ animationDelay: `${idx * 40}ms` }}
+                className={`relative group flex items-center px-3 py-2.5 rounded-lg transition-all duration-300 animate-in slide-in-from-left-4 fade-in fill-mode-backwards overflow-hidden
                       ${active
-                    ? 'bg-gradient-to-r from-indigo-600 via-indigo-600 to-indigo-700 text-white shadow-[0_5px_20px_-5px_rgba(79,70,229,0.5)] translate-x-1 border border-indigo-400/30'
-                    : 'text-slate-400 hover:bg-white/5 hover:text-white hover:translate-x-1 border border-transparent'
+                    ? 'bg-indigo-600 text-white shadow-[0_4px_12px_-4px_rgba(79,70,229,0.4)] translate-x-1'
+                    : 'text-slate-400 hover:bg-white/5 hover:text-white hover:translate-x-1'
                   }`}
               >
-                {/* Active Indicator Glow */}
-                {active && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-white rounded-r-full shadow-[0_0_10px_rgba(255,255,255,0.7)]"></div>}
+                {/* Active Lighting Effect */}
+                {active && (
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent opacity-50 blur-sm"></div>
+                )}
+                
+                {/* Selection Indicator */}
+                 {active && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-4 bg-white rounded-r-lg shadow-[0_0_8px_rgba(255,255,255,0.8)]"></div>}
 
-                <item.icon className={`w-5 h-5 mr-3 transition-transform duration-300 group-hover:scale-110 ${active ? 'text-white' : 'text-slate-500 group-hover:text-indigo-400'}`} />
-                <span className={`font-bold text-[13px] tracking-wide ${active ? 'text-white' : ''}`}>{item.label}</span>
+                <item.icon className={`w-4 h-4 mr-3 transition-transform duration-300 group-hover:scale-110 relative z-10 ${active ? 'text-white' : 'text-slate-500 group-hover:text-indigo-400'}`} />
+                <span className={`font-semibold text-xs tracking-wide relative z-10 ${active ? 'text-white' : ''}`}>{item.label}</span>
 
                 {/* Badge */}
                 {showBadge && (
-                  <span className="absolute right-3 bg-red-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full border border-red-400 shadow-[0_0_10px_rgba(239,68,68,0.6)] animate-pulse">
+                  <span className="absolute right-3 bg-rose-500 text-white text-[9px] font-bold px-1.5 py-0 rounded-md border border-rose-400/50 shadow-lg animate-pulse z-10">
                     {badgeCount}
                   </span>
                 )}
-
-                {/* Hover Gloss Effect (Non-Active) */}
-                {!active && <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-white/0 via-white/5 to-white/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>}
               </Link>
             );
           })}
         </nav>
 
-        <div className="p-4 relative z-10 shrink-0 bg-gradient-to-t from-[#0B1120] via-[#0B1120] to-transparent space-y-3 pt-6">
-          {/* User Profile Info */}
-          <div onClick={() => setIsProfileModalOpen(true)} className="bg-[#131C2E]/80 backdrop-blur-md rounded-xl p-3 border border-slate-700/50 flex items-center justify-between group hover:bg-[#1A263E] transition-all cursor-pointer shadow-lg hover:border-indigo-500/30">
-            <div className="flex items-center space-x-3 overflow-hidden">
-              <div className="relative w-10 h-10 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 p-[1.5px] shadow-md group-hover:shadow-indigo-500/20 transition-all">
-                <div className="w-full h-full rounded-[6px] bg-[#131C2E] flex items-center justify-center overflow-hidden">
-                  {user.dpUrl ? <img src={user.dpUrl} alt="Profile" className="w-full h-full object-cover" /> : <span className="text-white font-black text-xs uppercase">{user.username.charAt(0)}</span>}
-                </div>
-              </div>
-              <div className="flex flex-col min-w-0">
-                <span className="text-[13px] font-black text-white truncate group-hover:text-indigo-300 transition-colors">{user.username}</span>
-                <span className="text-[9px] text-slate-500 font-bold uppercase tracking-tighter">{user.role}</span>
-              </div>
-            </div>
-            <button onClick={(e) => { e.stopPropagation(); onLogout(); }} className="text-slate-500 hover:text-red-400 p-2 transition-colors hover:bg-white/5 rounded-lg"><LogOut className="w-4 h-4" /></button>
-          </div>
-
-          {/* PROFESSIONAL SIDEBAR FOOTER */}
-          <div className="px-1 space-y-3">
-            <div className="text-center">
-              <span className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] opacity-80 block mb-1">
-                @ 2025 Mahaveer Hair Solution
-              </span>
-            </div>
-
-            <div className="relative group bg-gradient-to-br from-indigo-900/20 via-slate-900 to-transparent border border-white/5 rounded-xl p-3 transition-all duration-300 hover:border-indigo-500/30 hover:bg-indigo-900/10 hover:shadow-[0_0_20px_rgba(79,70,229,0.1)]">
-              <div className="flex items-center gap-3 relative z-10">
-                <div className="p-1.5 bg-gradient-to-br from-[#B51A2B] to-indigo-600 rounded-lg shadow-lg group-hover:scale-110 transition-transform duration-500">
-                  <Code2 className="w-3.5 h-3.5 text-white" />
-                </div>
-                <a href="https://zentrix-dv.vercel.app/" target="_blank" rel="noopener noreferrer" className="flex flex-col group/link">
-                  <span className="text-[8px] font-black uppercase tracking-[0.1em] text-indigo-400 mb-0.5 group-hover/link:text-indigo-300 transition-colors">Software Architect</span>
-                  <span className="text-[11px] font-black text-slate-300 group-hover/link:text-white transition-colors whitespace-nowrap">Deepak Sahu</span>
-                </a>
-              </div>
-            </div>
+        <div className="p-3 relative z-10 shrink-0 space-y-3 pt-3 border-t border-white/5 bg-[#020617]/50 backdrop-blur-sm">
+          {/* Copyright / Credits */}
+          <div className="px-1">
+             <div className="flex items-center justify-between text-[9px] text-slate-600">
+                <span className="opacity-60 font-medium">© 2025 Mahaveer</span>
+                <span className="opacity-40">v2.1</span>
+             </div>
           </div>
         </div>
       </aside>
@@ -341,26 +317,48 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
       )}
 
       <div className="flex-1 flex flex-col h-full overflow-hidden relative bg-[#F0F4F8]">
-        <div className="h-1.5 w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 absolute top-0 left-0 z-50"></div>
+        <div className="h-1 w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 absolute top-0 left-0 z-50"></div>
 
-        <header className="hidden lg:flex items-center justify-between px-8 py-3 bg-white/80 backdrop-blur-md border-b border-slate-200/50 sticky top-0 z-40 shrink-0 h-16 shadow-sm">
-          <div className="flex items-center text-slate-400 text-xs font-black uppercase bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200 shadow-inner"><Calendar className="w-3.5 h-3.5 mr-2 text-indigo-500" />{todayDate}</div>
-          <div className="flex items-center gap-4">{user.role === Role.ADMIN && pendingCount > 0 && <Link to="/packages" className="p-2.5 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-100 animate-pulse"><Bell className="w-5 h-5" /></Link>}</div>
+        <header className="hidden lg:flex items-center justify-between px-6 py-2 bg-white/80 backdrop-blur-md border-b border-slate-200/50 sticky top-0 z-40 shrink-0 h-14 shadow-sm">
+          <div className="flex items-center text-slate-400 text-[10px] font-black uppercase bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-200 shadow-inner"><Calendar className="w-3 h-3 mr-1.5 text-indigo-500" />{todayDate}</div>
+          <div className="flex items-center gap-3">
+            {user.role === Role.ADMIN && pendingCount > 0 && <Link to="/packages" className="p-2 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-100 animate-pulse"><Bell className="w-4 h-4" /></Link>}
+            
+            <div className="h-6 w-px bg-slate-200 mx-1"></div>
+
+            {/* Header Profile Pill */}
+            <div onClick={() => setIsProfileModalOpen(true)} className="flex items-center gap-2.5 pl-1 pr-3 py-0.5 rounded-full bg-white border border-slate-200 shadow-sm hover:shadow-md transition-all cursor-pointer group hover:bg-slate-50">
+               <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 p-[1.5px]">
+                  <div className="w-full h-full rounded-full bg-white flex items-center justify-center overflow-hidden">
+                     {user.dpUrl ? <img src={user.dpUrl} className="w-full h-full object-cover" /> : <span className="text-indigo-600 font-black text-[10px]">{user.username.charAt(0)}</span>}
+                  </div>
+               </div>
+               <div className="flex flex-col items-start mr-0.5">
+                   <span className="text-xs font-bold text-slate-700 group-hover:text-indigo-600 transition-colors">{user.username}</span>
+                   <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">{user.role}</span>
+               </div>
+               <ChevronRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-indigo-400 transition-colors" />
+            </div>
+
+            <button onClick={onLogout} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-all border border-transparent hover:border-red-100" title="Logout">
+                <LogOut className="w-4 h-4" />
+            </button>
+          </div>
         </header>
 
-        <header className="bg-white/90 shadow-md lg:hidden flex items-center justify-between p-4 z-40 sticky top-0 border-b border-slate-100">
-          <div className="flex items-center gap-3">
-            <button onClick={() => setIsMobileMenuOpen(true)} className="text-slate-700 bg-slate-100 p-2.5 rounded-xl border border-slate-200 shadow-sm"><Menu className="w-6 h-6" /></button>
-            <span className="font-black text-slate-800 text-lg tracking-tight">Mahaveer</span>
+        <header className="bg-white/90 shadow-md lg:hidden flex items-center justify-between p-3 z-40 sticky top-0 border-b border-slate-100">
+          <div className="flex items-center gap-2">
+            <button onClick={() => setIsMobileMenuOpen(true)} className="text-slate-700 bg-slate-100 p-2 rounded-lg border border-slate-200 shadow-sm"><Menu className="w-5 h-5" /></button>
+            <span className="font-black text-slate-800 text-base tracking-tight">Mahaveer</span>
           </div>
           <div className="flex items-center gap-3">
-            {user.role === Role.ADMIN && pendingCount > 0 && <Link to="/packages" className="p-2 text-indigo-600 bg-indigo-50 rounded-full border border-indigo-100"><Bell className="w-5 h-5" /></Link>}
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 p-[2px] shadow-md"><div className="w-full h-full rounded-full bg-white flex items-center justify-center text-indigo-700 font-black text-sm overflow-hidden">{user.dpUrl ? <img src={user.dpUrl} className="w-full h-full object-cover" /> : user.username.charAt(0)}</div></div>
+            {user.role === Role.ADMIN && pendingCount > 0 && <Link to="/packages" className="p-1.5 text-indigo-600 bg-indigo-50 rounded-full border border-indigo-100"><Bell className="w-4 h-4" /></Link>}
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 p-[2px] shadow-md"><div className="w-full h-full rounded-full bg-white flex items-center justify-center text-indigo-700 font-black text-xs overflow-hidden">{user.dpUrl ? <img src={user.dpUrl} className="w-full h-full object-cover" /> : user.username.charAt(0)}</div></div>
           </div>
         </header>
 
-        <main ref={mainContentRef} className="flex-1 overflow-x-hidden overflow-y-auto p-4 lg:p-8">
-          <div className="max-w-7xl mx-auto space-y-8 pb-20">{children}</div>
+        <main ref={mainContentRef} className="flex-1 overflow-x-hidden overflow-y-auto p-4 lg:p-6">
+          <div className="max-w-7xl mx-auto space-y-6 pb-20">{children}</div>
         </main>
       </div>
     </div>
