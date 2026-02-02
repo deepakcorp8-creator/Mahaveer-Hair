@@ -229,13 +229,13 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
 
         <div className="pt-6 pb-4 px-4 relative z-10 shrink-0">
           <div className="w-full bg-gradient-to-br from-white/10 to-transparent backdrop-blur-md rounded-2xl p-[1px] shadow-2xl relative group overflow-hidden transition-all duration-500 hover:shadow-indigo-500/20">
-            <div className="bg-white/95 rounded-2xl flex items-center justify-center h-16 w-full overflow-hidden p-3 group-hover:bg-white transition-colors duration-500 relative">
+            <div className="bg-white/95 rounded-xl flex items-center justify-center h-16 w-full overflow-hidden relative group-hover:bg-white transition-colors duration-500">
                {/* Enhanced Shine Effect */}
                <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/40 to-transparent skew-x-12 translate-x-[-150%] group-hover:translate-x-[150%] transition-transform duration-1000"></div>
               <img
                 src={LOGO_URL}
                 alt="Mahaveer Logo"
-                className="w-full h-full object-contain drop-shadow-lg relative z-10"
+                className="w-full h-full object-contain p-1 drop-shadow-sm relative z-10"
                 onError={(e) => { e.currentTarget.style.display = 'none'; }}
               />
             </div>
