@@ -12,6 +12,7 @@ const NewEntryForm: React.FC = () => {
     const [clients, setClients] = useState<Client[]>([]);
     const [technicians, setTechnicians] = useState<Technician[]>([]);
     const [items, setLoadingItems] = useState<Item[]>([]);
+    const [clientPendingMap, setClientPendingMap] = useState<Record<string, { amount: number, oldestDate: string }>>({});
     const [todayEntries, setTodayEntries] = useState<Entry[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
 
@@ -121,6 +122,26 @@ const NewEntryForm: React.FC = () => {
 
     const loadTodayEntries = async () => {
         const allEntries = await api.getEntries(true);
+        const map: Record<string, { amount: number, oldestDate: string }> = {};
+        allEntries.forEach(e => {
+            let due = 0;
+            if (e.paymentMethod === 'PENDING') {
+                due = e.amount;
+            } else if ((e.pendingAmount || 0) > 0) {
+                due = e.pendingAmount || 0;
+            }
+            if (due > 0 && e.clientName) {
+                const key = e.clientName.trim().toLowerCase();
+                const current = map[key] || { amount: 0, oldestDate: '' };
+                current.amount += due;
+                if (!current.oldestDate || e.date < current.oldestDate) {
+                    current.oldestDate = e.date;
+                }
+                map[key] = current;
+            }
+        });
+        setClientPendingMap(map);
+
         const today = new Date().toISOString().split('T')[0];
         setTodayEntries(allEntries.filter(e => e.date === today));
     };
@@ -384,6 +405,23 @@ const NewEntryForm: React.FC = () => {
                                         placeholder="Search Client..."
                                         required
                                     />
+                                    {/* SHOW PENDING DUES ALERT */}
+                                    {formData.clientName && clientPendingMap[formData.clientName.trim().toLowerCase()]?.amount > 0 && (
+                                        <div className="mt-3 bg-red-50 border border-red-200 rounded-xl p-3 flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
+                                            <div className="p-2 bg-red-100 rounded-lg text-red-600">
+                                                <AlertCircle className="w-5 h-5" />
+                                            </div>
+                                            <div>
+                                                <p className="text-[10px] font-black text-red-800 uppercase tracking-widest leading-none mb-1">Outstanding Dues</p>
+                                                <div className="flex flex-col">
+                                                    <p className="text-lg font-black text-red-600 leading-none">₹{clientPendingMap[formData.clientName.trim().toLowerCase()].amount.toLocaleString()}</p>
+                                                    <p className="text-[10px] font-bold text-red-400 mt-1">
+                                                        Since: {formatDateDisplay(clientPendingMap[formData.clientName.trim().toLowerCase()].oldestDate)}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                                 {activePackage && (
                                     <div className={`col-span-full rounded-2xl border-2 p-5 flex items-start gap-4 shadow-lg transition-all duration-300 transform hover:scale-[1.01] animate-in fade-in slide-in-from-top-4 ${activePackage.isExpired ? 'bg-red-50 border-red-300' : 'bg-emerald-50 border-emerald-300'}`}>

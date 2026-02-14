@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { api } from '../services/api';
 import { ServicePackage, Client, Entry, Role, User } from '../types';
-import { PackageCheck, Plus, Search, User as UserIcon, Clock, Pencil, X, ShieldAlert, Sparkles, CheckCircle2, AlertTriangle, CalendarRange, IndianRupee, Layers, Rewind, Loader2, Zap, ArrowRight, BatteryWarning, RefreshCw, PlusCircle, History } from 'lucide-react';
+import { PackageCheck, Plus, Search, User as UserIcon, Clock, Pencil, X, ShieldAlert, Sparkles, CheckCircle2, AlertTriangle, CalendarRange, IndianRupee, Layers, Rewind, Loader2, Zap, ArrowRight, BatteryWarning, RefreshCw, PlusCircle, History, Trash2 } from 'lucide-react';
 import { SearchableSelect, Option } from './SearchableSelect';
 
 const ServicePackages: React.FC = () => {
@@ -55,12 +55,22 @@ const ServicePackages: React.FC = () => {
   }, []);
 
   const loadData = async () => {
-    const options = await api.getOptions();
-    setClients(options.clients || []);
-    const pkgData = await api.getPackages(true);
-    setPackages(pkgData);
-    const entriesData = await api.getEntries();
-    setEntries(entriesData);
+    setLoading(true);
+    try {
+        const [options, pkgData, entriesData] = await Promise.all([
+            api.getOptions(),
+            api.getPackages(), // Using cache for speed
+            api.getEntries()
+        ]);
+
+        setClients(options.clients || []);
+        setPackages(pkgData);
+        setEntries(entriesData);
+    } catch (e) {
+        console.error("Load Failed", e);
+    } finally {
+        setLoading(false);
+    }
   };
 
   const handleClientChange = (name: string, selectedOption?: Option) => {
@@ -169,7 +179,25 @@ const ServicePackages: React.FC = () => {
           setLoading(false);
           alert("Action failed.");
       }
-  }
+      }
+
+
+  const handleDelete = async (e: React.MouseEvent, id: string) => {
+      e.stopPropagation();
+      if (!window.confirm("Are you sure you want to PERMANENTLY DELETE this package?")) return;
+      
+      setLoading(true);
+      try {
+          await api.deletePackage(id);
+          await loadData();
+          alert("Package deleted.");
+      } catch (e) {
+          console.error(e);
+          alert("Failed to delete.");
+      } finally {
+          setLoading(false);
+      }
+  };
 
   // --- ADD-ON LOGIC ---
   const openAddOnModal = (pkg: ServicePackage) => {
@@ -493,18 +521,28 @@ const ServicePackages: React.FC = () => {
                     )}
                 </div>
 
-                 {/* Edit Button (Absolute) */}
+                {/* Edit & Delete Buttons (Absolute) */}
                 {currentUser?.role === Role.ADMIN && (
-                <button 
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        setEditingPackage(pkg);
-                        setIsEditModalOpen(true);
-                    }}
-                    className="absolute top-4 right-4 text-slate-300 hover:text-indigo-600 transition-colors p-1.5 hover:bg-slate-50 rounded-full"
-                >
-                    <Pencil className="w-3.5 h-3.5" />
-                </button>
+                <div className="absolute top-4 right-4 flex gap-1">
+                    <button 
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingPackage(pkg);
+                            setIsEditModalOpen(true);
+                        }}
+                        className="text-slate-300 hover:text-indigo-600 transition-colors p-1.5 hover:bg-slate-50 rounded-full"
+                        title="Edit Package"
+                    >
+                        <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                    <button 
+                        onClick={(e) => handleDelete(e, pkg.id)}
+                        className="text-slate-300 hover:text-red-600 transition-colors p-1.5 hover:bg-red-50 rounded-full"
+                        title="Delete Package"
+                    >
+                        <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                </div>
                 )}
 
             </div>
@@ -798,8 +836,17 @@ const ServicePackages: React.FC = () => {
                     </div>
                 ) : (
                     <div className="py-12 text-center bg-white rounded-2xl border-2 border-dashed border-slate-200">
-                        <PackageCheck className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-                        <p className="text-slate-400 font-bold text-sm">No packages found for this filter.</p>
+                        {loading ? (
+                            <>
+                                <Loader2 className="w-10 h-10 text-indigo-500 animate-spin mx-auto mb-3" />
+                                <p className="text-indigo-400 font-bold text-sm">Loading packages...</p>
+                            </>
+                        ) : (
+                            <>
+                                <PackageCheck className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+                                <p className="text-slate-400 font-bold text-sm">No packages found for this filter.</p>
+                            </>
+                        )}
                     </div>
                 )}
             </div>
