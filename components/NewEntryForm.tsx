@@ -313,9 +313,19 @@ const NewEntryForm: React.FC = () => {
         setLoading(true);
         try {
             const total = Number(editTotalAmount);
-            const newPending = isPartPayment ? Math.max(0, total - Number(editReceivedAmount)) : 0;
+            let newPending = isPartPayment ? Math.max(0, total - Number(editReceivedAmount)) : 0;
             let newMethod = editingEntry.paymentMethod;
-            if (newPending === 0 && newMethod === 'PENDING') newMethod = 'CASH';
+
+            // Fix: If method is PENDING, ensure pending amount is set (Full amount if not part-pay)
+            if (newMethod === 'PENDING') {
+                if (!isPartPayment) {
+                    newPending = total;
+                }
+            } else {
+                // If not PENDING method, but pending is > 0, we might want to warn or just save? 
+                // Existing logic handled this via isPartPayment check.
+            }
+
             await api.updateEntry({ ...editingEntry, amount: total, paymentMethod: newMethod, pendingAmount: newPending });
             setIsPaymentModalOpen(false);
             setEditingEntry(null);
@@ -332,7 +342,9 @@ const NewEntryForm: React.FC = () => {
             patchMethod: entry.patchMethod,
             remark: entry.remark,
             branch: entry.branch,
-            date: entry.date // Added Date field
+            date: entry.date,
+            amount: entry.amount,
+            paymentMethod: entry.paymentMethod
         });
         setIsDetailsModalOpen(true);
     };
@@ -342,10 +354,16 @@ const NewEntryForm: React.FC = () => {
         if (!editingEntry) return;
         setLoading(true);
         try {
-            await api.updateEntry({ ...editingEntry, ...detailForm });
+            const finalAmount = Number(detailForm.amount ?? editingEntry.amount);
+            const finalMethod = detailForm.paymentMethod ?? editingEntry.paymentMethod;
+            let finalPending = 0;
+            if (finalMethod === 'PENDING') {
+                finalPending = finalAmount;
+            }
+            await api.updateEntry({ ...editingEntry, ...detailForm, amount: finalAmount, paymentMethod: finalMethod, pendingAmount: finalPending });
             setIsDetailsModalOpen(false);
             setEditingEntry(null);
-            setNotification({ msg: 'Details Updated!', type: 'success' });
+            setNotification({ msg: 'Details & Payment Updated!', type: 'success' });
             await loadTodayEntries();
         } catch (e) { setNotification({ msg: 'Update failed.', type: 'error' }); } finally { setLoading(false); }
     };
@@ -673,13 +691,31 @@ const NewEntryForm: React.FC = () => {
 
             {isDetailsModalOpen && editingEntry && (
                 <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-                    <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-lg overflow-hidden border border-white/20">
-                        <div className="bg-slate-900 px-8 py-6 flex justify-between items-center text-white"><div><h3 className="font-black text-lg flex items-center tracking-tight">Edit Entry Details</h3><p className="text-slate-400 text-xs font-bold">{editingEntry.clientName}</p></div><button onClick={() => setIsDetailsModalOpen(false)} className="hover:bg-slate-800 p-2 rounded-full"><X className="w-5 h-5" /></button></div>
-                        <form onSubmit={handleDetailsSubmit} className="p-8 space-y-6"><div className="grid grid-cols-1 gap-6"><div><label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Technician</label><select value={detailForm.technician || ''} onChange={e => setDetailForm({ ...detailForm, technician: e.target.value })} className="w-full rounded-xl border-slate-200 border bg-slate-50 px-4 py-3 font-bold focus:ring-2 focus:ring-indigo-500 outline-none">{technicians.map(t => (<option key={t.name} value={t.name}>{t.name}</option>))}</select></div><div className="grid grid-cols-2 gap-4"><div><label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Service Type</label><select value={detailForm.serviceType || ''} onChange={e => setDetailForm({ ...detailForm, serviceType: e.target.value as any })} className="w-full rounded-xl border-slate-200 border bg-slate-50 px-4 py-3 font-bold focus:ring-2 focus:ring-indigo-500 outline-none"><option value="SERVICE">SERVICE</option><option value="NEW">NEW</option><option value="WASHING">WASHING</option><option value="DEMO">DEMO</option><option value="MUNDAN">MUNDAN</option></select></div><div><label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Method</label><select value={detailForm.patchMethod || ''} onChange={e => setDetailForm({ ...detailForm, patchMethod: e.target.value as any })} className="w-full rounded-xl border-slate-200 border bg-slate-50 px-4 py-3 font-bold focus:ring-2 focus:ring-indigo-500 outline-none"><option value="TAPING">TAPING</option><option value="BONDING">BONDING</option><option value="CLIPPING">CLIPPING</option></select></div></div>
-                            {/* NEW DATE FIELD ADDED HERE */}
-                            <div><label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Date</label><input type="date" value={detailForm.date || ''} onChange={e => setDetailForm({ ...detailForm, date: e.target.value })} className="w-full rounded-xl border-slate-200 border bg-slate-50 px-4 py-3 font-bold focus:ring-2 focus:ring-indigo-500 outline-none" /></div>
+                    <div className="bg-white rounded-[1.5rem] shadow-2xl w-full max-w-sm overflow-hidden border border-white/20">
+                        <div className="bg-slate-900 px-6 py-4 flex justify-between items-center text-white"><div><h3 className="font-black text-base flex items-center tracking-tight">Edit Details</h3><p className="text-slate-400 text-[10px] font-bold truncate max-w-[200px]">{editingEntry.clientName}</p></div><button onClick={() => setIsDetailsModalOpen(false)} className="hover:bg-slate-800 p-1.5 rounded-full"><X className="w-4 h-4" /></button></div>
+                        <form onSubmit={handleDetailsSubmit} className="p-6 space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div><label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Technician</label><select value={detailForm.technician || ''} onChange={e => setDetailForm({ ...detailForm, technician: e.target.value })} className="w-full rounded-lg border-slate-200 border bg-slate-50 px-3 py-2.5 text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none">{technicians.map(t => (<option key={t.name} value={t.name}>{t.name}</option>))}</select></div>
+                                <div><label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Date</label><input type="date" value={detailForm.date || ''} onChange={e => setDetailForm({ ...detailForm, date: e.target.value })} className="w-full rounded-lg border-slate-200 border bg-slate-50 px-3 py-2.5 text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none" /></div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div><label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Service</label><select value={detailForm.serviceType || ''} onChange={e => setDetailForm({ ...detailForm, serviceType: e.target.value as any })} className="w-full rounded-lg border-slate-200 border bg-slate-50 px-3 py-2.5 text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none"><option value="SERVICE">SERVICE</option><option value="NEW">NEW</option><option value="WASHING">WASHING</option><option value="DEMO">DEMO</option><option value="MUNDAN">MUNDAN</option></select></div>
+                                <div><label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Method</label><select value={detailForm.patchMethod || ''} onChange={e => setDetailForm({ ...detailForm, patchMethod: e.target.value as any })} className="w-full rounded-lg border-slate-200 border bg-slate-50 px-3 py-2.5 text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none"><option value="TAPING">TAPING</option><option value="BONDING">BONDING</option><option value="CLIPPING">CLIPPING</option></select></div>
+                            </div>
 
-                            <div><label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Remarks</label><textarea value={detailForm.remark || ''} onChange={e => setDetailForm({ ...detailForm, remark: e.target.value })} rows={2} className="w-full rounded-xl border-slate-200 border bg-slate-50 px-4 py-3 font-bold focus:ring-2 focus:ring-indigo-500" /></div></div><button type="submit" disabled={loading} className="w-full py-4 bg-slate-800 text-white font-bold rounded-xl hover:bg-slate-900 border border-slate-900 text-lg">{loading ? <RefreshCw className="w-5 h-5 animate-spin" /> : 'Save Details'}</button></form>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div><label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Amount</label><div className="flex items-center gap-2"><span className="text-slate-400 font-bold text-sm">₹</span><input type="number" value={detailForm.amount || ''} onChange={e => setDetailForm({ ...detailForm, amount: Number(e.target.value) })} className="w-full rounded-lg border-slate-200 border bg-slate-50 px-3 py-2.5 text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none" /></div></div>
+                                <div><label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Status</label><select value={detailForm.paymentMethod === 'PENDING' ? 'PENDING' : 'PAID'} onChange={e => { const val = e.target.value; if (val === 'PENDING') setDetailForm({ ...detailForm, paymentMethod: 'PENDING' }); else if (detailForm.paymentMethod === 'PENDING') setDetailForm({ ...detailForm, paymentMethod: 'CASH' }); }} className={`w-full rounded-lg border px-3 py-2.5 text-sm font-black outline-none ${detailForm.paymentMethod === 'PENDING' ? 'bg-red-50 border-red-200 text-red-600' : 'bg-emerald-50 border-emerald-200 text-emerald-600'}`}><option value="PAID">PAID</option><option value="PENDING">PENDING</option></select></div>
+                            </div>
+
+                            {detailForm.paymentMethod !== 'PENDING' && (
+                                <div><label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Payment via</label><div className="grid grid-cols-3 gap-2">{['CASH', 'UPI', 'CARD'].map(m => (<button type="button" key={m} onClick={() => setDetailForm({ ...detailForm, paymentMethod: m as any })} className={`py-1.5 rounded-md text-[10px] font-black border transition-colors ${detailForm.paymentMethod === m ? 'bg-slate-800 text-white border-slate-900' : 'bg-white text-slate-400 border-slate-200 hover:bg-slate-50'}`}>{m}</button>))}</div></div>
+                            )}
+
+                            <div><label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Remarks</label><textarea value={detailForm.remark || ''} onChange={e => setDetailForm({ ...detailForm, remark: e.target.value })} rows={1} className="w-full rounded-lg border-slate-200 border bg-slate-50 px-3 py-2.5 text-sm font-bold focus:ring-2 focus:ring-indigo-500" /></div>
+
+                            <button type="submit" disabled={loading} className="w-full py-3 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 border border-slate-900 text-sm shadow-lg mt-2">{loading ? <RefreshCw className="w-4 h-4 animate-spin mx-auto" /> : 'Save Changes'}</button>
+                        </form>
                     </div>
                 </div>
             )}
