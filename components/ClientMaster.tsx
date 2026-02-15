@@ -129,13 +129,13 @@ const ClientMaster: React.FC = () => {
 
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm text-slate-600">
-            <thead className="bg-slate-50/80 text-slate-400 uppercase font-black text-[10px] tracking-widest border-b border-slate-200">
+            <thead className="bg-slate-900 text-white uppercase font-bold text-xs border-b border-indigo-500/30">
               <tr>
-                <th className="px-8 py-5">Client Identity</th>
-                <th className="px-8 py-5">Contact Details</th>
-                <th className="px-8 py-5">Location</th>
-                <th className="px-8 py-5">Profile info</th>
-                <th className="px-8 py-5 text-center">Actions</th>
+                <th className="px-8 py-5 tracking-wider">Client Identity</th>
+                <th className="px-8 py-5 tracking-wider">Contact Details</th>
+                <th className="px-8 py-5 tracking-wider">Location</th>
+                <th className="px-8 py-5 tracking-wider">Profile info</th>
+                <th className="px-8 py-5 text-center tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">

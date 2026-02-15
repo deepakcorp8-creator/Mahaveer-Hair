@@ -230,8 +230,8 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
         <div className="pt-6 pb-4 px-4 relative z-10 shrink-0">
           <div className="w-full bg-gradient-to-br from-white/10 to-transparent backdrop-blur-md rounded-2xl p-[1px] shadow-2xl relative group overflow-hidden transition-all duration-500 hover:shadow-indigo-500/20">
             <div className="bg-white/95 rounded-xl flex items-center justify-center h-16 w-full overflow-hidden relative group-hover:bg-white transition-colors duration-500">
-               {/* Enhanced Shine Effect */}
-               <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/40 to-transparent skew-x-12 translate-x-[-150%] group-hover:translate-x-[150%] transition-transform duration-1000"></div>
+              {/* Enhanced Shine Effect */}
+              <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/40 to-transparent skew-x-12 translate-x-[-150%] group-hover:translate-x-[150%] transition-transform duration-1000"></div>
               <img
                 src={LOGO_URL}
                 alt="Mahaveer Logo"
@@ -269,9 +269,9 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
                 {active && (
                   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent opacity-50 blur-sm"></div>
                 )}
-                
+
                 {/* Selection Indicator */}
-                 {active && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-4 bg-white rounded-r-lg shadow-[0_0_8px_rgba(255,255,255,0.8)]"></div>}
+                {active && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-4 bg-white rounded-r-lg shadow-[0_0_8px_rgba(255,255,255,0.8)]"></div>}
 
                 <item.icon className={`w-4 h-4 mr-3 transition-transform duration-300 group-hover:scale-110 relative z-10 ${active ? 'text-white' : 'text-slate-500 group-hover:text-indigo-400'}`} />
                 <span className={`font-semibold text-xs tracking-wide relative z-10 ${active ? 'text-white' : ''}`}>{item.label}</span>
@@ -287,13 +287,58 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
           })}
         </nav>
 
+        {/* Mobile Logout Button (Visible only on mobile) */}
+        <div className="px-3 pb-2 lg:hidden w-full relative z-10 shrink-0">
+          {/* User Profile Summary & Logout */}
+          <div className="flex items-center justify-between p-2 rounded-xl bg-white/5 border border-white/5 backdrop-blur-sm group hover:bg-white/10 transition-colors">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 p-[1.5px] shrink-0">
+                <div className="w-full h-full rounded-full bg-slate-900 flex items-center justify-center overflow-hidden">
+                  {user.dpUrl ? (
+                    <img src={user.dpUrl} className="w-full h-full object-cover" alt={user.username} />
+                  ) : (
+                    <span className="text-white font-bold text-[10px]">{user.username.charAt(0)}</span>
+                  )}
+                </div>
+              </div>
+              <div className="flex flex-col min-w-0">
+                <span className="text-xs font-bold text-white truncate">{user.username}</span>
+                <span className="text-[9px] font-medium text-slate-400 uppercase tracking-wider">{user.role}</span>
+              </div>
+            </div>
+
+            <button
+              onClick={() => {
+                setIsMobileMenuOpen(false);
+                onLogout();
+              }}
+              className="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors border border-transparent hover:border-red-500/20"
+              title="Sign Out"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
         <div className="p-3 relative z-10 shrink-0 space-y-3 pt-3 border-t border-white/5 bg-[#020617]/50 backdrop-blur-sm">
           {/* Copyright / Credits */}
-          <div className="px-1">
-             <div className="flex items-center justify-between text-[9px] text-slate-600">
-                <span className="opacity-60 font-medium">© 2025 Mahaveer</span>
-                <span className="opacity-40">v2.1</span>
-             </div>
+          <div className="px-1 flex flex-col gap-2">
+            <div className="flex items-center justify-between text-[9px] text-slate-600">
+              <span className="opacity-60 font-medium">© 2025 Mahaveer</span>
+              <span className="opacity-40">v2.1</span>
+            </div>
+
+            {/* Zentrix Branding */}
+            <a
+              href="https://zentrix-dv.vercel.app/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group flex items-center justify-center gap-1.5 p-2 rounded-lg bg-white/5 hover:bg-indigo-500/10 border border-white/5 hover:border-indigo-500/20 transition-all duration-300"
+            >
+              <div className="text-[10px] font-medium text-slate-500 group-hover:text-indigo-400 transition-colors">
+                Powered By <span className="font-bold text-slate-400 group-hover:text-white transition-colors">Zentrix</span>
+              </div>
+            </a>
           </div>
         </div>
       </aside>
@@ -323,25 +368,25 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
           <div className="flex items-center text-slate-400 text-[10px] font-black uppercase bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-200 shadow-inner"><Calendar className="w-3 h-3 mr-1.5 text-indigo-500" />{todayDate}</div>
           <div className="flex items-center gap-3">
             {user.role === Role.ADMIN && pendingCount > 0 && <Link to="/packages" className="p-2 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-100 animate-pulse"><Bell className="w-4 h-4" /></Link>}
-            
+
             <div className="h-6 w-px bg-slate-200 mx-1"></div>
 
             {/* Header Profile Pill */}
             <div onClick={() => setIsProfileModalOpen(true)} className="flex items-center gap-2.5 pl-1 pr-3 py-0.5 rounded-full bg-white border border-slate-200 shadow-sm hover:shadow-md transition-all cursor-pointer group hover:bg-slate-50">
-               <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 p-[1.5px]">
-                  <div className="w-full h-full rounded-full bg-white flex items-center justify-center overflow-hidden">
-                     {user.dpUrl ? <img src={user.dpUrl} className="w-full h-full object-cover" /> : <span className="text-indigo-600 font-black text-[10px]">{user.username.charAt(0)}</span>}
-                  </div>
-               </div>
-               <div className="flex flex-col items-start mr-0.5">
-                   <span className="text-xs font-bold text-slate-700 group-hover:text-indigo-600 transition-colors">{user.username}</span>
-                   <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">{user.role}</span>
-               </div>
-               <ChevronRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-indigo-400 transition-colors" />
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 p-[1.5px]">
+                <div className="w-full h-full rounded-full bg-white flex items-center justify-center overflow-hidden">
+                  {user.dpUrl ? <img src={user.dpUrl} className="w-full h-full object-cover" /> : <span className="text-indigo-600 font-black text-[10px]">{user.username.charAt(0)}</span>}
+                </div>
+              </div>
+              <div className="flex flex-col items-start mr-0.5">
+                <span className="text-xs font-bold text-slate-700 group-hover:text-indigo-600 transition-colors">{user.username}</span>
+                <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">{user.role}</span>
+              </div>
+              <ChevronRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-indigo-400 transition-colors" />
             </div>
 
             <button onClick={onLogout} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-all border border-transparent hover:border-red-100" title="Logout">
-                <LogOut className="w-4 h-4" />
+              <LogOut className="w-4 h-4" />
             </button>
           </div>
         </header>

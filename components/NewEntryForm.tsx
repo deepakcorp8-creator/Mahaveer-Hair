@@ -108,9 +108,10 @@ const NewEntryForm: React.FC = () => {
     }, [formData.serviceType]);
 
     const init = async () => {
+        // Use cached data (forceRefresh = false) for faster load
         const [options, packages] = await Promise.all([
-            api.getOptions(true),
-            api.getPackages(true)
+            api.getOptions(false),
+            api.getPackages(false)
         ]);
         setClients(options.clients);
         setTechnicians(options.technicians);
@@ -121,7 +122,8 @@ const NewEntryForm: React.FC = () => {
     };
 
     const loadTodayEntries = async () => {
-        const allEntries = await api.getEntries(true);
+        // Use cached data (forceRefresh = false)
+        const allEntries = await api.getEntries(false);
         const map: Record<string, { amount: number, oldestDate: string }> = {};
         allEntries.forEach(e => {
             let due = 0;
@@ -228,23 +230,20 @@ const NewEntryForm: React.FC = () => {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (loading) return;
-        setLoading(true);
-        setNotification(null);
-        setLastSubmittedEntry(null);
+
+        // 1. Validation
         if (!formData.clientName || !formData.technician) {
             setNotification({ msg: 'Please fill in all required fields.', type: 'error' });
-            setLoading(false);
             return;
         }
+
+        // 2. Prepare Data
         let pending = 0;
         const totalBill = Number(formData.amount || 0);
         if (formData.paymentMethod === 'PENDING') pending = totalBill;
         else if (isFormPartPayment) pending = Math.max(0, totalBill - Number(receivedAmount || 0));
 
-        // Ensure correct branch if not admin
         const branchToUse = isAdmin ? formData.branch : userBranch;
-
-        // REMARK LOGIC: Append 'service not count' if needed
         let finalRemark = formData.remark || '';
         if (activePackage && !activePackage.isExpired && !shouldCountInPackage) {
             finalRemark += ' - service not count';
@@ -252,23 +251,51 @@ const NewEntryForm: React.FC = () => {
 
         const entryToSubmit = { ...formData, branch: branchToUse, pendingAmount: pending, remark: finalRemark } as Entry;
 
+        // 3. Optimistic UI Update
+        const tempId = 'TEMP_' + Date.now();
+        const optimisticEntry: Entry = {
+            ...entryToSubmit,
+            id: tempId as any, // Temporary ID
+            date: entryToSubmit.date || new Date().toISOString().split('T')[0]
+        };
+
+        // Update Local State Immediately
+        setTodayEntries(prev => [optimisticEntry, ...prev]);
+        setLastSubmittedEntry(optimisticEntry);
+        setNotification({
+            msg: optimisticEntry.pendingAmount ? `Entry Added! ₹${optimisticEntry.pendingAmount} PENDING` : 'Recorded successfully!',
+            type: optimisticEntry.pendingAmount ? 'warning' : 'success',
+            hasAction: !!optimisticEntry.pendingAmount
+        });
+
+        // Reset Form Immediately
+        setFormData({ ...initialFormState, date: formData.date, branch: branchToUse });
+        setReceivedAmount('');
+        setIsFormPartPayment(false);
+        setActivePackage(null);
+        setShouldCountInPackage(true);
+        document.querySelector('main')?.scrollTo({ top: 0, behavior: 'smooth' });
+
+        // 4. Background API Call
         try {
+            // We don't set global loading=true here to allow immediate UI interaction
             const result = await api.addEntry(entryToSubmit);
             const savedEntry = result as Entry;
-            setLastSubmittedEntry(savedEntry);
-            setNotification({
-                msg: savedEntry.pendingAmount ? `Entry Added! ₹${savedEntry.pendingAmount} PENDING` : 'Recorded successfully!',
-                type: savedEntry.pendingAmount ? 'warning' : 'success',
-                hasAction: !!savedEntry.pendingAmount
-            });
-            setFormData({ ...initialFormState, date: formData.date, branch: branchToUse }); // Reset but keep branch/date
-            setReceivedAmount('');
-            setIsFormPartPayment(false);
-            setActivePackage(null);
-            setShouldCountInPackage(true); // Reset toggle
-            await loadTodayEntries();
-            document.querySelector('main')?.scrollTo({ top: 0, behavior: 'smooth' });
-        } catch (error) { setNotification({ msg: 'Failed to add entry.', type: 'error' }); } finally { setLoading(false); }
+
+            // Replace Optimistic Entry with Real Entry
+            setTodayEntries(prev => prev.map(entry => entry.id === (tempId as any) ? savedEntry : entry));
+            setLastSubmittedEntry(savedEntry); // Update for "Invoice" / "Update Payment" buttons
+
+            // Allow background re-fetch to ensure sync (optional, can be debounced or skipped if confident)
+            // await loadTodayEntries(); 
+        } catch (error) {
+            console.error("Submission failed", error);
+            // Revert on Failure
+            setTodayEntries(prev => prev.filter(entry => entry.id !== (tempId as any)));
+            setNotification({ msg: 'Failed to sync entry to server. Please try again.', type: 'error' });
+            // Restore Form Data (Optional - usually better to let user re-enter or keep data in a draft state)
+            // For now, we just alert the error.
+        }
     };
 
     const openPaymentModal = (entry: Entry) => {
