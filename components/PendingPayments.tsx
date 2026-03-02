@@ -149,20 +149,20 @@ const PendingPayments: React.FC = () => {
         let totalOutstanding = 0;
         let overdueCount = 0;
         let criticalAmount = 0;
-        let dueTodayCount = 0;
+        let dueTodayAmount = 0;
         const sevenDaysAgo = new Date();
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
         const sevenDaysAgoStr = sevenDaysAgo.toISOString().split('T')[0];
         entries.forEach(e => {
             const due = e.paymentMethod === 'PENDING' ? (e.amount || 0) : (e.pendingAmount || 0);
             totalOutstanding += due;
-            if (e.nextCallDate === todayStr) dueTodayCount++;
+            if (e.nextCallDate === todayStr) dueTodayAmount += due;
             if (e.nextCallDate && e.nextCallDate < todayStr) {
                 overdueCount++;
                 if (e.nextCallDate < sevenDaysAgoStr) criticalAmount += due;
             }
         });
-        return { totalOutstanding, overdueCount, criticalAmount, dueTodayCount };
+        return { totalOutstanding, overdueCount, criticalAmount, dueTodayAmount };
     }, [entries, todayStr]);
 
     const handleSelectAll = () => {
@@ -399,7 +399,7 @@ const PendingPayments: React.FC = () => {
                         </div>
                         <div>
                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Due Today</p>
-                            <p className="text-xl font-black text-slate-800">{stats.dueTodayCount}</p>
+                            <p className="text-xl font-black text-slate-800">₹{stats.dueTodayAmount.toLocaleString()}</p>
                         </div>
                     </div>
 

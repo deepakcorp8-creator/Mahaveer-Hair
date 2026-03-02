@@ -74,7 +74,8 @@ const DailyReport: React.FC = () => {
             amount: entry.amount,
             paymentMethod: entry.paymentMethod,
             remark: entry.remark,
-            pendingAmount: entry.pendingAmount || 0
+            pendingAmount: entry.pendingAmount || 0,
+            date: entry.date
         });
         setIsEditModalOpen(true);
     };
@@ -586,6 +587,15 @@ const DailyReport: React.FC = () => {
 
                         <form onSubmit={handleEditSubmit} className="p-8 space-y-6">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">Date</label>
+                                    <input
+                                        type="date"
+                                        value={editForm.date || ''}
+                                        onChange={e => setEditForm({ ...editForm, date: e.target.value })}
+                                        className="w-full rounded-xl border-slate-200 border-2 bg-slate-50 px-4 py-[13px] font-bold text-slate-700 outline-none focus:border-indigo-500 focus:bg-white transition-all"
+                                    />
+                                </div>
                                 <div>
                                     <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">Assigned Technician</label>
                                     <select
