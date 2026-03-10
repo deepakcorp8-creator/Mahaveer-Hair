@@ -279,12 +279,21 @@ const ServicePackages: React.FC = () => {
 
   const getPackageUsage = (pkg: ServicePackage) => {
       const pkgName = (pkg.clientName || '').trim().toLowerCase();
-      const pkgStart = new Date(pkg.startDate);
+      
+      let pkgStart = new Date();
+      if (pkg.startDate) {
+          const parsedStart = new Date(pkg.startDate);
+          if (!isNaN(parsedStart.getTime())) pkgStart = parsedStart;
+      }
       pkgStart.setHours(0,0,0,0);
 
       const dbUsed = entries.filter(e => {
           const entryName = (e.clientName || '').trim().toLowerCase();
-          const entryDate = new Date(e.date);
+          let entryDate = new Date();
+          if (e.date) {
+              const parsedDate = new Date(e.date);
+              if (!isNaN(parsedDate.getTime())) entryDate = parsedDate;
+          }
           entryDate.setHours(0,0,0,0);
           
           return (
