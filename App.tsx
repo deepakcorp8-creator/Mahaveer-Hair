@@ -69,6 +69,7 @@ function App() {
       api.getOptions();
       api.getEntries();
       api.getAppointments();
+      api.getPackages();
     }
   }, [user]);
 

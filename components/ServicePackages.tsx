@@ -278,7 +278,7 @@ const ServicePackages: React.FC = () => {
   };
 
   const getPackageUsage = (pkg: ServicePackage) => {
-      const pkgName = (pkg.clientName || '').trim().toLowerCase();
+      const pkgName = String(pkg.clientName || '').trim().toLowerCase();
       
       let pkgStart = new Date();
       if (pkg.startDate) {
@@ -287,8 +287,8 @@ const ServicePackages: React.FC = () => {
       }
       pkgStart.setHours(0,0,0,0);
 
-      const dbUsed = entries.filter(e => {
-          const entryName = (e.clientName || '').trim().toLowerCase();
+      const dbUsed = (entries || []).filter(e => {
+          const entryName = String(e.clientName || '').trim().toLowerCase();
           let entryDate = new Date();
           if (e.date) {
               const parsedDate = new Date(e.date);
@@ -314,12 +314,13 @@ const ServicePackages: React.FC = () => {
 
   // --- STATS CALCULATION ---
   const stats = useMemo(() => {
-      const total = packages.length;
-      const pending = packages.filter(p => p.status === 'PENDING' || !p.status).length;
-      const active = packages.filter(p => p.status === 'APPROVED').length;
+      const pkgList = packages || [];
+      const total = pkgList.length;
+      const pending = pkgList.filter(p => p.status === 'PENDING' || !p.status).length;
+      const active = pkgList.filter(p => p.status === 'APPROVED').length;
       
       let expiring = 0;
-      packages.forEach(p => {
+      pkgList.forEach(p => {
           if(p.status === 'APPROVED') {
               const usage = getPackageUsage(p);
               if (usage.remaining <= 2) expiring++;
@@ -330,7 +331,7 @@ const ServicePackages: React.FC = () => {
   }, [packages, entries]); 
 
   // --- LIST FILTERING ---
-  const filteredPackages = packages.filter(p => {
+  const filteredPackages = (packages || []).filter(p => {
     // 1. Search Filter
     const matchesSearch = (p.clientName || '').toLowerCase().includes(searchTerm.toLowerCase()) || 
                           (p.packageName || '').toLowerCase().includes(searchTerm.toLowerCase());
