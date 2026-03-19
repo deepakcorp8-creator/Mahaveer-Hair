@@ -105,8 +105,8 @@ const ClientHistory: React.FC = () => {
       if (startDate && entryDate < startDate) return false;
       if (endDate && entryDate > endDate) return false;
       if (searchTerm) {
-        const term = searchTerm.toLowerCase();
-        const matchName = e.clientName.toLowerCase().includes(term);
+        const term = String(searchTerm || '').toLowerCase();
+        const matchName = String(e.clientName || '').toLowerCase().includes(term);
         const matchNumber = String(e.contactNo).includes(term);
         return matchName || matchNumber;
       }

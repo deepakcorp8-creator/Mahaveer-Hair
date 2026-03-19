@@ -125,7 +125,7 @@ const DailyReport: React.FC = () => {
             if (branchFilter !== 'ALL' && entry.branch !== branchFilter) return false; // Filter Logic
             if (serviceFilter !== 'ALL' && entry.serviceType !== serviceFilter) return false;
             if (paymentFilter !== 'ALL' && entry.paymentMethod !== paymentFilter) return false;
-            if (searchTerm && !entry.clientName.toLowerCase().includes(searchTerm.toLowerCase())) return false;
+            if (searchTerm && !String(entry.clientName || '').toLowerCase().includes(String(searchTerm).toLowerCase())) return false;
             return true;
         });
     }, [entries, selectedDate, branchFilter, serviceFilter, paymentFilter, searchTerm]);

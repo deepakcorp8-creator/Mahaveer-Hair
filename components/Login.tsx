@@ -58,7 +58,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     setError('');
     try {
       const { authService } = await import('../services/auth');
-      const user = await authService.login(username.trim(), password.trim());
+      const user = await authService.login(String(username).trim(), String(password).trim());
       if (user) {
         onLogin(user);
       } else {

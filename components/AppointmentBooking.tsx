@@ -182,7 +182,7 @@ const AppointmentBooking: React.FC = () => {
                     address: '',
                     note: '',
                     time: '10:00 AM',
-                    branch: isAdmin ? newAppt.branch : userBranch || 'RPR'
+                    branch: isAdmin ? newAppt.branch : (userBranch || newAppt.branch || 'RPR')
                 });
                 setTimeParts({ hour: '10', minute: '00', period: 'AM' });
                 await loadData();
@@ -218,8 +218,8 @@ const AppointmentBooking: React.FC = () => {
         if (branchFilter !== 'ALL' && a.branch !== branchFilter) return false;
 
         // Search Logic
-        const searchSafe = searchFilter.toLowerCase();
-        const matchesSearch = (a.clientName || '').toLowerCase().includes(searchSafe) || String(a.contact || '').includes(searchFilter);
+        const searchSafe = String(searchFilter || '').toLowerCase();
+        const matchesSearch = String(a.clientName || '').toLowerCase().includes(searchSafe) || String(a.contact || '').includes(searchFilter);
 
         if (!matchesSearch) return false;
 

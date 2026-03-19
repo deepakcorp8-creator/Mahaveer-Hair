@@ -109,7 +109,7 @@ const PendingPayments: React.FC = () => {
 
     const processedEntries = useMemo(() => {
         let data = entries.filter(e => {
-            const matchSearch = e.clientName.toLowerCase().includes(searchTerm.toLowerCase()) || String(e.contactNo).includes(searchTerm);
+            const matchSearch = String(e.clientName || '').toLowerCase().includes(String(searchTerm || '').toLowerCase()) || String(e.contactNo).includes(searchTerm);
 
             let matchDate = true;
             if (startDate && e.nextCallDate && e.nextCallDate < startDate) matchDate = false;
@@ -137,7 +137,7 @@ const PendingPayments: React.FC = () => {
 
     const processedHistory = useMemo(() => {
         return historyList.filter(h => {
-            const matchSearch = h.clientName.toLowerCase().includes(searchTerm.toLowerCase());
+            const matchSearch = String(h.clientName || '').toLowerCase().includes(String(searchTerm || '').toLowerCase());
             let matchDate = true;
             if (startDate && h.date && h.date < startDate) matchDate = false;
             if (endDate && h.date && h.date > endDate) matchDate = false;

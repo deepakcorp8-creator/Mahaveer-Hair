@@ -111,7 +111,7 @@ const ReportsAnalytics: React.FC = () => {
             // Logic: Only use Patch Size data and Group by Product Name (Remove Size like 9x6)
             if (e.patchSize) {
                 // Remove dimensions (digits x digits), trim whitespace, and uppercase for consistent grouping
-                let key = e.patchSize.replace(/\s*\d+[\s]*[xX*][\s]*\d+\s*/gi, '').trim().toUpperCase();
+                let key = String(e.patchSize || '').replace(/\s*\d+[\s]*[xX*][\s]*\d+\s*/gi, '').trim().toUpperCase();
                 if (!key) key = "UNKNOWN"; // Fallback if only size was present
                 map.set(key, (map.get(key) || 0) + 1);
             }

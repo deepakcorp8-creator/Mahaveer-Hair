@@ -163,7 +163,7 @@ const Dashboard: React.FC = () => {
     // Since "Package Sale" isn't a strict type, we look for indicators or treat high value NEW as potentially a package if configured.
     // Current Logic per prompt: "Service package create karne pe"
     // We will look for 'Package' in remark for explicit package bonus, OR fall back to the New Patch Tiers.
-    const isPackage = entry.remark?.toLowerCase().includes('package');
+    const isPackage = String(entry.remark || '').toLowerCase().includes('package');
 
     if (entry.serviceType === 'DEMO') {
       amount = incentiveConfig.demoAmount;
@@ -225,7 +225,7 @@ const Dashboard: React.FC = () => {
 
         if (entry.serviceType === 'NEW') stats[entry.technician].newPatchCount++;
         if (entry.serviceType === 'DEMO') stats[entry.technician].demoCount++;
-        if (entry.remark?.toLowerCase().includes('package')) stats[entry.technician].packageCount++;
+        if (String(entry.remark || '').toLowerCase().includes('package')) stats[entry.technician].packageCount++;
       }
     });
 

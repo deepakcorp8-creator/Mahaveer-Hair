@@ -82,7 +82,7 @@ const ClientMaster: React.FC = () => {
   };
 
   const filteredClients = clients.filter(c =>
-    (c.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    String(c.name || '').toLowerCase().includes(String(searchTerm || '').toLowerCase()) ||
     String(c.contact || '').includes(searchTerm)
   );
 

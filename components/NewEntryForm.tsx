@@ -116,7 +116,7 @@ const NewEntryForm: React.FC = () => {
         setClients(options.clients);
         setTechnicians(options.technicians);
         setLoadingItems(options.items);
-        const activeNames = new Set(packages.filter(p => p.status === 'ACTIVE' || p.status === 'APPROVED').map(p => p.clientName.trim().toLowerCase()));
+        const activeNames = new Set(packages.filter(p => p.status === 'ACTIVE' || p.status === 'APPROVED').map(p => String(p.clientName || '').trim().toLowerCase()));
         setActivePackageClients(activeNames);
         loadTodayEntries();
     };
@@ -133,7 +133,7 @@ const NewEntryForm: React.FC = () => {
                 due = e.pendingAmount || 0;
             }
             if (due > 0 && e.clientName) {
-                const key = e.clientName.trim().toLowerCase();
+                const key = String(e.clientName).trim().toLowerCase();
                 const current = map[key] || { amount: 0, oldestDate: '' };
                 current.amount += due;
                 if (!current.oldestDate || e.date < current.oldestDate) {
@@ -175,7 +175,7 @@ const NewEntryForm: React.FC = () => {
 
         // Fallback if typed manually or subtext mismatch
         if (!client) {
-            client = clients.find(c => c.name.toLowerCase() === clientName.toLowerCase());
+            client = clients.find(c => String(c.name || '').toLowerCase() === String(clientName || '').toLowerCase());
         }
 
         let contactToUse = '';
@@ -243,7 +243,7 @@ const NewEntryForm: React.FC = () => {
         if (formData.paymentMethod === 'PENDING') pending = totalBill;
         else if (isFormPartPayment) pending = Math.max(0, totalBill - Number(receivedAmount || 0));
 
-        const branchToUse = isAdmin ? formData.branch : userBranch;
+        const branchToUse = isAdmin ? (formData.branch || 'RPR') : (userBranch || formData.branch || 'RPR');
         let finalRemark = formData.remark || '';
         if (activePackage && !activePackage.isExpired && !shouldCountInPackage) {
             finalRemark += ' - service not count';
@@ -373,7 +373,7 @@ const NewEntryForm: React.FC = () => {
     const labelClass = "block text-xs font-black uppercase tracking-widest text-slate-500 mb-2 ml-1";
 
     const filteredTodayEntries = todayEntries.filter(e => {
-        const matchSearch = e.clientName.toLowerCase().includes(searchTerm.toLowerCase()) || String(e.contactNo).includes(searchTerm);
+        const matchSearch = String(e.clientName || '').toLowerCase().includes(String(searchTerm || '').toLowerCase()) || String(e.contactNo).includes(searchTerm);
         const matchBranch = activityBranchFilter === 'ALL' || e.branch === activityBranchFilter;
         return matchSearch && matchBranch;
     });
@@ -387,7 +387,7 @@ const NewEntryForm: React.FC = () => {
             label: c.name,
             value: c.name,
             subtext: c.contact,
-            isHighlight: activePackageClients.has(c.name.trim().toLowerCase())
+            isHighlight: c.name && typeof c.name === 'string' ? activePackageClients.has(c.name.trim().toLowerCase()) : false
         }));
     }, [clients, activePackageClients]);
 
@@ -451,7 +451,7 @@ const NewEntryForm: React.FC = () => {
                                         required
                                     />
                                     {/* SHOW PENDING DUES ALERT */}
-                                    {formData.clientName && clientPendingMap[formData.clientName.trim().toLowerCase()]?.amount > 0 && (
+                                    {formData.clientName && clientPendingMap[String(formData.clientName).trim().toLowerCase()]?.amount > 0 && (
                                         <div className="mt-3 bg-red-50 border border-red-200 rounded-xl p-3 flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
                                             <div className="p-2 bg-red-100 rounded-lg text-red-600">
                                                 <AlertCircle className="w-5 h-5" />
@@ -459,9 +459,9 @@ const NewEntryForm: React.FC = () => {
                                             <div>
                                                 <p className="text-[10px] font-black text-red-800 uppercase tracking-widest leading-none mb-1">Outstanding Dues</p>
                                                 <div className="flex flex-col">
-                                                    <p className="text-lg font-black text-red-600 leading-none">₹{clientPendingMap[formData.clientName.trim().toLowerCase()].amount.toLocaleString()}</p>
+                                                    <p className="text-lg font-black text-red-600 leading-none">₹{clientPendingMap[String(formData.clientName).trim().toLowerCase()].amount.toLocaleString()}</p>
                                                     <p className="text-[10px] font-bold text-red-400 mt-1">
-                                                        Since: {formatDateDisplay(clientPendingMap[formData.clientName.trim().toLowerCase()].oldestDate)}
+                                                        Since: {formatDateDisplay(clientPendingMap[String(formData.clientName).trim().toLowerCase()].oldestDate)}
                                                     </p>
                                                 </div>
                                             </div>

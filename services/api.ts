@@ -99,7 +99,7 @@ export const api = {
 
   getClientDetails: async (name: string) => {
     const options = await api.getOptions();
-    return options.clients.find((c: any) => c.name.toLowerCase() === name.toLowerCase());
+    return options.clients.find((c: any) => String(c.name || '').toLowerCase() === String(name || '').toLowerCase());
   },
 
   addClient: async (client: Client) => {
@@ -278,16 +278,16 @@ export const api = {
       try {
         const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getPaymentHistory`);
         const data = await response.json();
-        
+
         // DETECT BACKEND ERROR (e.g. Action not found)
         if (data.error) throw new Error(data.error);
 
         // Filter for Paid Amount > 0 as per requirement
         if (Array.isArray(data)) {
-           return data.filter((p: any) => Number(p.paidAmount) > 0).map((p: any) => ({
-             ...p,
-             date: normalizeToISO(p.date)
-           }));
+          return data.filter((p: any) => Number(p.paidAmount) > 0).map((p: any) => ({
+            ...p,
+            date: normalizeToISO(p.date)
+          }));
         }
       } catch (e) {
         console.warn("Failed to fetch payment history", e);
@@ -491,9 +491,9 @@ export const api = {
 
   checkClientPackage: async (clientName: string) => {
     if (!clientName) return null;
-    const normalizedName = clientName.trim().toLowerCase();
+    const normalizedName = String(clientName || '').trim().toLowerCase();
     const packages = await api.getPackages();
-    const pkg = packages.find((p: any) => p.clientName.trim().toLowerCase() === normalizedName && (p.status === 'ACTIVE' || p.status === 'APPROVED'));
+    const pkg = packages.find((p: any) => String(p.clientName || '').trim().toLowerCase() === normalizedName && (p.status === 'ACTIVE' || p.status === 'APPROVED'));
     if (!pkg) return null;
 
     const entries = await api.getEntries();
@@ -504,11 +504,11 @@ export const api = {
       const entryDate = new Date(e.date);
       entryDate.setHours(0, 0, 0, 0);
       return (
-        e.clientName.trim().toLowerCase() === normalizedName &&
+        String(e.clientName || '').trim().toLowerCase() === normalizedName &&
         entryDate >= pkgStartDate &&
         (e.serviceType === 'SERVICE') &&
         (e.workStatus === 'DONE' || e.workStatus === 'PENDING_APPROVAL') &&
-        (!e.remark || !e.remark.toLowerCase().includes('service not count'))
+        (!e.remark || !String(e.remark || '').toLowerCase().includes('service not count'))
       );
     }).length;
 
