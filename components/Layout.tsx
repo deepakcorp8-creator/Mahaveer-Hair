@@ -30,6 +30,7 @@ import {
 } from 'lucide-react';
 import { User, Role } from '../types';
 import { api } from '../services/api';
+import { getInitial } from '../utils/dataUtils';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -297,7 +298,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
                   {user.dpUrl ? (
                     <img src={user.dpUrl} className="w-full h-full object-cover" alt={user.username} />
                   ) : (
-                    <span className="text-white font-bold text-[10px]">{user.username.charAt(0)}</span>
+                    <span className="text-white font-bold text-[10px]">{getInitial(user.username)}</span>
                   )}
                 </div>
               </div>
@@ -375,7 +376,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
             <div onClick={() => setIsProfileModalOpen(true)} className="flex items-center gap-2.5 pl-1 pr-3 py-0.5 rounded-full bg-white border border-slate-200 shadow-sm hover:shadow-md transition-all cursor-pointer group hover:bg-slate-50">
               <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 p-[1.5px]">
                 <div className="w-full h-full rounded-full bg-white flex items-center justify-center overflow-hidden">
-                  {user.dpUrl ? <img src={user.dpUrl} className="w-full h-full object-cover" /> : <span className="text-indigo-600 font-black text-[10px]">{user.username.charAt(0)}</span>}
+                  {user.dpUrl ? <img src={user.dpUrl} className="w-full h-full object-cover" /> : <span className="text-indigo-600 font-black text-[10px]">{getInitial(user.username)}</span>}
                 </div>
               </div>
               <div className="flex flex-col items-start mr-0.5">
@@ -398,7 +399,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
           </div>
           <div className="flex items-center gap-3">
             {user.role === Role.ADMIN && pendingCount > 0 && <Link to="/packages" className="p-1.5 text-indigo-600 bg-indigo-50 rounded-full border border-indigo-100"><Bell className="w-4 h-4" /></Link>}
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 p-[2px] shadow-md"><div className="w-full h-full rounded-full bg-white flex items-center justify-center text-indigo-700 font-black text-xs overflow-hidden">{user.dpUrl ? <img src={user.dpUrl} className="w-full h-full object-cover" /> : user.username.charAt(0)}</div></div>
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 p-[2px] shadow-md"><div className="w-full h-full rounded-full bg-white flex items-center justify-center text-indigo-700 font-black text-xs overflow-hidden">{user.dpUrl ? <img src={user.dpUrl} className="w-full h-full object-cover" /> : getInitial(user.username)}</div></div>
           </div>
         </header>
 

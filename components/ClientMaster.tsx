@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { Client } from '../types';
 import { Search, UserPlus, Loader2, Pencil, X, Save, User as UserIcon } from 'lucide-react';
+import { getInitial, isValidName, isValidPhone } from '../utils/dataUtils';
 
 const ClientMaster: React.FC = () => {
   const [clients, setClients] = useState<Client[]>([]);
@@ -63,6 +64,19 @@ const ClientMaster: React.FC = () => {
     if (isSubmitting) return;
 
     setIsSubmitting(true);
+    
+    // Validation
+    if (!isValidName(formData.name)) {
+      alert("Please enter a valid client name.");
+      setIsSubmitting(false);
+      return;
+    }
+    if (formData.contact && !isValidPhone(formData.contact)) {
+      alert("Please enter a valid 10-digit contact number.");
+      setIsSubmitting(false);
+      return;
+    }
+
     try {
       if (isEditMode) {
         await api.updateClient(formData, editingOriginalName);
@@ -155,7 +169,7 @@ const ClientMaster: React.FC = () => {
                       <td className="px-8 py-5">
                         <div className="flex items-center">
                           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-50 to-white border border-indigo-100 flex items-center justify-center mr-4 text-indigo-600 font-black text-sm shadow-sm group-hover:scale-110 transition-transform">
-                            {client.name.charAt(0)}
+                            {getInitial(client.name)}
                           </div>
                           <div className="font-black text-slate-800 text-base">{client.name}</div>
                         </div>

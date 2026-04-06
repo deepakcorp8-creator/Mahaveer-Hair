@@ -5,6 +5,7 @@ import { Client, Item, Technician, Entry, ServicePackage, Role, User } from '../
 import { Save, AlertCircle, User as UserIcon, CreditCard, Scissors, Calendar, MapPin, RefreshCw, CheckCircle2, Ticket, FileDown, ShieldCheck, Search, PenSquare, Wallet, X, Clock, AlertTriangle, Loader2, IndianRupee, Sparkles, Layers, UserPlus } from 'lucide-react';
 import { SearchableSelect, Option } from './SearchableSelect';
 import { generateInvoice } from '../utils/invoiceGenerator';
+import { getInitial, isValidName, isValidPhone } from '../utils/dataUtils';
 
 const NewEntryForm: React.FC = () => {
     const [loading, setLoading] = useState(false);
@@ -234,6 +235,21 @@ const NewEntryForm: React.FC = () => {
         // 1. Validation
         if (!formData.clientName || !formData.technician) {
             setNotification({ msg: 'Please fill in all required fields.', type: 'error' });
+            return;
+        }
+
+        if (!isValidName(formData.clientName)) {
+            setNotification({ msg: 'Please enter a valid client name (not just numbers).', type: 'error' });
+            return;
+        }
+
+        if (formData.contactNo && !isValidPhone(formData.contactNo)) {
+            setNotification({ msg: 'Please enter a valid 10-digit contact number.', type: 'error' });
+            return;
+        }
+
+        if (formData.serviceType !== 'DEMO' && formData.serviceType !== 'MUNDAN' && Number(formData.amount || 0) <= 0) {
+            setNotification({ msg: 'Amount cannot be zero for this service type.', type: 'error' });
             return;
         }
 
@@ -610,7 +626,7 @@ const NewEntryForm: React.FC = () => {
                         return (
                             <div key={entry.id} className={`p-6 transition-colors hover:bg-slate-50 flex flex-col md:flex-row items-center justify-between gap-6 ${showAction ? 'bg-amber-50/40' : ''}`}>
                                 <div className="flex items-center gap-4 w-full md:w-1/3">
-                                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-black text-lg shadow-sm border ${showAction ? 'bg-amber-100 text-amber-600 border-amber-200' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>{entry.clientName.charAt(0)}</div>
+                                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-black text-lg shadow-sm border ${showAction ? 'bg-amber-100 text-amber-600 border-amber-200' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>{getInitial(entry.clientName)}</div>
                                     <div><h4 className="font-black text-slate-800 text-lg leading-tight">{entry.clientName}</h4><div className="text-xs font-bold text-slate-400 flex items-center gap-2 mt-1"><span>{entry.contactNo}</span>{showAction && (<span className="flex items-center text-amber-600 bg-amber-100 px-1.5 py-0.5 rounded border border-amber-200"><AlertTriangle className="w-3 h-3 mr-1" /> Update Amount</span>)}</div></div>
                                 </div>
                                 <div className="w-full md:w-1/4">

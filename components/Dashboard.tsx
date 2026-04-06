@@ -7,6 +7,7 @@ import {
 import { Users, IndianRupee, Activity, ShoppingBag, ArrowUpRight, Sparkles, TrendingUp, AlertCircle, Calendar, ChevronDown, Filter, MapPin, SlidersHorizontal, Calculator, Eye, X, CheckCircle2 } from 'lucide-react';
 import { api } from '../services/api';
 import { DashboardStats, Entry } from '../types';
+import { getInitial } from '../utils/dataUtils';
 
 const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 const MONTHS = [
@@ -521,7 +522,7 @@ const Dashboard: React.FC = () => {
                     <td className="px-6 py-3">
                       <div className="flex items-center">
                         <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-indigo-50 to-purple-600 flex items-center justify-center text-[10px] font-bold text-white mr-3 shadow-md shadow-indigo-200 border border-indigo-400">
-                          {tech.name.charAt(0)}
+                          {getInitial(tech.name)}
                         </div>
                         <span className="font-bold text-slate-800 text-sm">{tech.name}</span>
                       </div>

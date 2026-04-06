@@ -8,6 +8,7 @@ import {
     MapPin, Scissors, User, MessageCircle, Filter, ChevronDown, Copy, CheckSquare,
     Trash2, Send, MessageSquare, SlidersHorizontal, ArrowUpRight, History, CalendarCheck, RotateCcw, ListFilter
 } from 'lucide-react';
+import { getInitial } from '../utils/dataUtils';
 
 const PendingPayments: React.FC = () => {
     const [entries, setEntries] = useState<Entry[]>([]);
@@ -437,7 +438,7 @@ const PendingPayments: React.FC = () => {
                                     {/* Client Info - Compact */}
                                     <div className="flex items-center gap-3 w-full md:w-[25%] shrink-0">
                                         <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-lg font-black shrink-0 ${isToday ? 'bg-amber-100 text-amber-700' : isOverdue ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-600'}`}>
-                                            {entry.clientName.charAt(0)}
+                                            {getInitial(entry.clientName)}
                                         </div>
                                         <div className="overflow-hidden">
                                             <h4 className="font-bold text-slate-800 text-sm truncate leading-tight">{entry.clientName}</h4>
