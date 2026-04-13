@@ -105,11 +105,12 @@ export const api = {
   addClient: async (client: Client) => {
     DATA_CACHE.options = null;
     if (isLive) {
-      fetch(GOOGLE_SCRIPT_URL, {
+      const res = await fetch(GOOGLE_SCRIPT_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify({ action: 'addClient', ...client })
-      }).catch(err => console.error("BG Sync Error", err));
+      });
+      return await res.json();
     } else {
       MOCK_CLIENTS.push(client);
     }
@@ -235,11 +236,11 @@ export const api = {
     }
 
     if (isLive) {
-      fetch(GOOGLE_SCRIPT_URL, {
+      await fetch(GOOGLE_SCRIPT_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify({ action: 'updateEntryStatus', id, status })
-      }).catch(e => console.error("BG Update Fail", e));
+      });
     }
     return true;
   },
@@ -344,19 +345,17 @@ export const api = {
     LOCAL_NEW_APPOINTMENTS.push(newAppt as Appointment);
 
     if (isLive) {
-      fetch(GOOGLE_SCRIPT_URL, {
+      const res = await fetch(GOOGLE_SCRIPT_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify({ action: 'addAppointment', ...formatted })
-      })
-        .then(res => res.json())
-        .then(result => {
-          if (result.status === 'success' && result.id) {
-            const localIndex = LOCAL_NEW_APPOINTMENTS.findIndex(a => a.id === tempId);
-            if (localIndex !== -1) LOCAL_NEW_APPOINTMENTS[localIndex].id = result.id;
-          }
-        })
-        .catch(e => console.error("BG Appt Error", e));
+      });
+      const result = await res.json();
+      if (result.status === 'success' && result.id) {
+        const localIndex = LOCAL_NEW_APPOINTMENTS.findIndex(a => a.id === tempId);
+        if (localIndex !== -1) LOCAL_NEW_APPOINTMENTS[localIndex].id = result.id;
+      }
+      return { ...newAppt, ...result };
     } else {
       MOCK_APPOINTMENTS.push(newAppt as Appointment);
     }

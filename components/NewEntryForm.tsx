@@ -195,6 +195,7 @@ const NewEntryForm: React.FC = () => {
 
     const handleAddClientSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (isClientSubmitting) return;
         setIsClientSubmitting(true);
         try {
             await api.addClient(newClientForm);
@@ -233,7 +234,7 @@ const NewEntryForm: React.FC = () => {
         if (loading) return;
 
         // 1. Validation
-        if (!formData.clientName || !formData.technician) {
+        if (!formData.clientName) {
             setNotification({ msg: 'Please fill in all required fields.', type: 'error' });
             return;
         }
@@ -248,10 +249,6 @@ const NewEntryForm: React.FC = () => {
             return;
         }
 
-        if (formData.serviceType !== 'DEMO' && formData.serviceType !== 'MUNDAN' && Number(formData.amount || 0) <= 0) {
-            setNotification({ msg: 'Amount cannot be zero for this service type.', type: 'error' });
-            return;
-        }
 
         // 2. Prepare Data
         let pending = 0;
@@ -484,7 +481,7 @@ const NewEntryForm: React.FC = () => {
                                         </div>
                                     )}
                                 </div>
-                                {activePackage && (
+                                {activePackage && !activePackage.isExpired && (
                                     <div className={`col-span-full rounded-2xl border-2 p-5 flex items-start gap-4 shadow-lg transition-all duration-300 transform hover:scale-[1.01] animate-in fade-in slide-in-from-top-4 ${activePackage.isExpired ? 'bg-red-50 border-red-300' : 'bg-emerald-50 border-emerald-300'}`}>
                                         <div className={`p-3 rounded-xl shadow-sm border ${activePackage.isExpired ? 'bg-red-100 border-red-200 text-red-600' : 'bg-emerald-100 border-emerald-200 text-emerald-600'}`}><Ticket className="w-8 h-8" /></div>
                                         <div className="flex-1">
@@ -555,7 +552,7 @@ const NewEntryForm: React.FC = () => {
                                 <div><label className={labelClass}>Service Type</label><div className="relative"><select name="serviceType" value={formData.serviceType} onChange={handleChange} className={`${inputClass} appearance-none cursor-pointer`}><option value="SERVICE">SERVICE</option><option value="NEW">NEW</option><option value="WASHING">WASHING</option><option value="DEMO">DEMO</option><option value="MUNDAN">MUNDAN</option></select><div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">▼</div></div></div>
                                 {formData.serviceType === 'NEW' && (<div className="animate-in fade-in slide-in-from-top-2 duration-300"><SearchableSelect label="Patch Size" options={itemOptions} value={formData.patchSize || ''} onChange={(val) => setFormData(prev => ({ ...prev, patchSize: val }))} placeholder="Select Patch Size..." /></div>)}
                                 <div><label className={labelClass}>Patch Method</label><div className="relative"><select name="patchMethod" value={formData.patchMethod} onChange={handleChange} className={`${inputClass} appearance-none cursor-pointer`}><option value="TAPING">TAPING</option><option value="BONDING">BONDING</option><option value="CLIPPING">CLIPPING</option></select><div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">▼</div></div></div>
-                                <div className="md:col-span-2"><SearchableSelect label="Technician Assigned" options={technicianOptions} value={formData.technician || ''} onChange={(val) => setFormData(prev => ({ ...prev, technician: val }))} placeholder="Select Technician..." required /></div>
+                                <div className="md:col-span-2"><SearchableSelect label="Technician Assigned" options={technicianOptions} value={formData.technician || ''} onChange={(val) => setFormData(prev => ({ ...prev, technician: val }))} placeholder="Select Technician..." /></div>
                                 <div className="md:col-span-2"><label className={labelClass}>Remarks / Notes</label><textarea name="remark" value={formData.remark} onChange={handleChange} rows={2} className={inputClass} placeholder="Additional details..." /></div>
                             </div>
                         </div>
@@ -573,7 +570,7 @@ const NewEntryForm: React.FC = () => {
                             <div className="p-6 space-y-8">
                                 {!isDemo ? (
                                     <div className="space-y-8 animate-in fade-in duration-300">
-                                        <div className="bg-white rounded-3xl p-6 border border-emerald-200 text-center shadow-inner relative overflow-hidden"><label className="text-emerald-800 font-black text-xs uppercase tracking-widest mb-2 block">Total Bill Amount</label><div className="relative flex justify-center items-center"><span className="text-emerald-500 text-3xl font-black mr-2">₹</span><input type="number" name="amount" value={formData.amount} onChange={handleChange} onFocus={(e) => (formData.amount === 0 || (formData.amount as any) === '0') && setFormData(prev => ({ ...prev, amount: '' as any }))} className="w-40 bg-transparent text-4xl font-black text-slate-800 text-center border-b-4 border-emerald-300 focus:border-emerald-500 focus:outline-none placeholder-slate-200 transition-colors" placeholder="0" min="0" required={formData.paymentMethod !== 'PENDING'} /></div></div>
+                                        <div className="bg-white rounded-3xl p-6 border border-emerald-200 text-center shadow-inner relative overflow-hidden"><label className="text-emerald-800 font-black text-xs uppercase tracking-widest mb-2 block">Total Bill Amount</label><div className="relative flex justify-center items-center"><span className="text-emerald-500 text-3xl font-black mr-2">₹</span><input type="number" name="amount" value={formData.amount} onChange={handleChange} onFocus={(e) => (formData.amount === 0 || (formData.amount as any) === '0') && setFormData(prev => ({ ...prev, amount: '' as any }))} className="w-40 bg-transparent text-4xl font-black text-slate-800 text-center border-b-4 border-emerald-300 focus:border-emerald-500 focus:outline-none placeholder-slate-200 transition-colors" placeholder="0" min="0" /></div></div>
                                         {formData.paymentMethod !== 'PENDING' && (<div className="flex items-center justify-between bg-slate-50 px-4 py-2 rounded-xl border border-slate-200"><span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Part Payment?</span><button type="button" onClick={() => setIsFormPartPayment(!isFormPartPayment)} className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${isFormPartPayment ? 'bg-indigo-600' : 'bg-slate-300'}`}><span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${isFormPartPayment ? 'translate-x-6' : 'translate-x-1'}`} /></button></div>)}
                                         {isFormPartPayment && formData.paymentMethod !== 'PENDING' && (<div className="animate-in fade-in slide-in-from-top-2 space-y-4"><div className="grid grid-cols-2 gap-4"><div className="bg-emerald-50 rounded-2xl p-3 border border-emerald-100"><label className="block text-[10px] font-black uppercase tracking-widest text-emerald-600 mb-1 ml-1">Received</label><div className="flex items-center gap-1"><span className="text-emerald-400 font-bold text-lg">₹</span><input type="number" value={receivedAmount} onChange={(e) => setReceivedAmount(e.target.value)} className="w-full bg-transparent text-lg font-black text-emerald-800 focus:outline-none border-b border-emerald-200 placeholder-emerald-200" placeholder="0" /></div></div><div className="bg-red-50 rounded-2xl p-3 border border-red-100"><label className="block text-[10px] font-black uppercase tracking-widest text-red-600 mb-1 ml-1">Pending</label><div className="flex items-center gap-1 h-[30px]"><span className="text-red-600 font-black text-lg">₹ {formPending}</span></div></div></div></div>)}
                                         <div><label className="labelClass">Payment Method</label><div className="grid grid-cols-2 gap-4 mt-3">{['CASH', 'UPI', 'CARD', 'PENDING'].map(method => { const activeColors: Record<string, string> = { 'CASH': 'bg-gradient-to-br from-emerald-500 to-emerald-600 text-white border-emerald-600', 'UPI': 'bg-gradient-to-br from-blue-500 to-blue-600 text-white border-blue-600', 'CARD': 'bg-gradient-to-br from-violet-500 to-violet-600 text-white border-violet-600', 'PENDING': 'bg-gradient-to-br from-red-500 to-red-600 text-white border-red-600' }; const isActive = formData.paymentMethod === method; return (<button type="button" key={method} onClick={() => setFormData(prev => ({ ...prev, paymentMethod: method as any }))} className={`py-4 px-2 text-sm font-black rounded-2xl border transition-all duration-200 shadow-sm ${isActive ? `${activeColors[method]} transform scale-105 shadow-lg` : 'bg-white text-slate-400 border-slate-300 hover:bg-slate-50 hover:text-slate-600'}`}>{method}</button>); })}</div></div>
