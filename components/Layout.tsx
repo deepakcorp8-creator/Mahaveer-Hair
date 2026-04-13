@@ -331,7 +331,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
 
             {/* Zentrix Branding */}
             <a
-              href="https://zentrix-dv.vercel.app/"
+              href="https://zentrixs.in/"
               target="_blank"
               rel="noopener noreferrer"
               className="group flex items-center justify-center gap-1.5 p-2 rounded-lg bg-white/5 hover:bg-indigo-500/10 border border-white/5 hover:border-indigo-500/20 transition-all duration-300"

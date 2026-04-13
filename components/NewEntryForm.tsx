@@ -77,6 +77,8 @@ const NewEntryForm: React.FC = () => {
     const [isFormPartPayment, setIsFormPartPayment] = useState(false);
     const [notification, setNotification] = useState<{ msg: string, type: 'success' | 'error' | 'warning', hasAction?: boolean } | null>(null);
     const [lastSubmittedEntry, setLastSubmittedEntry] = useState<Entry | null>(null);
+    const [splitCash, setSplitCash] = useState<number | string>('');
+    const [splitUPI, setSplitUPI] = useState<number | string>('');
 
     useEffect(() => {
         // Determine User Branch on Mount
@@ -158,6 +160,26 @@ const NewEntryForm: React.FC = () => {
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
+        
+        // Auto-balance split if amount changes
+        if (name === 'amount' && formData.paymentMethod === 'MIXED') {
+            const total = Number(value || 0);
+            const currentCash = Number(splitCash || 0);
+            if (currentCash > 0) {
+                setSplitUPI(Math.max(0, total - currentCash));
+            } else {
+                setSplitCash(total);
+                setSplitUPI(0);
+            }
+        }
+    };
+
+    const handleSplitAmountChange = (type: 'CASH' | 'UPI', val: string) => {
+        if (type === 'CASH') {
+            setSplitCash(val);
+        } else {
+            setSplitUPI(val);
+        }
     };
 
     const handleClientChange = (clientName: string, selectedOption?: Option) => {
@@ -249,6 +271,15 @@ const NewEntryForm: React.FC = () => {
             return;
         }
 
+        if (formData.paymentMethod === 'MIXED') {
+            const total = Number(formData.amount || 0);
+            const sum = Number(splitCash || 0) + Number(splitUPI || 0);
+            if (sum !== total) {
+                setNotification({ msg: `Split payment doesn't match total! Total: ₹${total}, Entered: ₹${sum}`, type: 'error' });
+                return;
+            }
+        }
+
 
         // 2. Prepare Data
         let pending = 0;
@@ -262,7 +293,15 @@ const NewEntryForm: React.FC = () => {
             finalRemark += ' - service not count';
         }
 
-        const entryToSubmit = { ...formData, branch: branchToUse, pendingAmount: pending, remark: finalRemark } as Entry;
+        let finalPaymentMethod = formData.paymentMethod;
+        if (formData.paymentMethod === 'MIXED') {
+            finalPaymentMethod = 'MIXED (CASH+UPI)' as any;
+            const cashVal = Number(splitCash || 0);
+            const upiVal = Number(splitUPI || 0);
+            finalRemark += ` - [Split: Cash: ${cashVal}, UPI: ${upiVal}]`;
+        }
+
+        const entryToSubmit = { ...formData, paymentMethod: finalPaymentMethod, branch: branchToUse, pendingAmount: pending, remark: finalRemark } as Entry;
 
         // 3. Optimistic UI Update
         const tempId = 'TEMP_' + Date.now();
@@ -284,6 +323,8 @@ const NewEntryForm: React.FC = () => {
         // Reset Form Immediately
         setFormData({ ...initialFormState, date: formData.date, branch: branchToUse });
         setReceivedAmount('');
+        setSplitCash('');
+        setSplitUPI('');
         setIsFormPartPayment(false);
         setActivePackage(null);
         setShouldCountInPackage(true);
@@ -328,20 +369,30 @@ const NewEntryForm: React.FC = () => {
             const total = Number(editTotalAmount);
             let newPending = isPartPayment ? Math.max(0, total - Number(editReceivedAmount)) : 0;
             let newMethod = editingEntry.paymentMethod;
+            let finalRemark = editingEntry.remark || '';
+
+            if (newMethod === 'MIXED') {
+                newMethod = 'MIXED (CASH+UPI)' as any;
+                const cashVal = Number(splitCash || 0);
+                const upiVal = Number(splitUPI || 0);
+                
+                // Remove existing split info if any to avoid duplication
+                finalRemark = finalRemark.replace(/ - \[Split:.*?\]/g, '');
+                finalRemark += ` - [Split: Cash: ${cashVal}, UPI: ${upiVal}]`;
+            }
 
             // Fix: If method is PENDING, ensure pending amount is set (Full amount if not part-pay)
             if (newMethod === 'PENDING') {
                 if (!isPartPayment) {
                     newPending = total;
                 }
-            } else {
-                // If not PENDING method, but pending is > 0, we might want to warn or just save? 
-                // Existing logic handled this via isPartPayment check.
             }
 
-            await api.updateEntry({ ...editingEntry, amount: total, paymentMethod: newMethod, pendingAmount: newPending });
+            await api.updateEntry({ ...editingEntry, amount: total, paymentMethod: newMethod, pendingAmount: newPending, remark: finalRemark });
             setIsPaymentModalOpen(false);
             setEditingEntry(null);
+            setSplitCash('');
+            setSplitUPI('');
             setNotification({ msg: 'Payment Updated!', type: 'success' });
             await loadTodayEntries();
         } catch (e) { setNotification({ msg: 'Failed to update.', type: 'error' }); } finally { setLoading(false); }
@@ -571,9 +622,59 @@ const NewEntryForm: React.FC = () => {
                                 {!isDemo ? (
                                     <div className="space-y-8 animate-in fade-in duration-300">
                                         <div className="bg-white rounded-3xl p-6 border border-emerald-200 text-center shadow-inner relative overflow-hidden"><label className="text-emerald-800 font-black text-xs uppercase tracking-widest mb-2 block">Total Bill Amount</label><div className="relative flex justify-center items-center"><span className="text-emerald-500 text-3xl font-black mr-2">₹</span><input type="number" name="amount" value={formData.amount} onChange={handleChange} onFocus={(e) => (formData.amount === 0 || (formData.amount as any) === '0') && setFormData(prev => ({ ...prev, amount: '' as any }))} className="w-40 bg-transparent text-4xl font-black text-slate-800 text-center border-b-4 border-emerald-300 focus:border-emerald-500 focus:outline-none placeholder-slate-200 transition-colors" placeholder="0" min="0" /></div></div>
-                                        {formData.paymentMethod !== 'PENDING' && (<div className="flex items-center justify-between bg-slate-50 px-4 py-2 rounded-xl border border-slate-200"><span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Part Payment?</span><button type="button" onClick={() => setIsFormPartPayment(!isFormPartPayment)} className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${isFormPartPayment ? 'bg-indigo-600' : 'bg-slate-300'}`}><span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${isFormPartPayment ? 'translate-x-6' : 'translate-x-1'}`} /></button></div>)}
-                                        {isFormPartPayment && formData.paymentMethod !== 'PENDING' && (<div className="animate-in fade-in slide-in-from-top-2 space-y-4"><div className="grid grid-cols-2 gap-4"><div className="bg-emerald-50 rounded-2xl p-3 border border-emerald-100"><label className="block text-[10px] font-black uppercase tracking-widest text-emerald-600 mb-1 ml-1">Received</label><div className="flex items-center gap-1"><span className="text-emerald-400 font-bold text-lg">₹</span><input type="number" value={receivedAmount} onChange={(e) => setReceivedAmount(e.target.value)} className="w-full bg-transparent text-lg font-black text-emerald-800 focus:outline-none border-b border-emerald-200 placeholder-emerald-200" placeholder="0" /></div></div><div className="bg-red-50 rounded-2xl p-3 border border-red-100"><label className="block text-[10px] font-black uppercase tracking-widest text-red-600 mb-1 ml-1">Pending</label><div className="flex items-center gap-1 h-[30px]"><span className="text-red-600 font-black text-lg">₹ {formPending}</span></div></div></div></div>)}
-                                        <div><label className="labelClass">Payment Method</label><div className="grid grid-cols-2 gap-4 mt-3">{['CASH', 'UPI', 'CARD', 'PENDING'].map(method => { const activeColors: Record<string, string> = { 'CASH': 'bg-gradient-to-br from-emerald-500 to-emerald-600 text-white border-emerald-600', 'UPI': 'bg-gradient-to-br from-blue-500 to-blue-600 text-white border-blue-600', 'CARD': 'bg-gradient-to-br from-violet-500 to-violet-600 text-white border-violet-600', 'PENDING': 'bg-gradient-to-br from-red-500 to-red-600 text-white border-red-600' }; const isActive = formData.paymentMethod === method; return (<button type="button" key={method} onClick={() => setFormData(prev => ({ ...prev, paymentMethod: method as any }))} className={`py-4 px-2 text-sm font-black rounded-2xl border transition-all duration-200 shadow-sm ${isActive ? `${activeColors[method]} transform scale-105 shadow-lg` : 'bg-white text-slate-400 border-slate-300 hover:bg-slate-50 hover:text-slate-600'}`}>{method}</button>); })}</div></div>
+                                        {formData.paymentMethod !== 'PENDING' && formData.paymentMethod !== 'MIXED' && (<div className="flex items-center justify-between bg-slate-50 px-4 py-2 rounded-xl border border-slate-200"><span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Part Payment?</span><button type="button" onClick={() => setIsFormPartPayment(!isFormPartPayment)} className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${isFormPartPayment ? 'bg-indigo-600' : 'bg-slate-300'}`}><span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${isFormPartPayment ? 'translate-x-6' : 'translate-x-1'}`} /></button></div>)}
+                                        {isFormPartPayment && formData.paymentMethod !== 'PENDING' && formData.paymentMethod !== 'MIXED' && (<div className="animate-in fade-in slide-in-from-top-2 space-y-4"><div className="grid grid-cols-2 gap-4"><div className="bg-emerald-50 rounded-2xl p-3 border border-emerald-100"><label className="block text-[10px] font-black uppercase tracking-widest text-emerald-600 mb-1 ml-1">Received</label><div className="flex items-center gap-1"><span className="text-emerald-400 font-bold text-lg">₹</span><input type="number" value={receivedAmount} onChange={(e) => setReceivedAmount(e.target.value)} onFocus={(e) => (Number(e.target.value) === 0) && setReceivedAmount('')} className="w-full bg-transparent text-lg font-black text-emerald-800 focus:outline-none border-b border-emerald-200 placeholder-emerald-200" placeholder="0" /></div></div><div className="bg-red-50 rounded-2xl p-3 border border-red-100"><label className="block text-[10px] font-black uppercase tracking-widest text-red-600 mb-1 ml-1">Pending</label><div className="flex items-center gap-1 h-[30px]"><span className="text-red-600 font-black text-lg">₹ {formPending}</span></div></div></div></div>)}
+                                        
+                                        {/* Split Payment UI */}
+                                        {formData.paymentMethod === 'MIXED' && (
+                                            <div className="animate-in fade-in slide-in-from-top-2 space-y-4">
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <div className="bg-emerald-50 rounded-2xl p-3 border border-emerald-200 shadow-inner">
+                                                        <label className="block text-[9px] font-black uppercase tracking-[0.15em] text-emerald-600 mb-1.5 ml-1">Cash Part</label>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-emerald-500 font-black text-lg">₹</span>
+                                                            <input 
+                                                                type="number" 
+                                                                value={splitCash} 
+                                                                onChange={(e) => handleSplitAmountChange('CASH', e.target.value)} 
+                                                                onFocus={(e) => (Number(e.target.value) === 0) && setSplitCash('')}
+                                                                className="w-full bg-transparent text-xl font-black text-slate-800 focus:outline-none border-b-2 border-emerald-200 focus:border-emerald-500" 
+                                                                placeholder="0" 
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                    <div className="bg-blue-50 rounded-2xl p-3 border border-blue-200 shadow-inner">
+                                                        <label className="block text-[9px] font-black uppercase tracking-[0.15em] text-blue-600 mb-1.5 ml-1">UPI Part</label>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-blue-500 font-black text-lg">₹</span>
+                                                            <input 
+                                                                type="number" 
+                                                                value={splitUPI} 
+                                                                onChange={(e) => handleSplitAmountChange('UPI', e.target.value)} 
+                                                                onFocus={(e) => (Number(e.target.value) === 0) && setSplitUPI('')}
+                                                                className="w-full bg-transparent text-xl font-black text-slate-800 focus:outline-none border-b-2 border-blue-200 focus:border-blue-500" 
+                                                                placeholder="0" 
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                
+                                                {/* Split Balance Checker */}
+                                                {(Number(splitCash || 0) + Number(splitUPI || 0)) !== Number(formData.amount || 0) ? (
+                                                    <div className="flex items-center gap-2 px-3 py-2 bg-red-50 rounded-lg border border-red-200 text-[10px] font-black text-red-600 uppercase tracking-wider animate-pulse">
+                                                        <AlertTriangle className="w-4 h-4" />
+                                                        Sum (₹{Number(splitCash || 0) + Number(splitUPI || 0)}) must be ₹{formData.amount}
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 rounded-lg border border-emerald-200 text-[9px] font-black text-emerald-600 uppercase tracking-widest">
+                                                        <CheckCircle2 className="w-3.5 h-3.5" />
+                                                        Split Balanced Correctly
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        <div><label className="labelClass uppercase tracking-widest text-[10px] font-black text-slate-400 block mb-2">Payment Method</label><div className="grid grid-cols-2 gap-3 mt-1">{['CASH', 'UPI', 'MIXED', 'PENDING'].map(method => { const activeColors: Record<string, string> = { 'CASH': 'bg-emerald-500 text-white border-emerald-600 shadow-emerald-500/30', 'UPI': 'bg-blue-500 text-white border-blue-600 shadow-blue-500/30', 'MIXED': 'bg-indigo-600 text-white border-indigo-700 shadow-indigo-500/30', 'PENDING': 'bg-red-500 text-white border-red-600 shadow-red-500/30' }; const isActive = formData.paymentMethod === method; return (<button type="button" key={method} onClick={() => { setFormData(prev => ({ ...prev, paymentMethod: method as any })); if(method === 'MIXED') { setSplitCash(formData.amount || 0); setSplitUPI(0); } }} className={`py-3.5 px-2 text-[10px] font-black tracking-[0.1em] rounded-2xl border-2 transition-all duration-300 ${isActive ? `${activeColors[method]} transform scale-105 shadow-xl` : 'bg-white text-slate-400 border-slate-100 hover:bg-slate-50 hover:text-slate-600 hover:border-slate-200'}`}>{method === 'MIXED' ? 'MIXED / SPLIT' : method}</button>); })}</div></div>
                                     </div>
                                 ) : (
                                     <div className="animate-in fade-in duration-300 bg-amber-50 rounded-[2rem] p-8 border-2 border-dashed border-amber-200 text-center space-y-4">
@@ -697,7 +798,47 @@ const NewEntryForm: React.FC = () => {
                 <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
                     <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-lg overflow-hidden border border-white/20">
                         <div className="bg-slate-900 px-8 py-6 flex justify-between items-center text-white"><div><h3 className="font-black text-xl tracking-tight">Complete Payment</h3><p className="text-slate-400 text-xs font-bold">Due: ₹{(editingEntry.pendingAmount || editingEntry.amount)}</p></div><button onClick={() => setIsPaymentModalOpen(false)} className="hover:bg-slate-800 p-2 rounded-full"><X className="w-5 h-5" /></button></div>
-                        <form onSubmit={handlePaymentSubmit} className="p-8 space-y-6"><div className="grid grid-cols-2 gap-6"><div><label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Total Bill</label><input type="number" value={editTotalAmount} onChange={e => setEditTotalAmount(e.target.value)} className="w-full rounded-xl border-slate-200 border bg-slate-50 px-4 py-4 text-xl font-black text-slate-700 focus:ring-2 focus:ring-indigo-500" /></div><div className="flex flex-col justify-center"><div className="flex items-center justify-between bg-slate-50 px-3 py-2 rounded-xl border border-slate-200 h-full"><span className="text-[10px] font-bold text-slate-500 uppercase">Part Pay?</span><button type="button" onClick={() => setIsPartPayment(!isPartPayment)} className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${isPartPayment ? 'bg-indigo-600' : 'bg-slate-300'}`}><span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${isPartPayment ? 'translate-x-5' : 'translate-x-1'}`} /></button></div></div></div>{isPartPayment && (<div className="grid grid-cols-2 gap-6 animate-in fade-in"><div><label className="block text-[10px] font-black uppercase tracking-widest text-emerald-600 mb-2">Received</label><input type="number" value={editReceivedAmount} onChange={e => setEditReceivedAmount(e.target.value)} className="w-full rounded-xl border-emerald-200 border bg-emerald-50 px-4 py-4 text-xl font-black text-emerald-700" /></div><div><label className="block text-[10px] font-black uppercase tracking-widest text-red-500 mb-2">Pending</label><div className="w-full rounded-xl border-red-100 border bg-red-50 px-4 py-4 text-xl font-black text-red-600 flex items-center h-[62px]">₹{editPendingCalc}</div></div></div>)}<div><label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Payment Method</label><div className="grid grid-cols-4 gap-2">{['CASH', 'UPI', 'CARD', 'PENDING'].map(m => (<button type="button" key={m} onClick={() => setEditingEntry({ ...editingEntry, paymentMethod: m as any })} className={`py-2 rounded-lg text-xs font-black border transition-colors ${editingEntry.paymentMethod === m ? 'bg-slate-800 text-white border-slate-900' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`}>{m}</button>))}</div></div><button type="submit" disabled={loading} className="w-full py-4 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 shadow-lg border border-indigo-700 text-lg">{loading ? <RefreshCw className="w-5 h-5 animate-spin" /> : 'Confirm Payment'}</button></form>
+                        <form onSubmit={handlePaymentSubmit} className="p-8 space-y-6">
+                            <div className="grid grid-cols-2 gap-6">
+                                <div><label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Total Bill</label><input type="number" value={editTotalAmount} onChange={e => setEditTotalAmount(e.target.value)} onFocus={(e) => (Number(e.target.value) === 0) && setEditTotalAmount('')} className="w-full rounded-xl border-slate-200 border bg-slate-50 px-4 py-4 text-xl font-black text-slate-700 focus:ring-2 focus:ring-indigo-500" /></div>
+                                <div className="flex flex-col justify-center">
+                                    {editingEntry.paymentMethod !== 'MIXED' && (
+                                        <div className="flex items-center justify-between bg-slate-50 px-3 py-2 rounded-xl border border-slate-200 h-full"><span className="text-[10px] font-bold text-slate-500 uppercase">Part Pay?</span><button type="button" onClick={() => setIsPartPayment(!isPartPayment)} className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${isPartPayment ? 'bg-indigo-600' : 'bg-slate-300'}`}><span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${isPartPayment ? 'translate-x-5' : 'translate-x-1'}`} /></button></div>
+                                    )}
+                                </div>
+                            </div>
+                            
+                            {isPartPayment && editingEntry.paymentMethod !== 'MIXED' && (<div className="grid grid-cols-2 gap-6 animate-in fade-in"><div><label className="block text-[10px] font-black uppercase tracking-widest text-emerald-600 mb-2">Received</label><input type="number" value={editReceivedAmount} onChange={e => setEditReceivedAmount(e.target.value)} onFocus={(e) => (Number(e.target.value) === 0) && setEditReceivedAmount('')} className="w-full rounded-xl border-emerald-200 border bg-emerald-50 px-4 py-4 text-xl font-black text-emerald-700" /></div><div><label className="block text-[10px] font-black uppercase tracking-widest text-red-500 mb-2">Pending</label><div className="w-full rounded-xl border-red-100 border bg-red-50 px-4 py-4 text-xl font-black text-red-600 flex items-center h-[62px]">₹{editPendingCalc}</div></div></div>)}
+                            
+                            {editingEntry.paymentMethod === 'MIXED' && (
+                                <div className="animate-in fade-in space-y-4">
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="bg-emerald-50 rounded-xl p-3 border border-emerald-200">
+                                            <label className="block text-[9px] font-black uppercase text-emerald-700 mb-1">Cash Part</label>
+                                            <input type="number" value={splitCash} onChange={e => handleSplitAmountChange('CASH', e.target.value)} onFocus={(e) => (Number(e.target.value) === 0) && setSplitCash('')} className="w-full bg-transparent text-lg font-black text-slate-800 outline-none" placeholder="0" />
+                                        </div>
+                                        <div className="bg-blue-50 rounded-xl p-3 border border-blue-200">
+                                            <label className="block text-[9px] font-black uppercase text-blue-700 mb-1">UPI Part</label>
+                                            <input type="number" value={splitUPI} onChange={e => handleSplitAmountChange('UPI', e.target.value)} onFocus={(e) => (Number(e.target.value) === 0) && setSplitUPI('')} className="w-full bg-transparent text-lg font-black text-slate-800 outline-none" placeholder="0" />
+                                        </div>
+                                    </div>
+                                    {(Number(splitCash || 0) + Number(splitUPI || 0)) !== Number(editTotalAmount || 0) ? (
+                                        <div className="flex items-center gap-2 px-3 py-2 bg-red-50 rounded-lg border border-red-200 text-[9px] font-black text-red-600 uppercase tracking-wider animate-pulse">
+                                            <AlertTriangle className="w-3.5 h-3.5" />
+                                            Total (₹{Number(splitCash || 0) + Number(splitUPI || 0)}) must be ₹{editTotalAmount}
+                                        </div>
+                                    ) : (
+                                        <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 rounded-lg border border-emerald-200 text-[9px] font-black text-emerald-600 uppercase tracking-widest">
+                                            <CheckCircle2 className="w-3.5 h-3.5" />
+                                            Balanced Correctly
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            <div><label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Payment Method</label><div className="grid grid-cols-4 gap-2">{['CASH', 'UPI', 'MIXED', 'PENDING'].map(m => (<button type="button" key={m} onClick={() => { setEditingEntry({ ...editingEntry, paymentMethod: m as any }); if(m === 'MIXED') { setSplitCash(editTotalAmount); setSplitUPI(0); setIsPartPayment(false); } }} className={`py-2 rounded-lg text-[10px] font-black border transition-all ${editingEntry.paymentMethod === m ? 'bg-slate-800 text-white border-slate-900 shadow-md transform scale-105' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`}>{m}</button>))}</div></div>
+                            <button type="submit" disabled={loading || (editingEntry.paymentMethod === 'MIXED' && (Number(splitCash || 0) + Number(splitUPI || 0)) !== Number(editTotalAmount))} className="w-full py-4 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 shadow-lg border border-indigo-700 text-lg transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">{loading ? <RefreshCw className="w-5 h-5 animate-spin mx-auto" /> : 'Confirm Payment'}</button>
+                        </form>
                     </div>
                 </div>
             )}

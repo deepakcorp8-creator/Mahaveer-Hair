@@ -144,18 +144,40 @@ const DailyReport: React.FC = () => {
         MUNDAN: dailyEntries.filter(e => e.serviceType === 'MUNDAN').length,
     }), [dailyEntries]);
 
-    const paymentStats = useMemo(() => ({
-        CASH: dailyEntries
-            .filter(e => e.paymentMethod === 'CASH')
-            .reduce((s, e) => s + (Number(e.amount || 0) - Number(e.pendingAmount || 0)), 0),
-        UPI: dailyEntries
-            .filter(e => e.paymentMethod === 'UPI')
-            .reduce((s, e) => s + (Number(e.amount || 0) - Number(e.pendingAmount || 0)), 0),
-        CARD: dailyEntries
-            .filter(e => e.paymentMethod === 'CARD')
-            .reduce((s, e) => s + (Number(e.amount || 0) - Number(e.pendingAmount || 0)), 0),
-        PENDING: dailyEntries.reduce((s, e) => s + Number(e.pendingAmount || 0), 0),
-    }), [dailyEntries]);
+    const paymentStats = useMemo(() => {
+        let cash = 0;
+        let upi = 0;
+        let card = 0;
+        let pending = 0;
+
+        dailyEntries.forEach(e => {
+            const bill = Number(e.amount || 0);
+            const due = Number(e.pendingAmount || 0);
+            const paid = bill - due;
+            const method = String(e.paymentMethod || '').toUpperCase();
+
+            // Handle dedicated methods
+            if (method === 'CASH') {
+                cash += paid;
+            } else if (method === 'UPI') {
+                upi += paid;
+            } else if (method === 'CARD') {
+                card += paid;
+            } 
+            // Handle Mixed / Split payments
+            else if (method.includes('MIXED')) {
+                const cashMatch = e.remark?.match(/Cash:\s*(\d+)/);
+                const upiMatch = e.remark?.match(/UPI:\s*(\d+)/);
+                if (cashMatch) cash += Number(cashMatch[1]);
+                if (upiMatch) upi += Number(upiMatch[1]);
+            }
+
+            // Always track pending components
+            pending += due;
+        });
+
+        return { CASH: cash, UPI: upi, CARD: card, PENDING: pending };
+    }, [dailyEntries]);
 
     const card3D = "bg-white rounded-xl shadow-[0_4px_20px_-5px_rgba(0,0,0,0.05)] border-2 border-slate-200 p-3 transition-transform duration-300 hover:-translate-y-1 hover:shadow-lg relative overflow-hidden";
 
