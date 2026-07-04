@@ -392,10 +392,10 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
           </div>
         </header>
 
-        <header className="bg-white/90 shadow-md lg:hidden flex items-center justify-between p-3 z-40 sticky top-0 border-b border-slate-100">
-          <div className="flex items-center gap-2">
-            <button onClick={() => setIsMobileMenuOpen(true)} className="text-slate-700 bg-slate-100 p-2 rounded-lg border border-slate-200 shadow-sm"><Menu className="w-5 h-5" /></button>
-            <span className="font-black text-slate-800 text-base tracking-tight">Mahaveer</span>
+        <header className="bg-white/90 shadow-sm lg:hidden flex items-center justify-between px-4 py-3 z-40 sticky top-0 border-b border-slate-100 backdrop-blur-md">
+          <div className="flex items-center">
+            <button onClick={() => setIsMobileMenuOpen(true)} className="text-slate-700 bg-slate-100 p-2 mr-3 rounded-lg border border-slate-200 shadow-sm"><Menu className="w-5 h-5" /></button>
+            <span className="font-black text-indigo-950 text-xl tracking-tight">Mahaveer</span>
           </div>
           <div className="flex items-center gap-3">
             {user.role === Role.ADMIN && pendingCount > 0 && <Link to="/packages" className="p-1.5 text-indigo-600 bg-indigo-50 rounded-full border border-indigo-100"><Bell className="w-4 h-4" /></Link>}
@@ -403,9 +403,62 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
           </div>
         </header>
 
-        <main ref={mainContentRef} className="flex-1 overflow-x-hidden overflow-y-auto p-4 lg:p-6">
-          <div className="max-w-7xl mx-auto space-y-6 pb-20">{children}</div>
+        <main ref={mainContentRef} className="flex-1 overflow-x-hidden overflow-y-auto p-4 lg:p-6 lg:pb-6 pb-24">
+          <div className="max-w-7xl mx-auto space-y-6">{children}</div>
         </main>
+
+        {/* Bottom Mobile Navigation */}
+        <nav className="lg:hidden fixed bottom-0 left-0 w-full bg-white border-t border-slate-100 z-[100] pb-safe pt-1 shadow-[0_-8px_30px_rgba(0,0,0,0.06)]">
+          <div className="flex justify-around items-center h-[54px] px-2 relative">
+            {[
+              { path: '/', label: 'Home' },
+              { path: '/appointments', label: 'Book' },
+              { path: '/new-entry', label: 'Entry', isCenter: true },
+              { path: '/pending-dues', label: 'Dues' },
+              { path: '/packages', label: 'Packages' }
+            ].map((navInfo) => {
+              const item = menuItems.find(i => i.path === navInfo.path);
+              if (!item) return null; // Don't show if user doesn't have permissions
+
+              const active = isActive(item.path);
+              const showBadge = (item.path === '/packages' && user.role === Role.ADMIN && pendingCount > 0) ||
+                (item.path === '/appointments' && todayApptCount > 0);
+              const badgeCount = item.path === '/packages' ? pendingCount : todayApptCount;
+              
+              if (navInfo.isCenter) {
+                return (
+                  <div key={item.path} className="relative flex justify-center items-center w-full">
+                    <Link
+                      to={item.path}
+                      className={`absolute -top-7 flex items-center justify-center w-[52px] h-[52px] rounded-full shadow-[0_8px_16px_rgba(79,70,229,0.3)] border-[4px] border-[#F0F4F8] transition-transform active:scale-95 ${active ? 'bg-indigo-700 shadow-indigo-600/50' : 'bg-indigo-600 shadow-indigo-500/40'}`}
+                    >
+                      <item.icon className="w-6 h-6 text-white stroke-[2.5px]" />
+                    </Link>
+                  </div>
+                );
+              }
+
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  className={`relative flex flex-col items-center justify-center w-full h-full transition-colors ${active ? 'text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}
+                >
+                  <div className={`p-2 rounded-full transition-all ${active ? 'bg-indigo-50 shadow-sm border border-indigo-100' : 'bg-transparent'}`}>
+                    <item.icon className={`w-[26px] h-[26px] ${active ? 'stroke-[2.5px]' : 'stroke-2'}`} />
+                  </div>
+                  {showBadge && (
+                    <span className="absolute top-0 right-1/4 bg-rose-500 text-white text-[9px] font-bold px-1.5 rounded-full border border-white shadow-sm z-10">
+                      {badgeCount > 99 ? '99+' : badgeCount}
+                    </span>
+                  )}
+                </Link>
+              );
+            })}
+          </div>
+          {/* iOS safe area bottom padding space */}
+          <div className="h-1 bg-white w-full"></div>
+        </nav>
       </div>
     </div>
   );

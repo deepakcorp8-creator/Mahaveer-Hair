@@ -3,17 +3,47 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>Mahaveer Hair Solution - Management Portal</title>
     <link rel="icon" type="image/png" href="https://i.ibb.co/wFDKjmJS/MAHAVEER-Logo-1920x1080.png">
+    <link rel="apple-touch-icon" href="https://i.ibb.co/wFDKjmJS/MAHAVEER-Logo-1920x1080.png">
+    <link rel="shortcut icon" href="https://i.ibb.co/wFDKjmJS/MAHAVEER-Logo-1920x1080.png">
     <script src="https://unpkg.com/@tailwindcss/browser@4"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
+      * {
+        -webkit-tap-highlight-color: transparent;
+      }
       body {
         font-family: 'Inter', sans-serif;
         background-color: #f3f4f6;
+        overscroll-behavior-y: none; /* Prevents pull-to-refresh bounce */
+        /* Make text selection native app like (none) */
+        -webkit-user-select: none;
+        user-select: none;
+      }
+      /* Allow selection on inputs */
+      input, textarea {
+        -webkit-user-select: text;
+        user-select: text;
       }
       
+      /* Mobile App Native Font Scaling */
+      @media (max-width: 768px) {
+        html {
+          font-size: 14px;
+        }
+      }
+      @media (max-width: 380px) {
+        html {
+          font-size: 13px;
+        }
+      }
+
+
       /* Stylish Scrollbar */
       ::-webkit-scrollbar {
         width: 8px;

@@ -500,7 +500,7 @@ const Dashboard: React.FC = () => {
             <span className="text-xs font-black text-indigo-700">{selectedMonth}</span>
           </div>
         </div>
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto hidden md:block">
           <table className="w-full text-left text-xs text-slate-600">
             <thead className="bg-slate-50/50 text-slate-600 uppercase font-black text-[9px] tracking-widest border-b border-slate-200">
               <tr>
@@ -547,6 +547,46 @@ const Dashboard: React.FC = () => {
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile Card View for Technicians */}
+        <div className="md:hidden p-4 space-y-4">
+          {technicianPerformance.length === 0 ? (
+             <div className="text-center text-slate-400 font-bold italic py-6">No data available for {selectedMonth}</div>
+          ) : (
+            technicianPerformance.map((tech: any, idx) => (
+              <div key={idx} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-[0_4px_12px_rgba(0,0,0,0.03)] flex flex-col gap-3">
+                <div className="flex items-center justify-between border-b border-slate-50 pb-3">
+                  <div className="flex items-center">
+                    <div className="h-10 w-10 bg-gradient-to-br from-indigo-50 to-purple-600 text-white font-black text-xs rounded-xl flex justify-center items-center mr-3 shadow-md shadow-indigo-200">
+                       {getInitial(tech.name)}
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-slate-800 text-base leading-tight">{tech.name}</h4>
+                      <p className="text-[10px] text-slate-400 font-bold tracking-widest uppercase mt-0.5">Visits: {tech.clients}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[9px] text-slate-400 font-black uppercase tracking-widest mb-0.5">Revenue</p>
+                    <p className="font-black text-slate-900 text-lg leading-none">₹{tech.revenue.toLocaleString()}</p>
+                  </div>
+                </div>
+                <div className="flex justify-between items-center bg-slate-50 p-2 rounded-xl border border-slate-100">
+                   <div className="flex items-center gap-1.5 bg-emerald-50 text-emerald-700 px-2 py-1 rounded-lg border border-emerald-100 shadow-sm">
+                      <span className="font-black">{tech.newPatches}</span>
+                      <span className="text-[9px] font-black uppercase tracking-widest">Patches</span>
+                      <Sparkles className="w-3 h-3 text-emerald-500" />
+                   </div>
+                   <div className="w-[100px]">
+                      <p className="text-[8px] text-slate-400 font-black uppercase tracking-widest text-right mb-1">Activity Load</p>
+                      <div className="h-2 w-full bg-slate-200 rounded-full overflow-hidden shadow-inner">
+                         <div className="h-full bg-gradient-to-r from-green-400 to-emerald-600 shadow-sm" style={{ width: `${Math.min(tech.clients * 5, 100)}%` }}></div>
+                      </div>
+                   </div>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </div>
 
@@ -623,7 +663,7 @@ const Dashboard: React.FC = () => {
           </div>
         )}
 
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto hidden md:block">
           <table className="w-full text-left text-xs text-slate-600">
             <thead className="bg-slate-50/50 text-slate-600 uppercase font-black text-[9px] tracking-widest border-b border-slate-200">
               <tr>
@@ -659,6 +699,44 @@ const Dashboard: React.FC = () => {
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile Card View for Incentives */}
+        <div className="md:hidden p-4 space-y-4">
+          {incentiveData.length === 0 ? (
+             <div className="text-center text-slate-400 font-bold italic py-6">No incentive data for selected filters.</div>
+          ) : (
+            incentiveData.map((data: any, idx: number) => (
+              <div key={idx} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-[0_4px_12px_rgba(0,0,0,0.03)] flex flex-col gap-3">
+                 <div className="flex justify-between items-center border-b border-slate-50 pb-3">
+                    <h4 className="font-bold text-slate-800 text-base">{data.name}</h4>
+                    <button
+                        onClick={() => setIncentiveDetailTech(data.name)}
+                        className="flex items-center gap-1.5 p-1.5 px-3 bg-emerald-50 border border-emerald-100 rounded-xl text-emerald-700 font-bold text-[10px] uppercase shadow-sm"
+                      >
+                        <Eye className="w-3.5 h-3.5" /> View
+                    </button>
+                 </div>
+                 <div className="flex justify-between items-end">
+                    <div className="grid grid-cols-2 gap-2 text-[9px] font-black uppercase text-slate-500 tracking-widest w-[55%]">
+                      <div className="bg-slate-50 px-2 py-1.5 rounded-lg border border-slate-100 flex justify-between">
+                        <span>New:</span> <span className="text-slate-800">{data.newPatchCount}</span>
+                      </div>
+                      <div className="bg-slate-50 px-2 py-1.5 rounded-lg border border-slate-100 flex justify-between">
+                        <span>Demo:</span> <span className="text-slate-800">{data.demoCount}</span>
+                      </div>
+                      <div className="bg-slate-50 px-2 py-1.5 rounded-lg border border-slate-100 col-span-2 flex justify-between">
+                        <span>Packages:</span> <span className="text-slate-800">{data.packageCount}</span>
+                      </div>
+                    </div>
+                    <div className="text-right pb-1">
+                       <p className="text-[8px] font-black text-emerald-500 uppercase tracking-widest mb-0.5">Earnings</p>
+                       <p className="font-black text-emerald-600 text-xl leading-none">₹{data.totalIncentive.toLocaleString()}</p>
+                    </div>
+                 </div>
+              </div>
+            ))
+          )}
         </div>
       </div>
 
