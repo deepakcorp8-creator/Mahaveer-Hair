@@ -272,6 +272,7 @@ const ClientHistory: React.FC = () => {
               <option value="ALL">All Branches</option>
               <option value="RPR">Raipur</option>
               <option value="JDP">Jagdalpur</option>
+              <option value="RPR-MOWA">Mowa</option>
             </select>
             <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
               <ChevronDown className="w-4 h-4" />

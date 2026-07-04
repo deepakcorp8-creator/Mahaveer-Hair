@@ -14,7 +14,7 @@ const ServicePackages: React.FC = () => {
     const [currentUser, setCurrentUser] = useState<User | null>(null);
 
     // NEW: View Filter State
-    const [viewFilter, setViewFilter] = useState<'ALL' | 'PENDING' | 'ACTIVE' | 'EXPIRING'>('ALL');
+    const [viewFilter, setViewFilter] = useState<'ALL' | 'PENDING' | 'ACTIVE' | 'EXPIRING' | 'EXPIRED'>('ALL');
 
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [editingPackage, setEditingPackage] = useState<ServicePackage | null>(null);
@@ -317,17 +317,25 @@ const ServicePackages: React.FC = () => {
         const pkgList = packages || [];
         const total = pkgList.length;
         const pending = pkgList.filter(p => p.status === 'PENDING' || !p.status).length;
-        const active = pkgList.filter(p => p.status === 'APPROVED').length;
-
+        
+        let active = 0;
         let expiring = 0;
+        let expired = 0;
         pkgList.forEach(p => {
             if (p.status === 'APPROVED') {
                 const usage = getPackageUsage(p);
-                if (usage.remaining <= 2) expiring++;
+                if (usage.isExpired) {
+                    expired++;
+                } else {
+                    active++;
+                    if (usage.remaining <= 2) expiring++;
+                }
+            } else if (p.status === 'COMPLETED') {
+                expired++;
             }
         });
 
-        return { total, pending, active, expiring };
+        return { total, pending, active, expiring, expired };
     }, [packages, entries]);
 
     // --- LIST FILTERING ---
@@ -340,10 +348,17 @@ const ServicePackages: React.FC = () => {
         // 2. View Mode Filter
         if (viewFilter === 'ALL') return true;
         if (viewFilter === 'PENDING') return p.status === 'PENDING' || !p.status;
-        if (viewFilter === 'ACTIVE') return p.status === 'APPROVED';
+        if (viewFilter === 'ACTIVE') {
+            const usage = getPackageUsage(p);
+            return p.status === 'APPROVED' && !usage.isExpired;
+        }
         if (viewFilter === 'EXPIRING') {
             const usage = getPackageUsage(p);
-            return p.status === 'APPROVED' && usage.remaining <= 2;
+            return p.status === 'APPROVED' && usage.remaining <= 2 && !usage.isExpired;
+        }
+        if (viewFilter === 'EXPIRED') {
+            const usage = getPackageUsage(p);
+            return p.status === 'COMPLETED' || (p.status === 'APPROVED' && usage.isExpired);
         }
         return true;
     });
@@ -706,7 +721,7 @@ const ServicePackages: React.FC = () => {
             <div className="lg:col-span-2 space-y-8">
 
                 {/* INTERACTIVE STATS DASHBOARD */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 md:gap-4">
                     <button
                         onClick={() => setViewFilter('ALL')}
                         className={`relative p-5 rounded-[2rem] border text-left transition-all duration-300 group hover:-translate-y-1 overflow-hidden
@@ -774,6 +789,23 @@ const ServicePackages: React.FC = () => {
                             <h3 className={`text-3xl font-black ${viewFilter === 'EXPIRING' ? 'text-white' : 'text-slate-800'}`}>{stats.expiring}</h3>
                         </div>
                     </button>
+
+                    <button
+                        onClick={() => setViewFilter('EXPIRED')}
+                        className={`relative p-5 rounded-[2rem] border text-left transition-all duration-300 group hover:-translate-y-1 overflow-hidden
+                ${viewFilter === 'EXPIRED' ? 'bg-gradient-to-br from-red-500 to-rose-700 text-white shadow-xl shadow-red-200 border-transparent' : 'bg-white border-slate-100 hover:border-red-200 hover:shadow-lg'}`}
+                    >
+                        <div className="absolute top-0 right-0 w-20 h-20 bg-white/20 rounded-full -mr-6 -mt-6 blur-md pointer-events-none"></div>
+                        <div className="relative z-10">
+                            <div className="flex items-center gap-2 mb-2">
+                                <div className={`p-2 rounded-xl backdrop-blur-sm ${viewFilter === 'EXPIRED' ? 'bg-white/20 text-white' : 'bg-red-50 text-red-600'}`}>
+                                    <Trash2 className="w-4 h-4" />
+                                </div>
+                                <span className={`text-[10px] font-black uppercase tracking-widest ${viewFilter === 'EXPIRED' ? 'text-white/80' : 'text-slate-400'}`}>Expired</span>
+                            </div>
+                            <h3 className={`text-3xl font-black ${viewFilter === 'EXPIRED' ? 'text-white' : 'text-slate-800'}`}>{stats.expired}</h3>
+                        </div>
+                    </button>
                 </div>
 
                 {/* HEADER & SEARCH */}
@@ -829,14 +861,14 @@ const ServicePackages: React.FC = () => {
                 )}
 
                 {/* SECTION 2: ACTIVE PACKAGES (Show if ALL, ACTIVE, or EXPIRING) */}
-                {(viewFilter === 'ALL' || viewFilter === 'ACTIVE' || viewFilter === 'EXPIRING') && (
+                {(viewFilter === 'ALL' || viewFilter === 'ACTIVE' || viewFilter === 'EXPIRING' || viewFilter === 'EXPIRED') && (
                     <div className="animate-in fade-in slide-in-from-bottom-4">
                         <div className="flex items-center gap-2 mb-4">
-                            <div className={`p-1.5 rounded-lg ${viewFilter === 'EXPIRING' ? 'bg-rose-100 text-rose-600' : 'bg-indigo-100 text-indigo-600'}`}>
-                                {viewFilter === 'EXPIRING' ? <BatteryWarning className="w-4 h-4" /> : <CheckCircle2 className="w-4 h-4" />}
+                            <div className={`p-1.5 rounded-lg ${viewFilter === 'EXPIRING' ? 'bg-rose-100 text-rose-600' : viewFilter === 'EXPIRED' ? 'bg-red-100 text-red-600' : 'bg-indigo-100 text-indigo-600'}`}>
+                                {viewFilter === 'EXPIRING' ? <BatteryWarning className="w-4 h-4" /> : viewFilter === 'EXPIRED' ? <Trash2 className="w-4 h-4" /> : <CheckCircle2 className="w-4 h-4" />}
                             </div>
                             <h3 className="text-sm font-black text-slate-700 uppercase tracking-widest">
-                                {viewFilter === 'EXPIRING' ? 'Expiring Soon' : 'Active Memberships'} ({activePackages.length})
+                                {viewFilter === 'EXPIRING' ? 'Expiring Soon' : viewFilter === 'EXPIRED' ? 'Expired Packages' : 'Active Memberships'} ({activePackages.length})
                             </h3>
                         </div>
 

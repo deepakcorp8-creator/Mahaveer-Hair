@@ -260,6 +260,7 @@ const DailyReport: React.FC = () => {
                                 <option value="ALL">All Branches</option>
                                 <option value="RPR">Raipur</option>
                                 <option value="JDP">Jagdalpur</option>
+                                <option value="RPR-MOWA">Mowa</option>
                             </select>
                             <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                         </div>

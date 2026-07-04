@@ -280,6 +280,7 @@ const Dashboard: React.FC = () => {
               <option value="ALL">All Branches</option>
               <option value="RPR">Raipur (RPR)</option>
               <option value="JDP">Jagdalpur (JDP)</option>
+              <option value="RPR-MOWA">Mowa (RPR-MOWA)</option>
             </select>
             <div className="absolute right-3 top-1/2 -translate-y-1/2 text-indigo-500 pointer-events-none">
               <ChevronDown className="w-3.5 h-3.5" />
@@ -323,78 +324,69 @@ const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* KPI Cards - Mobile 2x2 Grid */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 w-full">
         {/* Total Registered Clients Card (FROM CLIENT MASTER) */}
-        <div className="relative bg-white rounded-2xl p-4 border-b-4 border-b-blue-500 shadow-[0_10px_20px_-5px_rgba(59,130,246,0.15)] transition-transform hover:-translate-y-1 group overflow-hidden border-x border-t border-slate-100">
+        <div className="relative bg-white rounded-xl md:rounded-2xl p-3 md:p-4 border-b-4 border-b-blue-500 shadow-[0_4px_12px_rgba(59,130,246,0.15)] transition-transform hover:-translate-y-1 group overflow-hidden border border-slate-100">
           <div className="relative z-10 flex justify-between items-start">
-            <div>
-              <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-1">Total Clients</p>
-              <h3 className="text-3xl font-black text-slate-800">{totalRegisteredClients}</h3>
+            <div className="overflow-hidden">
+              <p className="text-slate-500 text-[8px] md:text-[10px] font-black uppercase tracking-widest mb-0.5 md:mb-1 truncate">Clients</p>
+              <h3 className="text-xl md:text-3xl font-black text-slate-800 truncate">{totalRegisteredClients}</h3>
             </div>
-            <div className="p-2 bg-blue-100 text-blue-600 rounded-lg shadow-inner border border-blue-200">
-              <Users className="w-5 h-5" />
+            <div className="p-1.5 md:p-2 bg-blue-100 text-blue-600 rounded-lg shadow-inner border border-blue-200 shrink-0">
+              <Users className="w-4 h-4 md:w-5 md:h-5" />
             </div>
           </div>
-          <div className="mt-3 flex items-center text-[10px] font-bold text-slate-400">
-            <span className="text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded mr-2 flex items-center">
-              Verified
-            </span>
-            <span>In Master List</span>
+          <div className="mt-2 md:mt-3 flex items-center text-[8px] md:text-[10px] font-bold text-slate-400 flex-wrap gap-1">
+            <span className="text-blue-600 bg-blue-50 px-1 py-0.5 rounded">Verified</span>
+            <span className="truncate hidden sm:inline">In Master</span>
           </div>
         </div>
 
-        <div className="relative rounded-2xl p-4 bg-slate-900 text-white shadow-[0_15px_30px_-10px_rgba(15,23,42,0.6)] border border-slate-700 transition-transform hover:-translate-y-1 overflow-hidden">
+        <div className="relative rounded-xl md:rounded-2xl p-3 md:p-4 bg-slate-900 text-white shadow-[0_8px_24px_-8px_rgba(15,23,42,0.6)] border border-slate-700 transition-transform hover:-translate-y-1 overflow-hidden">
           <div className="relative z-10 flex justify-between items-start">
-            <div>
-              <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-1">Total Revenue</p>
-              <h3 className="text-3xl font-black tracking-tight text-white">₹{totalRevenue.toLocaleString()}</h3>
+            <div className="overflow-hidden">
+              <p className="text-slate-400 text-[8px] md:text-[10px] font-black uppercase tracking-widest mb-0.5 md:mb-1 truncate">Revenue</p>
+              <h3 className="text-[17px] sm:text-xl md:text-3xl font-black tracking-tight text-white whitespace-nowrap overflow-hidden text-ellipsis">₹{totalRevenue.toLocaleString()}</h3>
             </div>
-            <div className="p-2 bg-white/10 backdrop-blur-md rounded-lg border border-white/20 shadow-inner">
-              <IndianRupee className="w-5 h-5 text-emerald-400" />
+            <div className="p-1.5 md:p-2 bg-white/10 backdrop-blur-md rounded-lg border border-white/20 shadow-inner shrink-0">
+              <IndianRupee className="w-4 h-4 md:w-5 md:h-5 text-emerald-400" />
             </div>
           </div>
-          <div className="mt-3 flex items-center text-[10px] font-bold text-slate-400">
-            <span className="text-emerald-300 bg-emerald-500/20 border border-emerald-500/30 px-1.5 py-0.5 rounded mr-2 flex items-center">
-              <ArrowUpRight className="w-3 h-3 mr-1" /> Active
+          <div className="mt-2 md:mt-3 flex items-center text-[8px] md:text-[10px] font-bold text-slate-400 flex-wrap gap-1">
+            <span className="text-emerald-300 bg-emerald-500/20 border border-emerald-500/30 px-1 py-0.5 rounded flex items-center whitespace-nowrap">
+              <ArrowUpRight className="w-2.5 h-2.5 mr-0.5" /> Active
             </span>
-            <span>{selectedMonth} Earnings</span>
           </div>
         </div>
 
-        <div className="relative bg-white rounded-2xl p-4 border-b-4 border-b-red-500 shadow-[0_10px_20px_-5px_rgba(239,68,68,0.15)] transition-transform hover:-translate-y-1 group overflow-hidden border-x border-t border-slate-100">
+        <div className="relative bg-white rounded-xl md:rounded-2xl p-3 md:p-4 border-b-4 border-b-red-500 shadow-[0_4px_12px_rgba(239,68,68,0.15)] transition-transform hover:-translate-y-1 group overflow-hidden border border-slate-100">
           <div className="relative z-10 flex justify-between items-start">
-            <div>
-              <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-1">Total Outstanding</p>
-              <h3 className="text-3xl font-black text-slate-800">₹{totalOutstanding.toLocaleString()}</h3>
+            <div className="overflow-hidden">
+              <p className="text-slate-500 text-[8px] md:text-[10px] font-black uppercase tracking-widest mb-0.5 md:mb-1 truncate">Outstanding</p>
+              <h3 className="text-[17px] sm:text-xl md:text-3xl font-black text-slate-800 whitespace-nowrap overflow-hidden text-ellipsis">₹{totalOutstanding.toLocaleString()}</h3>
             </div>
-            <div className="p-2 bg-red-100 text-red-600 rounded-lg shadow-inner border border-red-200">
-              <AlertCircle className="w-5 h-5" />
+            <div className="p-1.5 md:p-2 bg-red-100 text-red-600 rounded-lg shadow-inner border border-red-200 shrink-0">
+              <AlertCircle className="w-4 h-4 md:w-5 md:h-5" />
             </div>
           </div>
-          <div className="mt-3 flex items-center text-[10px] font-bold text-slate-400">
-            <span className="text-red-600 bg-red-50 px-1.5 py-0.5 rounded mr-2 flex items-center border border-red-100">
-              Pending
-            </span>
-            <span>Unpaid amount</span>
+          <div className="mt-2 md:mt-3 flex items-center text-[8px] md:text-[10px] font-bold text-slate-400 flex-wrap gap-1">
+            <span className="text-red-600 bg-red-50 px-1 py-0.5 rounded border border-red-100">Pending</span>
           </div>
         </div>
 
-        <div className="relative bg-white rounded-2xl p-4 border-b-4 border-b-orange-500 shadow-[0_10px_20px_-5px_rgba(249,115,22,0.15)] transition-transform hover:-translate-y-1 group overflow-hidden border-x border-t border-slate-100">
+        <div className="relative bg-white rounded-xl md:rounded-2xl p-3 md:p-4 border-b-4 border-b-orange-500 shadow-[0_4px_12px_rgba(249,115,22,0.15)] transition-transform hover:-translate-y-1 group overflow-hidden border border-slate-100">
           <div className="relative z-10 flex justify-between items-start">
-            <div>
-              <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-1">Total Services</p>
-              <h3 className="text-3xl font-black text-slate-800">{filteredEntries.length}</h3>
+            <div className="overflow-hidden">
+              <p className="text-slate-500 text-[8px] md:text-[10px] font-black uppercase tracking-widest mb-0.5 md:mb-1 truncate">Services</p>
+              <h3 className="text-[17px] sm:text-xl md:text-3xl font-black text-slate-800 truncate">{filteredEntries.length}</h3>
             </div>
-            <div className="p-2 bg-orange-100 text-orange-600 rounded-lg shadow-inner border border-orange-200">
-              <ShoppingBag className="w-5 h-5" />
+            <div className="p-1.5 md:p-2 bg-orange-100 text-orange-600 rounded-lg shadow-inner border border-orange-200 shrink-0">
+              <ShoppingBag className="w-4 h-4 md:w-5 md:h-5" />
             </div>
           </div>
-          <div className="mt-3 flex items-center text-[10px] font-bold text-slate-400">
-            <span className="text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded mr-2 flex items-center">
-              Volume
-            </span>
-            <span>Services Done</span>
+          <div className="mt-2 md:mt-3 flex items-center text-[8px] md:text-[10px] font-bold text-slate-400 flex-wrap gap-1">
+            <span className="text-orange-600 bg-orange-50 px-1 py-0.5 rounded">Volume</span>
           </div>
         </div>
       </div>

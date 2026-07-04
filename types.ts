@@ -31,7 +31,7 @@ export interface Entry {
   clientName: string;
   contactNo: string;
   address: string;
-  branch: 'RPR' | 'JDP';
+  branch: 'RPR' | 'JDP' | 'RPR-MOWA';
   serviceType: 'SERVICE' | 'NEW' | 'DEMO' | 'MUNDAN' | 'WASHING';
   patchMethod: 'TAPING' | 'BONDING' | 'CLIPPING' | '';
   technician: string;

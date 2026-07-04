@@ -16,7 +16,7 @@ const AppointmentBooking: React.FC = () => {
     const [deletingId, setDeletingId] = useState<string | null>(null);
 
     const [isAdmin, setIsAdmin] = useState(false);
-    const [userBranch, setUserBranch] = useState<'RPR' | 'JDP' | null>(null);
+    const [userBranch, setUserBranch] = useState<'RPR' | 'JDP' | 'RPR-MOWA' | null>(null);
 
     // Time Parts State for 12H Format
     const [timeParts, setTimeParts] = useState({
@@ -48,8 +48,9 @@ const AppointmentBooking: React.FC = () => {
                 } else {
                     setIsAdmin(false);
                     const dept = (user.department || '').toUpperCase();
-                    let branch: 'RPR' | 'JDP' = 'RPR';
+                    let branch: 'RPR' | 'JDP' | 'RPR-MOWA' = 'RPR';
                     if (dept.includes('JDP') || dept.includes('JAGDALPUR')) branch = 'JDP';
+                    if (dept.includes('MOWA')) branch = 'RPR-MOWA';
                     setUserBranch(branch);
                     setNewAppt(prev => ({ ...prev, branch: branch }));
                 }
@@ -403,7 +404,7 @@ const AppointmentBooking: React.FC = () => {
     const minutes = Array.from({ length: 12 }, (_, i) => String(i * 5).padStart(2, '0')); // 00, 05, 10...
 
     return (
-        <div className="flex flex-col gap-8 animate-in fade-in duration-500 pb-20 relative">
+        <div className="flex flex-col gap-4 md:gap-8 animate-in fade-in duration-500 pb-20 relative">
 
             {/* DELETE CONFIRMATION MODAL */}
             {deletingId && (
@@ -436,98 +437,98 @@ const AppointmentBooking: React.FC = () => {
                 </div>
             )}
 
-            {/* Top Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="relative rounded-3xl p-6 bg-gradient-to-br from-indigo-600 to-indigo-800 text-white shadow-xl shadow-indigo-500/30 border border-indigo-500 overflow-hidden transform hover:-translate-y-1 transition-transform duration-300">
+            {/* Top Stats - Swipeable horizontally on mobile, Grid on desktop */}
+            <div className="flex overflow-x-auto md:grid md:grid-cols-3 gap-3 md:gap-6 pb-2 md:pb-0 snap-x no-scrollbar">
+                <div className="min-w-[170px] md:min-w-0 snap-center relative rounded-2xl md:rounded-3xl p-4 md:p-6 bg-gradient-to-br from-indigo-600 to-indigo-800 text-white shadow-[0_8px_20px_rgba(79,70,229,0.2)] border border-indigo-500 overflow-hidden shrink-0">
                     <div className="absolute right-0 top-0 w-32 h-32 bg-white/10 rounded-full -mr-8 -mt-8 blur-2xl"></div>
                     <div className="relative z-10 flex justify-between items-center">
                         <div>
-                            <p className="text-indigo-200 text-xs font-black uppercase tracking-widest border-b border-indigo-400/30 pb-1 mb-1 inline-block">Today's Visits</p>
-                            <h3 className="text-4xl font-black mt-1">{todayCount}</h3>
+                            <p className="text-indigo-200 text-[9px] md:text-xs font-black uppercase tracking-widest border-b border-indigo-400/30 pb-0.5 mb-1 inline-block">Today's Visits</p>
+                            <h3 className="text-2xl md:text-4xl font-black">{todayCount}</h3>
                         </div>
-                        <div className="p-4 bg-white/20 rounded-2xl backdrop-blur-md border border-white/20 shadow-inner">
-                            <CalendarClock className="w-7 h-7 text-white" />
+                        <div className="p-2.5 md:p-4 bg-white/20 rounded-xl md:rounded-2xl backdrop-blur-md border border-white/20 shadow-inner">
+                            <CalendarClock className="w-5 h-5 md:w-7 md:h-7 text-white" />
                         </div>
                     </div>
                 </div>
 
-                <div className="relative bg-white rounded-3xl p-6 border border-slate-200 shadow-[0_10px_30px_-5px_rgba(0,0,0,0.1)] hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+                <div className="min-w-[170px] md:min-w-0 snap-center relative bg-white rounded-2xl md:rounded-3xl p-4 md:p-6 border border-slate-200 shadow-[0_4px_12px_rgba(0,0,0,0.03)] shrink-0">
                     <div className="flex justify-between items-center">
                         <div>
-                            <p className="text-amber-500 text-xs font-black uppercase tracking-widest mb-1">Active Follow-Ups</p>
-                            <h3 className="text-4xl font-black text-slate-800 mt-1">{followupCount}</h3>
+                            <p className="text-amber-500 text-[9px] md:text-xs font-black uppercase tracking-widest mb-1">Follow-Ups</p>
+                            <h3 className="text-2xl md:text-4xl font-black text-slate-800">{followupCount}</h3>
                         </div>
-                        <div className="p-4 bg-amber-50 rounded-2xl text-amber-500 border border-amber-100 shadow-inner">
-                            <Megaphone className="w-7 h-7" />
+                        <div className="p-2.5 md:p-4 bg-amber-50 rounded-xl md:rounded-2xl text-amber-500 border border-amber-100 shadow-inner">
+                            <Megaphone className="w-5 h-5 md:w-7 md:h-7" />
                         </div>
                     </div>
-                    <div className="h-1.5 w-full bg-slate-100 rounded-full mt-4 overflow-hidden">
+                    <div className="h-1.5 md:h-1.5 w-full bg-slate-100 rounded-full mt-3 overflow-hidden">
                         <div className="h-full bg-amber-400 rounded-full" style={{ width: '60%' }}></div>
                     </div>
                 </div>
 
-                <div className="relative bg-white rounded-3xl p-6 border border-slate-200 shadow-[0_10px_30px_-5px_rgba(0,0,0,0.1)] hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+                <div className="min-w-[170px] md:min-w-0 snap-center relative bg-white rounded-2xl md:rounded-3xl p-4 md:p-6 border border-slate-200 shadow-[0_4px_12px_rgba(0,0,0,0.03)] shrink-0">
                     <div className="flex justify-between items-center">
                         <div>
-                            <p className="text-emerald-500 text-xs font-black uppercase tracking-widest mb-1">Total Pending</p>
-                            <h3 className="text-4xl font-black text-slate-800 mt-1">{pendingCount}</h3>
+                            <p className="text-emerald-500 text-[9px] md:text-xs font-black uppercase tracking-widest mb-1">Pending Space</p>
+                            <h3 className="text-2xl md:text-4xl font-black text-slate-800">{pendingCount}</h3>
                         </div>
-                        <div className="p-4 bg-emerald-50 rounded-2xl text-emerald-500 border border-emerald-100 shadow-inner">
-                            <Activity className="w-7 h-7" />
+                        <div className="p-2.5 md:p-4 bg-emerald-50 rounded-xl md:rounded-2xl text-emerald-500 border border-emerald-100 shadow-inner">
+                            <Activity className="w-5 h-5 md:w-7 md:h-7" />
                         </div>
                     </div>
-                    <div className="h-1.5 w-full bg-slate-100 rounded-full mt-4 overflow-hidden">
+                    <div className="h-1.5 md:h-1.5 w-full bg-slate-100 rounded-full mt-3 overflow-hidden">
                         <div className="h-full bg-emerald-400 rounded-full" style={{ width: '40%' }}></div>
                     </div>
                 </div>
             </div>
 
-            <div className="flex flex-col lg:flex-row gap-8">
+            <div className="flex flex-col lg:flex-row gap-5 md:gap-8 mx-0.5 md:mx-0">
 
                 {/* Left: Booking Form */}
                 <div className="lg:w-1/3 order-1">
-                    <div className="bg-white rounded-3xl shadow-[0_20px_50px_-12px_rgba(0,0,0,0.15)] border border-slate-300 overflow-hidden sticky top-6 backdrop-blur-sm z-10">
-                        <div className="px-6 py-5 bg-gradient-to-r from-slate-900 to-slate-800 text-white flex items-center justify-between border-b border-slate-700">
+                    <div className="bg-white rounded-2xl md:rounded-3xl shadow-lg md:shadow-[0_20px_50px_-12px_rgba(0,0,0,0.15)] border border-slate-200 md:border-slate-300 overflow-hidden sticky top-6 z-10">
+                        <div className="px-5 py-4 md:px-6 md:py-5 bg-gradient-to-r from-slate-900 to-slate-800 text-white flex items-center justify-between border-b border-slate-700">
                             <div>
-                                <h3 className="text-lg font-black flex items-center tracking-tight">
-                                    <Plus className="w-5 h-5 mr-2 text-indigo-400" />
+                                <h3 className="text-base md:text-lg font-black flex items-center tracking-tight">
+                                    <Plus className="w-4 h-4 md:w-5 md:h-5 mr-2 text-indigo-400" />
                                     Book Visit
                                 </h3>
-                                <p className="text-xs text-slate-400 font-bold">Schedule or Follow-up</p>
+                                <p className="text-[10px] md:text-xs text-slate-400 font-bold">Schedule or Follow-up</p>
                             </div>
                         </div>
 
-                        <form onSubmit={handleSubmit} className="p-6 space-y-5">
-                            <div className="grid grid-cols-2 gap-4">
+                        <form onSubmit={handleSubmit} className="p-4 md:p-6 space-y-4 md:space-y-5">
+                            <div className="grid grid-cols-2 gap-3 md:gap-4">
                                 <div>
-                                    <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5 ml-1">Date</label>
+                                    <label className="block text-[10px] md:text-xs font-bold uppercase tracking-widest text-slate-500 mb-1 ml-0.5">Date</label>
                                     <input
                                         type="date"
                                         value={newAppt.date}
                                         onChange={e => setNewAppt({ ...newAppt, date: e.target.value })}
-                                        className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-3 py-3.5 text-slate-900 shadow-inner focus:ring-2 focus:ring-indigo-500 font-bold text-sm"
+                                        className="w-full rounded-xl md:rounded-2xl border border-slate-300 bg-slate-50 px-3 py-2.5 md:py-3.5 text-slate-900 shadow-inner focus:ring-2 focus:ring-indigo-500 font-bold text-xs md:text-sm"
                                         required
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5 ml-1">Time (12H)</label>
+                                    <label className="block text-[10px] md:text-xs font-bold uppercase tracking-widest text-slate-500 mb-1 ml-0.5">Time (12H)</label>
                                     <div className="flex gap-1">
                                         <select
-                                            className="flex-1 rounded-xl border border-slate-300 bg-slate-50 py-3.5 text-slate-900 text-sm font-bold focus:ring-2 focus:ring-indigo-500 appearance-none text-center"
+                                            className="flex-1 rounded-xl border border-slate-300 bg-slate-50 py-2.5 md:py-3.5 text-slate-900 text-[10px] md:text-sm font-bold focus:ring-2 focus:ring-indigo-500 appearance-none text-center px-1"
                                             value={timeParts.hour}
                                             onChange={(e) => setTimeParts(prev => ({ ...prev, hour: e.target.value }))}
                                         >
                                             {hours.map(h => <option key={h} value={h}>{h}</option>)}
                                         </select>
                                         <select
-                                            className="flex-1 rounded-xl border border-slate-300 bg-slate-50 py-3.5 text-slate-900 text-sm font-bold focus:ring-2 focus:ring-indigo-500 appearance-none text-center"
+                                            className="flex-1 rounded-xl border border-slate-300 bg-slate-50 py-2.5 md:py-3.5 text-slate-900 text-[10px] md:text-sm font-bold focus:ring-2 focus:ring-indigo-500 appearance-none text-center px-1"
                                             value={timeParts.minute}
                                             onChange={(e) => setTimeParts(prev => ({ ...prev, minute: e.target.value }))}
                                         >
                                             {minutes.map(m => <option key={m} value={m}>{m}</option>)}
                                         </select>
                                         <select
-                                            className="flex-1 rounded-xl border border-slate-300 bg-slate-50 py-3.5 text-slate-900 text-sm font-bold focus:ring-2 focus:ring-indigo-500 appearance-none text-center"
+                                            className="flex-1 rounded-xl border border-slate-300 bg-slate-50 py-2.5 md:py-3.5 text-slate-900 text-[10px] md:text-sm font-bold focus:ring-2 focus:ring-indigo-500 appearance-none text-center px-1"
                                             value={timeParts.period}
                                             onChange={(e) => setTimeParts(prev => ({ ...prev, period: e.target.value }))}
                                         >
@@ -539,15 +540,15 @@ const AppointmentBooking: React.FC = () => {
                             </div>
 
                             <div>
-                                <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5 ml-1">Branch</label>
-                                <div className="flex gap-2 p-1 bg-slate-100 rounded-2xl border border-slate-200">
-                                    {['RPR', 'JDP'].map(b => (
+                                <label className="block text-[10px] md:text-xs font-bold uppercase tracking-widest text-slate-500 mb-1 ml-0.5">Branch</label>
+                                <div className="flex gap-2 p-1 bg-slate-100 rounded-xl md:rounded-2xl border border-slate-200">
+                                    {['RPR', 'JDP', 'RPR-MOWA'].map(b => (
                                         <button
                                             type="button"
                                             key={b}
                                             onClick={() => isAdmin && setNewAppt(prev => ({ ...prev, branch: b }))}
                                             disabled={!isAdmin && newAppt.branch !== b}
-                                            className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all border
+                                            className={`flex-1 py-2 md:py-2.5 rounded-lg md:rounded-xl text-xs font-black transition-all border
                                     ${newAppt.branch === b
                                                     ? 'bg-white text-indigo-700 shadow-sm border-indigo-200'
                                                     : 'text-slate-400 border-transparent ' + (isAdmin ? 'hover:text-slate-600' : 'opacity-50 cursor-not-allowed')}
@@ -560,46 +561,46 @@ const AppointmentBooking: React.FC = () => {
                             </div>
 
                             <div>
-                                <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5 ml-1">Client Name</label>
+                                <label className="block text-[10px] md:text-xs font-bold uppercase tracking-widest text-slate-500 mb-1 ml-0.5">Client Name</label>
                                 <input
                                     type="text"
                                     value={newAppt.clientName || ''}
                                     onChange={e => setNewAppt({ ...newAppt, clientName: e.target.value })}
-                                    className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3.5 text-slate-900 shadow-inner focus:ring-2 focus:ring-indigo-500 font-bold placeholder:font-normal"
+                                    className="w-full rounded-xl md:rounded-2xl border border-slate-300 bg-slate-50 px-3 py-2.5 md:py-3.5 text-slate-900 shadow-inner focus:ring-2 focus:ring-indigo-500 font-bold placeholder:font-normal text-sm"
                                     placeholder="Enter Client Name"
                                     required
                                 />
                             </div>
 
                             <div>
-                                <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5 ml-1">Contact Number</label>
+                                <label className="block text-[10px] md:text-xs font-bold uppercase tracking-widest text-slate-500 mb-1 ml-0.5">Contact Number</label>
                                 <input
                                     type="text"
                                     value={newAppt.contact}
                                     onChange={e => setNewAppt({ ...newAppt, contact: e.target.value })}
-                                    className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3.5 text-slate-900 shadow-inner focus:ring-2 focus:ring-indigo-500 font-semibold placeholder:font-normal"
+                                    className="w-full rounded-xl md:rounded-2xl border border-slate-300 bg-slate-50 px-3 py-2.5 md:py-3.5 text-slate-900 shadow-inner focus:ring-2 focus:ring-indigo-500 font-semibold placeholder:font-normal text-sm"
                                     placeholder="Phone number"
                                 />
                             </div>
 
                             <div>
-                                <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5 ml-1">Location</label>
+                                <label className="block text-[10px] md:text-xs font-bold uppercase tracking-widest text-slate-500 mb-1 ml-0.5">Location</label>
                                 <input
                                     type="text"
                                     value={newAppt.address}
                                     onChange={e => setNewAppt({ ...newAppt, address: e.target.value })}
-                                    className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3.5 text-slate-900 shadow-inner focus:ring-2 focus:ring-indigo-500 font-semibold placeholder:font-normal"
+                                    className="w-full rounded-xl md:rounded-2xl border border-slate-300 bg-slate-50 px-3 py-2.5 md:py-3.5 text-slate-900 shadow-inner focus:ring-2 focus:ring-indigo-500 font-semibold placeholder:font-normal text-sm"
                                     placeholder="City / Area"
                                 />
                             </div>
 
                             <div>
-                                <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5 ml-1">Reason / Note</label>
+                                <label className="block text-[10px] md:text-xs font-bold uppercase tracking-widest text-slate-500 mb-1 ml-0.5">Reason / Note</label>
                                 <textarea
                                     value={newAppt.note}
                                     onChange={e => setNewAppt({ ...newAppt, note: e.target.value })}
-                                    rows={3}
-                                    className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3.5 text-slate-900 shadow-inner focus:ring-2 focus:ring-indigo-500 font-semibold resize-none placeholder:font-normal"
+                                    rows={2}
+                                    className="w-full rounded-xl md:rounded-2xl border border-slate-300 bg-slate-50 px-3 py-2.5 md:py-3.5 text-slate-900 shadow-inner focus:ring-2 focus:ring-indigo-500 font-semibold resize-none placeholder:font-normal text-sm"
                                     placeholder="e.g. Monthly maintenance"
                                 />
                             </div>
@@ -607,7 +608,7 @@ const AppointmentBooking: React.FC = () => {
                             <button
                                 type="submit"
                                 disabled={loading}
-                                className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-lg rounded-2xl shadow-xl shadow-indigo-300 transition-all flex justify-center items-center active:scale-95 hover:-translate-y-1 border border-indigo-800"
+                                className="w-full py-3 md:py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-sm md:text-lg rounded-xl md:rounded-2xl shadow-lg shadow-indigo-300 transition-all flex justify-center items-center active:scale-95 border border-indigo-700 mt-2"
                             >
                                 {loading ? 'Processing...' : 'Confirm Booking'}
                             </button>
@@ -654,6 +655,7 @@ const AppointmentBooking: React.FC = () => {
                                 <option value="ALL">All Branches</option>
                                 <option value="RPR">Raipur</option>
                                 <option value="JDP">Jagdalpur</option>
+                                <option value="RPR-MOWA">Mowa</option>
                             </select>
 
                             <div className="relative w-full sm:w-64">
