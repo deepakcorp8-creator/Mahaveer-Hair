@@ -395,7 +395,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
         <header className="bg-white/90 shadow-sm lg:hidden flex items-center justify-between px-4 py-3 z-40 sticky top-0 border-b border-slate-100 backdrop-blur-md">
           <div className="flex items-center">
             <button onClick={() => setIsMobileMenuOpen(true)} className="text-slate-700 bg-slate-100 p-2 mr-3 rounded-lg border border-slate-200 shadow-sm"><Menu className="w-5 h-5" /></button>
-            <span className="font-black text-indigo-950 text-xl tracking-tight">Mahaveer</span>
+            <img src={LOGO_URL} alt="Mahaveer Logo" className="h-8 w-auto object-contain drop-shadow-sm" />
           </div>
           <div className="flex items-center gap-3">
             {user.role === Role.ADMIN && pendingCount > 0 && <Link to="/packages" className="p-1.5 text-indigo-600 bg-indigo-50 rounded-full border border-indigo-100"><Bell className="w-4 h-4" /></Link>}
@@ -408,7 +408,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
         </main>
 
         {/* Bottom Mobile Navigation */}
-        <nav className="lg:hidden fixed bottom-0 left-0 w-full bg-white border-t border-slate-100 z-[100] pb-safe pt-1 shadow-[0_-8px_30px_rgba(0,0,0,0.06)]">
+        <nav className="lg:hidden fixed bottom-0 left-0 w-full bg-white border-t border-slate-100 z-[100] pb-4 pt-1 shadow-[0_-8px_30px_rgba(0,0,0,0.06)]">
           <div className="flex justify-around items-center h-[54px] px-2 relative">
             {[
               { path: '/', label: 'Home' },
