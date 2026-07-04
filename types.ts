@@ -37,7 +37,7 @@ export interface Entry {
   technician: string;
   workStatus: 'PENDING' | 'DONE' | 'FOLLOWUP' | 'PENDING_APPROVAL' | 'REJECTED';
   amount: number;
-  paymentMethod: 'UPI' | 'CASH' | 'CARD' | 'PENDING';
+  paymentMethod: 'UPI' | 'CASH' | 'CARD' | 'PENDING' | 'MIXED' | 'MIXED (CASH+UPI)';
   remark: string;
   numberOfService: number;
   patchSize?: string; // Optional, only if NEW

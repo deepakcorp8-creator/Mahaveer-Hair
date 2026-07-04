@@ -26,7 +26,9 @@ import {
   Loader2,
   UploadCloud,
   Terminal,
-  Cpu
+  Cpu,
+  Package,
+  PhoneCall
 } from 'lucide-react';
 import { User, Role } from '../types';
 import { api } from '../services/api';
@@ -186,6 +188,8 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
     { path: '/history', label: 'Client History', icon: History, adminOnly: false },
     { path: '/appointments', label: 'Appointments', icon: Calendar, adminOnly: false },
     { path: '/packages', label: 'Service Packages', icon: PackageCheck, adminOnly: false },
+    { path: '/inventory', label: 'Stock Inventory', icon: Package, adminOnly: false },
+    { path: '/calling', label: 'Service Calling', icon: PhoneCall, adminOnly: false },
     { path: '/clients', label: 'Clients', icon: Users, adminOnly: false },
     { path: '/reports', label: 'Analysis', icon: BarChart3, adminOnly: true },
     { path: '/admin', label: 'Admin Panel', icon: Shield, adminOnly: true },
@@ -395,7 +399,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
         <header className="bg-white/90 shadow-sm lg:hidden flex items-center justify-between px-4 py-3 z-40 sticky top-0 border-b border-slate-100 backdrop-blur-md">
           <div className="flex items-center">
             <button onClick={() => setIsMobileMenuOpen(true)} className="text-slate-700 bg-slate-100 p-2 mr-3 rounded-lg border border-slate-200 shadow-sm"><Menu className="w-5 h-5" /></button>
-            <img src={LOGO_URL} alt="Mahaveer Logo" className="h-8 w-auto object-contain drop-shadow-sm" />
+            <img src={LOGO_URL} alt="Mahaveer Logo" className="h-14 w-auto object-contain drop-shadow-sm" />
           </div>
           <div className="flex items-center gap-3">
             {user.role === Role.ADMIN && pendingCount > 0 && <Link to="/packages" className="p-1.5 text-indigo-600 bg-indigo-50 rounded-full border border-indigo-100"><Bell className="w-4 h-4" /></Link>}

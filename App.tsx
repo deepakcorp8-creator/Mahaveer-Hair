@@ -14,6 +14,8 @@ import ClientHistory from './components/ClientHistory';
 import PendingPayments from './components/PendingPayments';
 import AdminPanel from './components/AdminPanel';
 import ReportsAnalytics from './components/ReportsAnalytics';
+import StockInventory from './components/StockInventory';
+import ServiceCalling from './components/ServiceCalling';
 import Login from './components/Login';
 import { User, Role } from './types';
 import { Clock } from 'lucide-react';
@@ -190,6 +192,14 @@ function App() {
 
           <Route path="/clients" element={
             <ProtectedRoute user={user} path="/clients"><ClientMaster /></ProtectedRoute>
+          } />
+
+          <Route path="/inventory" element={
+            <ProtectedRoute user={user} path="/inventory"><StockInventory /></ProtectedRoute>
+          } />
+
+          <Route path="/calling" element={
+            <ProtectedRoute user={user} path="/calling"><ServiceCalling /></ProtectedRoute>
           } />
 
           <Route
