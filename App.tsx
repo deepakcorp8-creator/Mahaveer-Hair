@@ -16,6 +16,7 @@ import AdminPanel from './components/AdminPanel';
 import ReportsAnalytics from './components/ReportsAnalytics';
 import StockInventory from './components/StockInventory';
 import ServiceCalling from './components/ServiceCalling';
+import SplashScreen from './components/SplashScreen';
 import Login from './components/Login';
 import { User, Role } from './types';
 import { Clock } from 'lucide-react';
@@ -56,6 +57,7 @@ function App() {
   });
 
   const [showTimeoutWarning, setShowTimeoutWarning] = useState(false);
+  const [showSplash, setShowSplash] = useState(false);
   const lastActivityRef = useRef<number>(Date.now());
   const checkIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -86,6 +88,7 @@ function App() {
     setUser(loggedInUser);
     localStorage.setItem('mahaveer_user', JSON.stringify(loggedInUser));
     lastActivityRef.current = Date.now();
+    setShowSplash(true);
   };
 
   useEffect(() => {
@@ -125,6 +128,10 @@ function App() {
 
   if (!user) {
     return <Login onLogin={handleLogin} />;
+  }
+
+  if (showSplash) {
+    return <SplashScreen onComplete={() => setShowSplash(false)} />;
   }
 
   return (
