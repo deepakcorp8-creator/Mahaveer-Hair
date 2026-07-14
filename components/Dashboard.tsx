@@ -20,7 +20,8 @@ const Dashboard: React.FC = () => {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [totalRegisteredClients, setTotalRegisteredClients] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [selectedMonth, setSelectedMonth] = useState('All Time');
+  // Default to the month we are in — that is what people open the dashboard to check.
+  const [selectedMonth, setSelectedMonth] = useState(MONTHS[new Date().getMonth() + 1]);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedBranch, setSelectedBranch] = useState('ALL');
   const [showStats, setShowStats] = useState(false);
