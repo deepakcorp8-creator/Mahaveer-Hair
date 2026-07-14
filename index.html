@@ -6,17 +6,36 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Mahaveer">
+    <meta name="application-name" content="Mahaveer">
+    <meta name="theme-color" content="#4f46e5">
     <title>Mahaveer Hair Solution - Management Portal</title>
-    <link rel="icon" type="image/png" href="https://i.ibb.co/wFDKjmJS/MAHAVEER-Logo-1920x1080.png">
-    <link rel="apple-touch-icon" href="https://i.ibb.co/wFDKjmJS/MAHAVEER-Logo-1920x1080.png">
-    <link rel="shortcut icon" href="https://i.ibb.co/wFDKjmJS/MAHAVEER-Logo-1920x1080.png">
+
+    <!-- PWA: installable "add to home screen" app -->
+    <link rel="manifest" href="/manifest.webmanifest">
+    <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="/icons/icon-512.png">
+    <link rel="apple-touch-icon" href="/icons/icon-192.png">
+    <link rel="shortcut icon" href="/icons/icon-192.png">
     <script src="https://unpkg.com/@tailwindcss/browser@4"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
       * {
         -webkit-tap-highlight-color: transparent;
       }
+
+      /* GLOBAL SCALING
+         Root font-size drives every rem-based size (text, padding, gaps).
+         Fluid formula keeps one consistent scale across phones, laptops and
+         high-DPI / OS-scaled Windows displays, instead of jumping at breakpoints.
+         ~13.6px @ 390px  ->  ~14px @ 768px  ->  ~14.7px @ 1280px  ->  15.5px cap */
+      html {
+        font-size: clamp(13px, 0.122vw + 13.1px, 15.5px);
+        -webkit-text-size-adjust: 100%; /* stop mobile browsers inflating text */
+        text-size-adjust: 100%;
+      }
+
       body {
         font-family: 'Inter', sans-serif;
         background-color: #f3f4f6;
@@ -25,22 +44,40 @@
         -webkit-user-select: none;
         user-select: none;
       }
+
+      /* INSTALLED APP (home-screen / standalone) — behave like a native app:
+         no long-press callouts, no text drag, and keep content clear of the
+         notch and the gesture bar. */
+      @media (display-mode: standalone) {
+        body {
+          -webkit-touch-callout: none;
+          padding-top: env(safe-area-inset-top);
+          padding-bottom: env(safe-area-inset-bottom);
+          padding-left: env(safe-area-inset-left);
+          padding-right: env(safe-area-inset-right);
+        }
+      }
+
+      /* Never let a wide child crop the page sideways */
+      html, body {
+        max-width: 100%;
+        overflow-x: hidden;
+      }
+      img, svg, video, canvas {
+        max-width: 100%;
+      }
+
       /* Allow selection on inputs */
       input, textarea {
         -webkit-user-select: text;
         user-select: text;
       }
-      
-      /* Mobile App Native Font Scaling */
-      @media (max-width: 768px) {
-        html {
-          font-size: 14px;
-        }
-      }
-      @media (max-width: 380px) {
-        html {
-          font-size: 13px;
-        }
+
+      /* Keep form controls on the same scale as the rest of the UI
+         (iOS/Safari otherwise force their own font-size on them) */
+      input, select, textarea, button {
+        font-family: inherit;
+        font-size: inherit;
       }
 
 
@@ -80,5 +117,18 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
+
+    <!-- PWA: register the service worker (production builds only — in dev it would
+         serve stale bundles). This is what makes the app installable and lets it
+         open instantly / survive a dropped connection. -->
+    <script>
+      if ('serviceWorker' in navigator && location.protocol === 'https:') {
+        window.addEventListener('load', function () {
+          navigator.serviceWorker.register('/sw.js').catch(function (err) {
+            console.warn('Service worker registration failed:', err);
+          });
+        });
+      }
+    </script>
   </body>
 </html>

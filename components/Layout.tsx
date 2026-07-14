@@ -412,8 +412,14 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
         </main>
 
         {/* Bottom Mobile Navigation */}
-        <nav className="lg:hidden fixed bottom-0 left-0 w-full bg-white border-t border-slate-100 z-[100] pb-4 pt-1 shadow-[0_-8px_30px_rgba(0,0,0,0.06)]">
-          <div className="flex justify-around items-center h-[54px] px-2 relative">
+        <nav
+          className="lg:hidden fixed bottom-0 left-0 w-full z-[100] px-3 pt-1"
+          style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 10px)' }}
+        >
+          <div className="relative bg-white/85 backdrop-blur-xl border border-white/60 ring-1 ring-slate-900/5 rounded-[22px] shadow-[0_10px_34px_-8px_rgba(15,23,42,0.22)]">
+          {/* Top hairline accent */}
+          <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-indigo-400/50 to-transparent" />
+          <div className="flex justify-around items-center h-[58px] px-1.5 relative">
             {[
               { path: '/', label: 'Home' },
               { path: '/appointments', label: 'Book' },
@@ -434,8 +440,10 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
                   <div key={item.path} className="relative flex justify-center items-center w-full">
                     <Link
                       to={item.path}
-                      className={`absolute -top-7 flex items-center justify-center w-[52px] h-[52px] rounded-full shadow-[0_8px_16px_rgba(79,70,229,0.3)] border-[4px] border-[#F0F4F8] transition-transform active:scale-95 ${active ? 'bg-indigo-700 shadow-indigo-600/50' : 'bg-indigo-600 shadow-indigo-500/40'}`}
+                      aria-label={navInfo.label}
+                      className="absolute -top-8 flex items-center justify-center w-[54px] h-[54px] rounded-[20px] bg-gradient-to-br from-indigo-500 via-indigo-600 to-violet-600 ring-1 ring-white/40 border-[5px] border-[#F0F4F8] shadow-[0_10px_22px_-6px_rgba(79,70,229,0.7)] transition-all active:scale-95"
                     >
+                      <span className={`absolute -inset-1.5 rounded-[22px] bg-indigo-500/30 blur-lg -z-10 transition-opacity duration-300 ${active ? 'opacity-100' : 'opacity-0'}`} />
                       <item.icon className="w-6 h-6 text-white stroke-[2.5px]" />
                     </Link>
                   </div>
@@ -446,22 +454,29 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
                 <Link
                   key={item.path}
                   to={item.path}
-                  className={`relative flex flex-col items-center justify-center w-full h-full transition-colors ${active ? 'text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}
+                  aria-label={navInfo.label}
+                  className={`relative flex flex-col items-center justify-center w-full h-full gap-0.5 transition-all active:scale-95 ${active ? 'text-indigo-600' : 'text-slate-400'}`}
                 >
-                  <div className={`p-2 rounded-full transition-all ${active ? 'bg-indigo-50 shadow-sm border border-indigo-100' : 'bg-transparent'}`}>
-                    <item.icon className={`w-[26px] h-[26px] ${active ? 'stroke-[2.5px]' : 'stroke-2'}`} />
-                  </div>
-                  {showBadge && (
-                    <span className="absolute top-0 right-1/4 bg-rose-500 text-white text-[9px] font-bold px-1.5 rounded-full border border-white shadow-sm z-10">
-                      {badgeCount > 99 ? '99+' : badgeCount}
-                    </span>
-                  )}
+                  {/* Active pill */}
+                  <span className={`absolute inset-x-1.5 inset-y-1.5 rounded-2xl bg-gradient-to-b from-indigo-50 to-indigo-100/70 ring-1 ring-indigo-100 transition-all duration-200 ${active ? 'opacity-100 scale-100' : 'opacity-0 scale-90'}`} />
+
+                  <span className="relative">
+                    <item.icon className={`w-[22px] h-[22px] transition-all ${active ? 'stroke-[2.6px] -translate-y-px' : 'stroke-2'}`} />
+                    {showBadge && (
+                      <span className="absolute -top-1.5 -right-2.5 min-w-[16px] h-[16px] px-1 flex items-center justify-center bg-gradient-to-br from-rose-500 to-red-600 text-white text-[9px] font-black leading-none rounded-full ring-2 ring-white shadow-sm">
+                        {badgeCount > 99 ? '99+' : badgeCount}
+                      </span>
+                    )}
+                  </span>
+
+                  <span className={`relative text-[9px] font-black tracking-wide transition-colors ${active ? 'text-indigo-600' : 'text-slate-400'}`}>
+                    {navInfo.label}
+                  </span>
                 </Link>
               );
             })}
           </div>
-          {/* iOS safe area bottom padding space */}
-          <div className="h-1 bg-white w-full"></div>
+          </div>
         </nav>
       </div>
     </div>

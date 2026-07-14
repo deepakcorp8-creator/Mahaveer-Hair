@@ -38,6 +38,13 @@ const DailyReport: React.FC = () => {
     useEffect(() => {
         loadData(false);
         loadOptions();
+
+        // Live updates: swap in fresher rows without flashing the loading state.
+        return api.subscribe(async () => {
+            try {
+                setEntries(await api.getEntries());
+            } catch (e) { /* keep showing what we have */ }
+        });
     }, []);
 
     const loadData = async (forceRefresh: boolean = false) => {
@@ -181,8 +188,44 @@ const DailyReport: React.FC = () => {
 
     const card3D = "bg-white rounded-xl shadow-[0_4px_20px_-5px_rgba(0,0,0,0.05)] border-2 border-slate-200 p-3 transition-transform duration-300 hover:-translate-y-1 hover:shadow-lg relative overflow-hidden";
 
+    // --- COCKPIT BOARD DATA ---
+    const paymentTotal = paymentStats.CASH + paymentStats.UPI + paymentStats.CARD + paymentStats.PENDING;
+    const payShare = (v: number) => (paymentTotal > 0 ? (v / paymentTotal) * 100 : 0);
+
+    const serviceCells = [
+        { key: 'NEW', label: 'New Patch', value: serviceStats.NEW, bar: 'bg-blue-400' },
+        { key: 'SERVICE', label: 'Service', value: serviceStats.SERVICE, bar: 'bg-emerald-400' },
+        { key: 'WASHING', label: 'Washing', value: serviceStats.WASHING, bar: 'bg-indigo-400' },
+        { key: 'DEMO', label: 'Demo', value: serviceStats.DEMO, bar: 'bg-amber-400' },
+        { key: 'MUNDAN', label: 'Mundan', value: serviceStats.MUNDAN, bar: 'bg-purple-400' },
+    ];
+    const serviceMax = Math.max(1, ...serviceCells.map(c => c.value));
+
+    const paymentCells = [
+        { label: 'Cash', value: paymentStats.CASH, dot: 'bg-emerald-400', bar: 'bg-emerald-400' },
+        { label: 'UPI', value: paymentStats.UPI, dot: 'bg-blue-400', bar: 'bg-blue-400' },
+        { label: 'Card', value: paymentStats.CARD, dot: 'bg-purple-400', bar: 'bg-purple-400' },
+        { label: 'Pending', value: paymentStats.PENDING, dot: 'bg-rose-400', bar: 'bg-rose-400' },
+    ];
+
     return (
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-5 animate-in fade-in duration-500 pb-20">
+        <div className="max-w-7xl mx-auto w-full space-y-3 pb-20">
+
+            {/* PAGE MOTION KEYFRAMES */}
+            <style>{`
+                @keyframes drRise {
+                    from { opacity: 0; transform: translateY(14px) scale(0.985); }
+                    to   { opacity: 1; transform: translateY(0) scale(1); }
+                }
+                .dr-rise {
+                    opacity: 0;
+                    animation: drRise 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+                }
+                @media (prefers-reduced-motion: reduce) {
+                    .dr-rise { animation: none; opacity: 1; transform: none; }
+                }
+            `}</style>
+
 
             {/* DELETE CONFIRMATION MODAL */}
             {deletingId && (
@@ -217,123 +260,163 @@ const DailyReport: React.FC = () => {
                 </div>
             )}
 
-            {/* HEADER & CONTROLS */}
-            <div className="bg-white rounded-3xl shadow-[0_15px_35px_-10px_rgba(0,0,0,0.08)] border border-slate-200 p-5 relative z-20">
-                <div className="flex flex-col lg:flex-row justify-between lg:items-center gap-5">
+            {/* COCKPIT BOARD — title, filters, collection, service counts & payment split in one dark board */}
+            <div className="relative rounded-2xl overflow-hidden p-3.5 md:p-4 z-20 dr-rise bg-[radial-gradient(120%_120%_at_100%_0%,#312e81_0%,#0f172a_55%,#020617_100%)] shadow-[0_20px_44px_-22px_rgba(2,6,23,0.9)] ring-1 ring-white/10" style={{ animationDelay: '0ms' }}>
+                {/* Faint grid texture */}
+                <div className="pointer-events-none absolute inset-0 opacity-50 bg-[linear-gradient(90deg,rgba(255,255,255,0.06)_1px,transparent_1px)] bg-[length:34px_100%]" />
 
-                    {/* Title & Refresh */}
-                    <div>
-                        <div className="flex items-center gap-3">
-                            <h2 className="text-2xl font-black text-slate-800 tracking-tight">Daily Report</h2>
-                            <button onClick={() => loadData(true)} className="p-2 rounded-full hover:bg-slate-100 text-slate-400 hover:text-indigo-600 transition-colors" title="Refresh Data">
-                                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-                            </button>
-                        </div>
-                        <p className="text-slate-500 font-bold text-sm mt-1">Overview for <span className="text-indigo-600">{formatDateDisplay(selectedDate)}</span></p>
+                {/* TOP: title + controls */}
+                <div className="relative z-10 flex flex-wrap items-center gap-2 mb-3.5">
+                    <h2 className="text-sm md:text-base font-black text-white tracking-tight mr-auto">Daily Report</h2>
+
+                    <span className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-[0.14em] text-emerald-300">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 ring-4 ring-emerald-400/20" />
+                        Live
+                    </span>
+
+                    <button
+                        onClick={() => loadData(true)}
+                        title="Refresh Data"
+                        className="p-1.5 rounded-lg bg-white/5 border border-white/10 text-slate-300 hover:text-white hover:bg-white/10 active:scale-90 transition-all"
+                    >
+                        <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+                    </button>
+
+                    {/* Date */}
+                    <div className="relative">
+                        <Calendar className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-indigo-300 pointer-events-none z-10" />
+                        <input
+                            type="date"
+                            value={selectedDate}
+                            onChange={e => setSelectedDate(e.target.value)}
+                            className="pl-8 pr-2 py-1.5 bg-white/5 border border-white/15 backdrop-blur-sm text-slate-100 text-[11px] font-bold tabular-nums rounded-lg outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/20 hover:bg-white/10 transition-all cursor-pointer [color-scheme:dark]"
+                        />
                     </div>
 
-                    {/* KEY CONTEXT CONTROLS (Date & Branch) */}
-                    <div className="flex flex-wrap items-center gap-3">
-                        {/* Date Picker - Premium Pill */}
-                        <div className="relative group">
-                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <Calendar className="h-4 w-4 text-indigo-500 group-hover:text-indigo-600 transition-colors" />
-                            </div>
-                            <input
-                                type="date"
-                                value={selectedDate}
-                                onChange={e => setSelectedDate(e.target.value)}
-                                className="pl-10 pr-3 py-2.5 bg-slate-50 border border-slate-200 text-slate-700 text-sm font-bold rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none hover:bg-white transition-all cursor-pointer w-full sm:w-auto shadow-sm"
-                            />
-                        </div>
-
-                        {/* Branch Selector - Premium Pill */}
-                        <div className="relative group">
-                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <MapPin className="h-4 w-4 text-emerald-500 group-hover:text-emerald-600 transition-colors" />
-                            </div>
-                            <select
-                                value={branchFilter}
-                                onChange={e => setBranchFilter(e.target.value)}
-                                className="pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200 text-slate-700 text-sm font-bold rounded-xl focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none hover:bg-white transition-all cursor-pointer appearance-none shadow-sm min-w-[140px]"
-                            >
-                                <option value="ALL">All Branches</option>
-                                <option value="RPR">Raipur</option>
-                                <option value="JDP">Jagdalpur</option>
-                                <option value="RPR-MOWA">Mowa</option>
-                            </select>
-                            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-                        </div>
+                    {/* Branch */}
+                    <div className="relative">
+                        <MapPin className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-emerald-300 pointer-events-none z-10" />
+                        <select
+                            value={branchFilter}
+                            onChange={e => setBranchFilter(e.target.value)}
+                            className="pl-8 pr-7 py-1.5 bg-white/5 border border-white/15 backdrop-blur-sm text-slate-100 text-[11px] font-bold rounded-lg outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 hover:bg-white/10 transition-all cursor-pointer appearance-none"
+                        >
+                            <option value="ALL" className="text-slate-800">All Branches</option>
+                            <option value="RPR" className="text-slate-800">Raipur</option>
+                            <option value="JDP" className="text-slate-800">Jagdalpur</option>
+                            <option value="RPR-MOWA" className="text-slate-800">Mowa</option>
+                        </select>
+                        <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400 pointer-events-none" />
                     </div>
                 </div>
 
-                {/* SECONDARY FILTERS TOOLBAR */}
-                <div className="mt-5 pt-5 border-t border-slate-100 flex flex-col md:flex-row gap-3 items-center">
-
-                    {/* Search */}
-                    <div className="relative w-full md:max-w-xs group">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <Search className="h-4 w-4 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
+                {/* BODY: collection + service counts */}
+                <div className="relative z-10 flex flex-col md:flex-row md:items-stretch gap-3 md:gap-4">
+                    {/* Hero */}
+                    <div className="flex md:block items-end justify-between shrink-0 md:min-w-[150px]">
+                        <div>
+                            <p className="text-[8px] font-black uppercase tracking-[0.2em] text-indigo-400 mb-1">Daily Collection</p>
+                            <h3 className="text-[26px] md:text-[30px] font-black text-white tracking-tight tabular-nums leading-none">₹{totalDailyRevenue.toLocaleString()}</h3>
                         </div>
+                        <p className="md:mt-1.5 text-[10px] font-bold text-slate-500 whitespace-nowrap">
+                            <span className="text-slate-200">{totalTxns}</span> entries today
+                        </p>
+                    </div>
+
+                    <div className="hidden md:block w-px bg-gradient-to-b from-transparent via-white/15 to-transparent shrink-0" />
+
+                    {/* Service counts */}
+                    <div className="flex-1 grid grid-cols-5 gap-0 self-center border-t md:border-t-0 border-white/10 pt-3 md:pt-0">
+                        {serviceCells.map((c, i) => (
+                            <div key={c.key} className={`px-1 md:px-2 min-w-0 text-center md:text-left ${i > 0 ? 'border-l border-white/[0.07]' : ''}`}>
+                                <p className={`text-base md:text-[17px] font-black tabular-nums leading-none ${c.value > 0 ? 'text-white' : 'text-slate-600'}`}>{c.value}</p>
+                                <p className="mt-1 text-[7px] md:text-[8px] font-black uppercase tracking-tight md:tracking-[0.08em] text-slate-500 truncate">{c.label}</p>
+                                <div className="mt-1.5 h-0.5 rounded-full bg-white/[0.08] overflow-hidden">
+                                    <div className={`h-full rounded-full ${c.bar}`} style={{ width: `${(c.value / serviceMax) * 100}%` }} />
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                {/* PAYMENT SPLIT */}
+                <div className="relative z-10 mt-4 pt-3.5 border-t border-white/10 grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-x-4 sm:gap-x-6 gap-y-2.5 sm:gap-y-3">
+                    {paymentCells.map(p => (
+                        <span key={p.label} className="flex items-center gap-2 text-[11px] font-bold text-slate-400 whitespace-nowrap min-w-0">
+                            <span className={`w-2 h-2 rounded-full shrink-0 ${p.dot}`} />
+                            <span className="tracking-wide">{p.label}</span>
+                            <b className="text-white font-black text-sm tabular-nums tracking-tight truncate">₹{p.value.toLocaleString()}</b>
+                        </span>
+                    ))}
+                    <span className="col-span-2 w-full sm:w-auto sm:ml-auto sm:max-w-[180px] sm:flex-1 sm:min-w-[110px] h-1.5 rounded-full bg-white/[0.08] flex overflow-hidden">
+                        {paymentCells.map(p => (
+                            <i key={p.label} className={`h-full ${p.bar}`} style={{ width: `${payShare(p.value)}%` }} />
+                        ))}
+                    </span>
+                </div>
+
+                {/* SEARCH & FILTERS */}
+                <div className="relative z-10 mt-3 pt-3 border-t border-white/10 flex flex-col md:flex-row gap-2">
+                    <div className="relative flex-1 md:max-w-xs group">
+                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500 group-focus-within:text-indigo-300 transition-colors pointer-events-none" />
                         <input
                             type="text"
                             value={searchTerm}
                             onChange={e => setSearchTerm(e.target.value)}
-                            className="pl-10 pr-3 py-2 w-full bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold placeholder:font-medium text-slate-700 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none hover:bg-white transition-all"
                             placeholder="Search client name..."
+                            className="w-full pl-8 pr-7 py-1.5 bg-white/5 border border-white/15 backdrop-blur-sm rounded-lg text-[11px] font-bold text-slate-100 placeholder:text-slate-500 placeholder:font-medium outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/20 hover:bg-white/10 transition-all"
                         />
                         {searchTerm && (
                             <button
                                 onClick={() => setSearchTerm('')}
-                                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-slate-200 text-slate-400 hover:text-red-500 transition-colors"
+                                className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-white/10 text-slate-300 flex items-center justify-center hover:bg-rose-500/30 hover:text-rose-200 transition-colors"
                             >
-                                <X className="w-3 h-3" />
+                                <X className="w-2.5 h-2.5" />
                             </button>
                         )}
                     </div>
 
-                    {/* Filters Row */}
-                    <div className="flex overflow-x-auto pb-1 md:pb-0 gap-2 w-full md:w-auto scrollbar-hide">
+                    <div className="flex gap-2 overflow-x-auto scrollbar-hide">
                         {/* Service Filter */}
-                        <div className="relative min-w-[130px]">
+                        <div className="relative min-w-[120px] flex-1 md:flex-none">
                             <select
                                 value={serviceFilter}
                                 onChange={e => setServiceFilter(e.target.value)}
-                                className={`w-full pl-3 pr-8 py-2 border rounded-xl text-xs font-bold outline-none appearance-none cursor-pointer transition-all shadow-sm
-                                ${serviceFilter !== 'ALL' ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}`}
+                                className={`w-full pl-2.5 pr-7 py-1.5 rounded-lg text-[11px] font-bold outline-none appearance-none cursor-pointer transition-all backdrop-blur-sm border
+                                ${serviceFilter !== 'ALL' ? 'bg-indigo-500/25 border-indigo-400/50 text-indigo-100' : 'bg-white/5 border-white/15 text-slate-300 hover:bg-white/10'}`}
                             >
-                                <option value="ALL">All Services</option>
-                                <option value="NEW">New Patch</option>
-                                <option value="SERVICE">Service</option>
-                                <option value="WASHING">Washing</option>
-                                <option value="DEMO">Demo</option>
-                                <option value="MUNDAN">Mundan</option>
+                                <option value="ALL" className="text-slate-800">All Services</option>
+                                <option value="NEW" className="text-slate-800">New Patch</option>
+                                <option value="SERVICE" className="text-slate-800">Service</option>
+                                <option value="WASHING" className="text-slate-800">Washing</option>
+                                <option value="DEMO" className="text-slate-800">Demo</option>
+                                <option value="MUNDAN" className="text-slate-800">Mundan</option>
                             </select>
-                            <Filter className={`absolute right-2.5 top-1/2 -translate-y-1/2 w-3 h-3 pointer-events-none ${serviceFilter !== 'ALL' ? 'text-indigo-500' : 'text-slate-400'}`} />
+                            <Filter className={`absolute right-2.5 top-1/2 -translate-y-1/2 w-3 h-3 pointer-events-none ${serviceFilter !== 'ALL' ? 'text-indigo-300' : 'text-slate-500'}`} />
                         </div>
 
                         {/* Payment Filter */}
-                        <div className="relative min-w-[130px]">
+                        <div className="relative min-w-[120px] flex-1 md:flex-none">
                             <select
                                 value={paymentFilter}
                                 onChange={e => setPaymentFilter(e.target.value)}
-                                className={`w-full pl-3 pr-8 py-2 border rounded-xl text-xs font-bold outline-none appearance-none cursor-pointer transition-all shadow-sm
-                                ${paymentFilter !== 'ALL' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}`}
+                                className={`w-full pl-2.5 pr-7 py-1.5 rounded-lg text-[11px] font-bold outline-none appearance-none cursor-pointer transition-all backdrop-blur-sm border
+                                ${paymentFilter !== 'ALL' ? 'bg-emerald-500/25 border-emerald-400/50 text-emerald-100' : 'bg-white/5 border-white/15 text-slate-300 hover:bg-white/10'}`}
                             >
-                                <option value="ALL">All Payments</option>
-                                <option value="CASH">Cash</option>
-                                <option value="UPI">UPI</option>
-                                <option value="CARD">Card</option>
-                                <option value="PENDING">Pending</option>
+                                <option value="ALL" className="text-slate-800">All Payments</option>
+                                <option value="CASH" className="text-slate-800">Cash</option>
+                                <option value="UPI" className="text-slate-800">UPI</option>
+                                <option value="CARD" className="text-slate-800">Card</option>
+                                <option value="PENDING" className="text-slate-800">Pending</option>
                             </select>
-                            <div className={`absolute right-2.5 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full pointer-events-none ${paymentFilter !== 'ALL' ? 'bg-emerald-500' : 'bg-slate-300'}`}></div>
+                            <span className={`absolute right-2.5 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full pointer-events-none ${paymentFilter !== 'ALL' ? 'bg-emerald-400' : 'bg-slate-600'}`} />
                         </div>
 
                         {/* Reset */}
                         {(serviceFilter !== 'ALL' || paymentFilter !== 'ALL' || branchFilter !== 'ALL' || searchTerm) && (
                             <button
                                 onClick={resetFilters}
-                                className="px-3 py-2 bg-slate-100 hover:bg-red-50 border border-slate-200 hover:border-red-200 text-slate-500 hover:text-red-600 rounded-xl text-xs font-bold transition-all flex items-center gap-1 shadow-sm whitespace-nowrap"
+                                className="px-2.5 py-1.5 bg-white/5 border border-white/15 text-slate-300 hover:bg-rose-500/20 hover:border-rose-400/40 hover:text-rose-200 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1 whitespace-nowrap active:scale-95"
                             >
                                 <RotateCcw className="w-3 h-3" />
                                 Reset
@@ -343,142 +426,129 @@ const DailyReport: React.FC = () => {
                 </div>
             </div>
 
-            {/* Main KPI Row - ULTRA COMPACT */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {/* Daily Collection */}
-                <div className="rounded-xl p-4 relative overflow-hidden group shadow-md shadow-indigo-500/20 bg-slate-900 border-2 border-indigo-500/30">
-                    <div className="absolute inset-0 bg-gradient-to-r from-violet-600 to-indigo-600 opacity-90 group-hover:opacity-100 transition-opacity duration-300"></div>
-                    <div className="absolute -right-6 -top-6 w-20 h-20 bg-white/20 rounded-full blur-xl group-hover:bg-white/30 transition-all"></div>
 
-                    <div className="relative z-10 flex items-center justify-between">
-                        <div>
-                            <p className="text-indigo-200 text-[10px] font-bold uppercase tracking-widest mb-0.5">Daily Collection</p>
-                            <h3 className="text-2xl font-black text-white tracking-tight">₹{totalDailyRevenue.toLocaleString()}</h3>
-                        </div>
-                        <div className="p-2 bg-white/10 rounded-lg border border-white/20 backdrop-blur-sm shadow-inner">
-                            <CreditCard className="w-5 h-5 text-white" />
-                        </div>
-                    </div>
+            <div className="bg-white rounded-2xl shadow-[0_8px_30px_-14px_rgba(15,23,42,0.22)] border border-slate-200/70 overflow-hidden dr-rise" style={{ animationDelay: '90ms' }}>
+                {/* MOBILE CARD LIST */}
+                <div className="md:hidden divide-y divide-slate-100">
+                    {loading ? (
+                        <div className="text-center py-12 font-bold text-slate-400 text-sm">Loading data...</div>
+                    ) : filteredData.length === 0 ? (
+                        <div className="text-center py-12 text-slate-400 font-medium text-sm px-4">No records found for selected filters.</div>
+                    ) : (
+                        filteredData.map((entry, idx) => (
+                            <div key={idx} className="p-3.5">
+                                {/* Row 1: name + amount */}
+                                <div className="flex items-start justify-between gap-3">
+                                    <div className="min-w-0">
+                                        <h4 className="font-black text-slate-800 text-sm leading-tight truncate">{entry.clientName}</h4>
+                                        <p className="text-[10px] font-bold text-slate-400 mt-0.5 tabular-nums">{formatDateDisplay(entry.date)}</p>
+                                    </div>
+                                    <div className="text-right shrink-0">
+                                        <p className="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-0.5">Amount</p>
+                                        <p className="font-black text-slate-900 text-base tabular-nums leading-none">₹{entry.amount}</p>
+                                    </div>
+                                </div>
+
+                                {/* Row 2: contact */}
+                                <div className="flex items-center gap-2 mt-2">
+                                    <a
+                                        href={`tel:${entry.contactNo}`}
+                                        className="text-xs font-bold text-slate-600 tabular-nums bg-slate-50 border border-slate-200 rounded-lg px-2 py-1"
+                                    >
+                                        {entry.contactNo}
+                                    </a>
+                                    {entry.address && (
+                                        <span className="text-[11px] text-slate-400 font-medium truncate">{entry.address}</span>
+                                    )}
+                                </div>
+
+                                {/* Row 3: service + chips */}
+                                <div className="flex flex-wrap items-center gap-1.5 mt-2.5">
+                                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider border
+                                        ${entry.serviceType === 'NEW' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                                            entry.serviceType === 'SERVICE' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                                                entry.serviceType === 'DEMO' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                                                    entry.serviceType === 'WASHING' ? 'bg-indigo-50 text-indigo-700 border-indigo-200' :
+                                                        'bg-slate-50 text-slate-700 border-slate-200'}`}>
+                                        {entry.serviceType === 'NEW' && <Sparkles className="w-2.5 h-2.5" />}
+                                        {entry.serviceType === 'SERVICE' && <Scissors className="w-2.5 h-2.5" />}
+                                        {entry.serviceType === 'DEMO' && <Layers className="w-2.5 h-2.5" />}
+                                        {entry.serviceType}
+                                    </span>
+                                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-600 bg-white border border-slate-200 rounded-md px-1.5 py-0.5">
+                                        <User className="w-2.5 h-2.5 text-slate-400" />
+                                        {entry.technician}
+                                    </span>
+                                    <span className="text-[9px] font-black text-slate-500 bg-slate-100 border border-slate-200 rounded-md px-1.5 py-0.5 uppercase">
+                                        {entry.patchMethod || 'N/A'}
+                                    </span>
+                                    <span className="text-[9px] font-black text-slate-500 bg-white border border-slate-200 rounded-md px-1.5 py-0.5 uppercase">
+                                        {entry.branch}
+                                    </span>
+                                    {entry.patchSize && (
+                                        <span className="inline-flex items-center gap-1 text-[9px] font-black text-indigo-600 bg-indigo-50 border border-indigo-100 rounded-md px-1.5 py-0.5">
+                                            <Ruler className="w-2.5 h-2.5" />
+                                            {entry.patchSize}
+                                        </span>
+                                    )}
+                                </div>
+
+                                {/* Row 4: payment + actions */}
+                                <div className="flex items-center justify-between gap-2 mt-3 pt-2.5 border-t border-dashed border-slate-100">
+                                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-700 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1">
+                                        {entry.paymentMethod}
+                                    </span>
+                                    <div className="flex items-center gap-1.5">
+                                        <button
+                                            onClick={() => openEditModal(entry)}
+                                            className="p-2 rounded-lg bg-white text-indigo-600 border border-indigo-200 active:scale-90 transition-transform"
+                                            title="Edit Transaction"
+                                        >
+                                            <Pencil className="w-3.5 h-3.5" />
+                                        </button>
+                                        <button
+                                            onClick={() => setDeletingId(entry.id)}
+                                            className="p-2 rounded-lg bg-white text-red-500 border border-red-200 active:scale-90 transition-transform"
+                                            title="Delete Record"
+                                        >
+                                            <Trash2 className="w-3.5 h-3.5" />
+                                        </button>
+                                        {entry.invoiceUrl && entry.invoiceUrl.startsWith('http') && (
+                                            <a
+                                                href={entry.invoiceUrl}
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                className="p-2 rounded-lg bg-indigo-50 text-indigo-600 border border-indigo-200 active:scale-90 transition-transform"
+                                                title="Download Saved PDF"
+                                            >
+                                                <FileDown className="w-3.5 h-3.5" />
+                                            </a>
+                                        )}
+                                        <button
+                                            onClick={() => generateInvoice(entry)}
+                                            className="p-2 rounded-lg bg-slate-100 text-slate-600 border border-slate-200 active:scale-90 transition-transform"
+                                            title="Print / Generate Invoice"
+                                        >
+                                            <Printer className="w-3.5 h-3.5" />
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        ))
+                    )}
                 </div>
 
-                {/* Total Activity */}
-                <div className="rounded-xl p-4 bg-white border-2 border-slate-200 shadow-md shadow-slate-200/50 flex items-center justify-between group hover:border-indigo-100 transition-colors">
-                    <div>
-                        <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-0.5">Total Activity</p>
-                        <h3 className="text-2xl font-black text-slate-800 tracking-tight flex items-baseline gap-1">
-                            {totalTxns} <span className="text-xs font-bold text-slate-400">Entries</span>
-                        </h3>
-                    </div>
-                    <div className="p-2 bg-slate-50 rounded-lg text-slate-400 group-hover:text-indigo-600 group-hover:bg-indigo-50 transition-colors">
-                        <FileText className="w-5 h-5" />
-                    </div>
-                </div>
-            </div>
-
-            {/* Service Breakdown Row - SMALL VERTICAL CARDS */}
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                <div className="bg-white p-4 rounded-xl border-2 border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all group">
-                    <div className="flex items-start justify-between mb-2">
-                        <div className="p-2 rounded-lg bg-blue-50 text-blue-600 group-hover:scale-110 transition-transform"><UserPlus className="w-4 h-4" /></div>
-                        <span className="text-xs font-bold text-slate-300">01</span>
-                    </div>
-                    <div>
-                        <h3 className="text-2xl font-black text-slate-800">{serviceStats.NEW}</h3>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">New Patches</p>
-                    </div>
-                </div>
-
-                <div className="bg-white p-4 rounded-xl border-2 border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all group">
-                    <div className="flex items-start justify-between mb-2">
-                        <div className="p-2 rounded-lg bg-emerald-50 text-emerald-600 group-hover:scale-110 transition-transform"><Scissors className="w-4 h-4" /></div>
-                        <span className="text-xs font-bold text-slate-300">02</span>
-                    </div>
-                    <div>
-                        <h3 className="text-2xl font-black text-slate-800">{serviceStats.SERVICE}</h3>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Service Only</p>
-                    </div>
-                </div>
-
-                <div className="bg-white p-4 rounded-xl border-2 border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all group">
-                    <div className="flex items-start justify-between mb-2">
-                        <div className="p-2 rounded-lg bg-indigo-50 text-indigo-600 group-hover:scale-110 transition-transform"><Droplets className="w-4 h-4" /></div>
-                        <span className="text-xs font-bold text-slate-300">03</span>
-                    </div>
-                    <div>
-                        <h3 className="text-2xl font-black text-slate-800">{serviceStats.WASHING}</h3>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Washing</p>
-                    </div>
-                </div>
-
-                <div className="bg-white p-4 rounded-xl border-2 border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all group">
-                    <div className="flex items-start justify-between mb-2">
-                        <div className="p-2 rounded-lg bg-amber-50 text-amber-600 group-hover:scale-110 transition-transform"><Sparkles className="w-4 h-4" /></div>
-                        <span className="text-xs font-bold text-slate-300">04</span>
-                    </div>
-                    <div>
-                        <h3 className="text-2xl font-black text-slate-800">{serviceStats.DEMO}</h3>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Demo Visits</p>
-                    </div>
-                </div>
-
-                <div className="bg-white p-4 rounded-xl border-2 border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all group col-span-2 md:col-span-1">
-                    <div className="flex items-start justify-between mb-2">
-                        <div className="p-2 rounded-lg bg-purple-50 text-purple-600 group-hover:scale-110 transition-transform"><UserCheck className="w-4 h-4" /></div>
-                        <span className="text-xs font-bold text-slate-300">05</span>
-                    </div>
-                    <div>
-                        <h3 className="text-2xl font-black text-slate-800">{serviceStats.MUNDAN}</h3>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Mundan</p>
-                    </div>
-                </div>
-            </div>
-
-            {/* Payment Breakdown Row - COMPACT PILLS */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <div className="bg-white px-4 py-3 rounded-xl border-2 border-slate-200 shadow-sm flex items-center justify-between hover:shadow-md transition-shadow">
-                    <div className="flex items-center gap-3">
-                        <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
-                        <p className="text-xs font-bold text-slate-500 uppercase">Cash</p>
-                    </div>
-                    <p className="font-black text-slate-700">₹{paymentStats.CASH.toLocaleString()}</p>
-                </div>
-
-                <div className="bg-white px-4 py-3 rounded-xl border-2 border-slate-200 shadow-sm flex items-center justify-between hover:shadow-md transition-shadow">
-                    <div className="flex items-center gap-3">
-                        <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-                        <p className="text-xs font-bold text-slate-500 uppercase">UPI</p>
-                    </div>
-                    <p className="font-black text-slate-700">₹{paymentStats.UPI.toLocaleString()}</p>
-                </div>
-
-                <div className="bg-white px-4 py-3 rounded-xl border-2 border-slate-200 shadow-sm flex items-center justify-between hover:shadow-md transition-shadow">
-                    <div className="flex items-center gap-3">
-                        <div className="w-2 h-2 rounded-full bg-purple-500"></div>
-                        <p className="text-xs font-bold text-slate-500 uppercase">Card</p>
-                    </div>
-                    <p className="font-black text-slate-700">₹{paymentStats.CARD.toLocaleString()}</p>
-                </div>
-
-                <div className="bg-white px-4 py-3 rounded-xl border-2 border-slate-200 shadow-sm flex items-center justify-between hover:shadow-md transition-shadow">
-                    <div className="flex items-center gap-3">
-                        <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
-                        <p className="text-xs font-bold text-slate-500 uppercase">Pending</p>
-                    </div>
-                    <p className="font-black text-slate-700">₹{paymentStats.PENDING.toLocaleString()}</p>
-                </div>
-            </div>
-
-            <div className="bg-white rounded-3xl shadow-[0_20px_40px_-12px_rgba(0,0,0,0.1)] border border-slate-200 overflow-hidden">
-                <div className="overflow-x-auto">
+                {/* DESKTOP TABLE */}
+                <div className="hidden md:block overflow-x-auto">
                     <table className="w-full text-left text-sm text-slate-600">
-                        <thead className="bg-slate-900 text-white uppercase font-bold text-xs border-b border-indigo-500/30">
+                        <thead className="bg-slate-900 text-white uppercase font-black text-[10px] border-b border-indigo-500/30">
                             <tr>
-                                <th className="px-6 py-5 tracking-wider">Client Name</th>
-                                <th className="px-6 py-5 tracking-wider">Contact / Address</th>
-                                <th className="px-6 py-5 tracking-wider">Service</th>
-                                <th className="px-6 py-5 tracking-wider">Payment</th>
-                                <th className="px-6 py-5 text-right tracking-wider">Amount</th>
-                                <th className="px-6 py-5 text-center tracking-wider">Actions</th>
+                                <th className="px-5 py-3.5 tracking-[0.12em]">Client Name</th>
+                                <th className="px-5 py-3.5 tracking-[0.12em]">Contact / Address</th>
+                                <th className="px-5 py-3.5 tracking-[0.12em]">Service</th>
+                                <th className="px-5 py-3.5 tracking-[0.12em]">Payment</th>
+                                <th className="px-5 py-3.5 text-right tracking-[0.12em]">Amount</th>
+                                <th className="px-5 py-3.5 text-center tracking-[0.12em]">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">

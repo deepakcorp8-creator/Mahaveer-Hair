@@ -26,6 +26,100 @@ let DATA_CACHE: {
 const CACHE_DURATION = 5 * 60 * 1000;
 const OPTIONS_CACHE_DURATION = 15 * 60 * 1000;
 
+// --- PERSISTENT CACHE ---
+// The in-memory cache above dies on every reload / PWA restart, so each cold open
+// had to wait on Apps Script before painting anything. Mirroring it to localStorage
+// lets the app paint from disk instantly and refresh in the background.
+const LS_CACHE_KEY = 'mahaveer_cache_v1';
+const STALE_AFTER = 60 * 1000;               // serve instantly, but refresh behind the scenes
+const MAX_SERVE_STALE = 12 * 60 * 60 * 1000; // older than this: wait for live data instead
+
+const hydrateCache = () => {
+  try {
+    const raw = localStorage.getItem(LS_CACHE_KEY);
+    if (!raw) return;
+    const saved = JSON.parse(raw);
+    if (saved && saved.lastFetch) {
+      DATA_CACHE = {
+        options: saved.options ?? null,
+        packages: saved.packages ?? null,
+        entries: saved.entries ?? null,
+        appointments: saved.appointments ?? null,
+        lastFetch: saved.lastFetch || {}
+      };
+    }
+  } catch (e) {
+    // Corrupt or full storage: just start cold.
+  }
+};
+
+const persistCache = () => {
+  try {
+    localStorage.setItem(LS_CACHE_KEY, JSON.stringify({
+      options: DATA_CACHE.options,
+      packages: DATA_CACHE.packages,
+      entries: DATA_CACHE.entries,
+      appointments: DATA_CACHE.appointments,
+      lastFetch: DATA_CACHE.lastFetch
+    }));
+  } catch (e) {
+    // Quota exceeded — keep running on the in-memory cache.
+  }
+};
+
+hydrateCache();
+
+// Drop a cached sheet (in memory *and* on disk) so the next read goes to the server.
+// Without clearing disk too, a reload right after adding an entry would rehydrate the
+// stale copy and the new record would appear to have vanished.
+const invalidate = (key: 'options' | 'entries' | 'appointments' | 'packages') => {
+  DATA_CACHE[key] = null;
+  delete DATA_CACHE.lastFetch[key];
+  persistCache();
+};
+
+// --- REQUEST DE-DUPLICATION ---
+// Dashboard, Daily Report and Pending Payments can mount together and each ask for
+// the same sheet. Without this they fire identical requests that Apps Script runs
+// one after another. Now they all wait on the same single request.
+const inFlight: { [key: string]: Promise<any> } = {};
+
+const fetchOnce = <T>(key: string, run: () => Promise<T>): Promise<T> => {
+  if (inFlight[key]) return inFlight[key] as Promise<T>;
+  const request = run().finally(() => { delete inFlight[key]; });
+  inFlight[key] = request;
+  return request;
+};
+
+// Fired whenever a background refresh brings in newer data than what is on screen.
+// Screens listen via api.subscribe() and repaint themselves.
+const DATA_UPDATED_EVENT = 'mahaveer:data-updated';
+
+const notifyUpdated = (key: string) => {
+  try {
+    window.dispatchEvent(new CustomEvent(DATA_UPDATED_EVENT, { detail: { key } }));
+  } catch (e) {
+    // Non-browser context: nothing to notify.
+  }
+};
+
+// Only wake the UI when the sheet actually changed — a poll that finds nothing new
+// must not cause a re-render.
+const commit = <T>(key: 'options' | 'entries' | 'appointments' | 'packages', value: T) => {
+  const changed = JSON.stringify(value) !== JSON.stringify(DATA_CACHE[key]);
+  (DATA_CACHE as any)[key] = value;
+  DATA_CACHE.lastFetch[key] = Date.now();
+  persistCache();
+  if (changed) notifyUpdated(key);
+  return value;
+};
+
+const cacheAge = (key: string) => Date.now() - (DATA_CACHE.lastFetch[key] || 0);
+
+// Cached value is good enough to paint right now (anything older is discarded
+// so nobody is shown yesterday's numbers).
+const canServeFromCache = (key: string, value: any) => !!value && cacheAge(key) < MAX_SERVE_STALE;
+
 // --- SECURITY & BRANCH HELPER ---
 const getCurrentUserBranch = (): string | null => {
   try {
@@ -66,27 +160,30 @@ const normalizeToISO = (dateStr: string) => {
 export const api = {
   // --- OPTION HELPERS ---
   getOptions: async (forceRefresh = false) => {
-    const now = Date.now();
-    if (!forceRefresh && DATA_CACHE.options && (now - (DATA_CACHE.lastFetch['options'] || 0) < OPTIONS_CACHE_DURATION)) {
-      return DATA_CACHE.options;
-    }
+    const fetchOptions = () => fetchOnce('options', async () => {
+      const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getOptions`);
+      const data = await response.json();
+      if (data && data.clients) {
+        return commit('options', {
+          clients: data.clients,
+          technicians: data.technicians || MOCK_TECHNICIANS,
+          items: data.items || MOCK_ITEMS
+        });
+      }
+      throw new Error('Malformed options response');
+    });
 
     if (isLive) {
+      if (!forceRefresh && canServeFromCache('options', DATA_CACHE.options)) {
+        if (cacheAge('options') > OPTIONS_CACHE_DURATION) fetchOptions().catch(() => { });
+        return DATA_CACHE.options;
+      }
+
       try {
-        const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getOptions`);
-        const data = await response.json();
-        if (data && data.clients) {
-          const result = {
-            clients: data.clients,
-            technicians: data.technicians || MOCK_TECHNICIANS,
-            items: data.items || MOCK_ITEMS
-          };
-          DATA_CACHE.options = result;
-          DATA_CACHE.lastFetch['options'] = now;
-          return result;
-        }
+        return await fetchOptions();
       } catch (e) {
         console.warn("Failed to fetch options", e);
+        if (DATA_CACHE.options) return DATA_CACHE.options;
       }
     }
 
@@ -103,7 +200,7 @@ export const api = {
   },
 
   addClient: async (client: Client) => {
-    DATA_CACHE.options = null;
+    invalidate('options');
     if (isLive) {
       const res = await fetch(GOOGLE_SCRIPT_URL, {
         method: 'POST',
@@ -118,7 +215,7 @@ export const api = {
   },
 
   updateClient: async (client: Client, originalName: string) => {
-    DATA_CACHE.options = null;
+    invalidate('options');
     if (isLive) {
       await fetch(GOOGLE_SCRIPT_URL, {
         method: 'POST',
@@ -161,7 +258,7 @@ export const api = {
   },
 
   updateEntry: async (entry: Entry) => {
-    DATA_CACHE.entries = null;
+    invalidate('entries');
     // Send Date directly (YYYY-MM-DD)
     const formatted = { ...entry };
     if (isLive) {
@@ -175,7 +272,7 @@ export const api = {
   },
 
   deleteEntry: async (id: string) => {
-    DATA_CACHE.entries = null;
+    invalidate('entries');
     const localIndex = LOCAL_NEW_ENTRIES.findIndex(e => e.id === id);
     if (localIndex !== -1) LOCAL_NEW_ENTRIES.splice(localIndex, 1);
 
@@ -191,25 +288,28 @@ export const api = {
 
   getEntries: async (forceRefresh = false) => {
     let allEntries: Entry[] = [];
-    const now = Date.now();
 
-    if (!forceRefresh && DATA_CACHE.entries && (now - (DATA_CACHE.lastFetch['entries'] || 0) < CACHE_DURATION)) {
-      allEntries = DATA_CACHE.entries;
+    const fetchEntries = () => fetchOnce('entries', async () => {
+      const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getEntries`);
+      const data = await response.json();
+      if (Array.isArray(data)) {
+        const mapped: Entry[] = data.map((e: any) => ({ ...e, date: normalizeToISO(e.date) }));
+        return commit('entries', mapped);
+      }
+      return DATA_CACHE.entries || [];
+    });
+
+    if (!isLive) {
+      allEntries = [...MOCK_ENTRIES];
+    } else if (!forceRefresh && canServeFromCache('entries', DATA_CACHE.entries)) {
+      // Paint from cache immediately; quietly pull fresh data if it is going stale.
+      allEntries = DATA_CACHE.entries!;
+      if (cacheAge('entries') > STALE_AFTER) fetchEntries().catch(() => { });
     } else {
-      if (isLive) {
-        try {
-          const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getEntries`);
-          const data = await response.json();
-          if (Array.isArray(data)) {
-            allEntries = data.map((e: any) => ({ ...e, date: normalizeToISO(e.date) }));
-            DATA_CACHE.entries = allEntries;
-            DATA_CACHE.lastFetch['entries'] = now;
-          }
-        } catch (e) {
-          allEntries = DATA_CACHE.entries || [...MOCK_ENTRIES];
-        }
-      } else {
-        allEntries = [...MOCK_ENTRIES];
+      try {
+        allEntries = await fetchEntries();
+      } catch (e) {
+        allEntries = DATA_CACHE.entries || [...MOCK_ENTRIES];
       }
     }
 
@@ -301,25 +401,27 @@ export const api = {
   // --- APPOINTMENTS (WITH BRANCH FILTER) ---
   getAppointments: async (forceRefresh = false) => {
     let allAppts: Appointment[] = [];
-    const now = Date.now();
 
-    if (!forceRefresh && DATA_CACHE.appointments && (now - (DATA_CACHE.lastFetch['appointments'] || 0) < CACHE_DURATION)) {
-      allAppts = DATA_CACHE.appointments;
+    const fetchAppts = () => fetchOnce('appointments', async () => {
+      const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getAppointments`);
+      const data = await response.json();
+      if (Array.isArray(data)) {
+        const mapped: Appointment[] = data.map((a: any) => ({ ...a, date: normalizeToISO(a.date) }));
+        return commit('appointments', mapped);
+      }
+      return DATA_CACHE.appointments || [];
+    });
+
+    if (!isLive) {
+      allAppts = [...MOCK_APPOINTMENTS];
+    } else if (!forceRefresh && canServeFromCache('appointments', DATA_CACHE.appointments)) {
+      allAppts = DATA_CACHE.appointments!;
+      if (cacheAge('appointments') > STALE_AFTER) fetchAppts().catch(() => { });
     } else {
-      if (isLive) {
-        try {
-          const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getAppointments`);
-          const data = await response.json();
-          if (Array.isArray(data)) {
-            allAppts = data.map((a: any) => ({ ...a, date: normalizeToISO(a.date) }));
-            DATA_CACHE.appointments = data;
-            DATA_CACHE.lastFetch['appointments'] = now;
-          }
-        } catch (e) {
-          allAppts = DATA_CACHE.appointments || [...MOCK_APPOINTMENTS];
-        }
-      } else {
-        allAppts = [...MOCK_APPOINTMENTS];
+      try {
+        allAppts = await fetchAppts();
+      } catch (e) {
+        allAppts = DATA_CACHE.appointments || [...MOCK_APPOINTMENTS];
       }
     }
 
@@ -432,7 +534,7 @@ export const api = {
   },
 
   addPackage: async (pkg: Omit<ServicePackage, 'id'>) => {
-    DATA_CACHE.packages = null;
+    invalidate('packages');
     // Send Date directly
     const formatted = { ...pkg };
     const pkgPayload = { ...formatted, status: 'PENDING' };
@@ -451,7 +553,7 @@ export const api = {
   },
 
   updatePackageStatus: async (id: string, status: ServicePackage['status']) => {
-    DATA_CACHE.packages = null;
+    invalidate('packages');
     if (isLive) {
       await fetch(GOOGLE_SCRIPT_URL, {
         method: 'POST',
@@ -463,7 +565,7 @@ export const api = {
   },
 
   deletePackage: async (id: string) => {
-    DATA_CACHE.packages = null;
+    invalidate('packages');
     if (isLive) {
       await fetch(GOOGLE_SCRIPT_URL, {
         method: 'POST',
@@ -475,7 +577,7 @@ export const api = {
   },
 
   editPackage: async (pkg: ServicePackage) => {
-    DATA_CACHE.packages = null;
+    invalidate('packages');
     // Send Date directly
     const formatted = { ...pkg };
     if (isLive) {
@@ -593,6 +695,14 @@ export const api = {
     return true;
   },
 
+  // Screens call this to repaint themselves the moment fresher data lands.
+  // Returns an unsubscribe function for useEffect cleanup.
+  subscribe: (onUpdate: (key: string) => void) => {
+    const handler = (e: Event) => onUpdate((e as CustomEvent).detail?.key);
+    window.addEventListener(DATA_UPDATED_EVENT, handler);
+    return () => window.removeEventListener(DATA_UPDATED_EVENT, handler);
+  },
+
   getDashboardStats: async (): Promise<DashboardStats> => {
     // This calls getEntries, which is now filtered by Branch
     const entries = await api.getEntries();
@@ -611,3 +721,31 @@ export const api = {
     return { totalClients, totalAmount, newClientsToday, serviceCount, totalOutstanding };
   }
 };
+
+// --- LIVE DATA ENGINE ---
+// Warm start: pull the sheets every screen needs the moment the app boots, rather than
+// waiting for a component to mount and ask.
+// Then keep them live: re-check on a timer, and immediately whenever the user comes back
+// to the app (tab focus, phone unlock, network restored). Anything that actually changed
+// fires 'mahaveer:data-updated' and the open screen repaints itself — no manual refresh.
+const LIVE_POLL_INTERVAL = 30 * 1000;
+
+if (isLive && typeof window !== 'undefined') {
+  const revalidate = () => {
+    if (typeof document !== 'undefined' && document.hidden) return; // don't poll in the background
+    api.getEntries(true).catch(() => { });
+    api.getAppointments(true).catch(() => { });
+  };
+
+  setTimeout(() => {
+    api.getEntries().catch(() => { });
+    api.getOptions().catch(() => { });
+  }, 0);
+
+  setInterval(revalidate, LIVE_POLL_INTERVAL);
+  window.addEventListener('focus', revalidate);
+  window.addEventListener('online', revalidate);
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) revalidate();
+  });
+}

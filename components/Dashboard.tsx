@@ -4,10 +4,11 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line, AreaChart, Area
 } from 'recharts';
-import { Users, IndianRupee, Activity, ShoppingBag, ArrowUpRight, Sparkles, TrendingUp, AlertCircle, Calendar, ChevronDown, Filter, MapPin, SlidersHorizontal, Calculator, Eye, X, CheckCircle2 } from 'lucide-react';
+import { Users, IndianRupee, Activity, ShoppingBag, ArrowUpRight, Sparkles, TrendingUp, AlertCircle, Calendar, ChevronDown, Filter, MapPin, SlidersHorizontal, Calculator, Eye, EyeOff, X, CheckCircle2 } from 'lucide-react';
 import { api } from '../services/api';
 import { DashboardStats, Entry } from '../types';
 import { getInitial } from '../utils/dataUtils';
+import { INDIA_STATES, INDIA_VIEWBOX, resolveState } from '../utils/indiaMap';
 
 const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 const MONTHS = [
@@ -22,6 +23,8 @@ const Dashboard: React.FC = () => {
   const [selectedMonth, setSelectedMonth] = useState('All Time');
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedBranch, setSelectedBranch] = useState('ALL');
+  const [showStats, setShowStats] = useState(false);
+  const [selectedState, setSelectedState] = useState<string | null>(null);
 
   // --- INCENTIVE STATE ---
   const [showIncentiveSettings, setShowIncentiveSettings] = useState(false);
@@ -59,6 +62,9 @@ const Dashboard: React.FC = () => {
       }
     };
     fetchData();
+
+    // Repaint whenever the live data engine pulls in fresher numbers.
+    return api.subscribe(() => fetchData());
   }, []);
 
   // Calculate available years from data
@@ -97,6 +103,42 @@ const Dashboard: React.FC = () => {
 
   // Logic for "Active Clients" in the specific period
   const activeInPeriod = new Set(filteredEntries.map(e => e.clientName)).size;
+
+  // --- STATE MAP: unique customers per state (a client visiting 5 times is 1 customer) ---
+  const stateCounts = useMemo(() => {
+    const perState = new Map<string, Set<string>>();
+    filteredEntries.forEach(e => {
+      const state = resolveState(e.address, e.branch);
+      if (!state) return;
+      if (!perState.has(state)) perState.set(state, new Set());
+      perState.get(state)!.add(String(e.clientName || '').trim().toLowerCase());
+    });
+
+    const counts: { [state: string]: number } = {};
+    perState.forEach((clients, state) => { counts[state] = clients.size; });
+    return counts;
+  }, [filteredEntries]);
+
+  const maxStateCount = Math.max(1, ...Object.values(stateCounts));
+  const mappedCustomers = Object.values(stateCounts).reduce((a, b) => a + b, 0);
+  const statesCovered = Object.keys(stateCounts).length;
+
+  const rankedStates = Object.entries(stateCounts).sort((a, b) => b[1] - a[1]);
+
+  // Colour scale: 6 steps of indigo, deeper = more customers.
+  // States with no customers at all show soft red — untapped territory.
+  const stateFill = (count: number) => {
+    if (!count) return '#fecaca';
+    const t = count / maxStateCount;
+    if (t > 0.8) return '#3730a3';
+    if (t > 0.6) return '#4338ca';
+    if (t > 0.4) return '#4f46e5';
+    if (t > 0.2) return '#6366f1';
+    if (t > 0.08) return '#818cf8';
+    return '#c7d2fe';
+  };
+
+  const selectedCount = selectedState ? (stateCounts[selectedState] || 0) : 0;
 
   // Process data for charts
   const rawServiceData = filteredEntries.reduce((acc: any[], curr) => {
@@ -321,6 +363,15 @@ const Dashboard: React.FC = () => {
               <ChevronDown className="w-3.5 h-3.5" />
             </div>
           </div>
+
+          {/* Show/Hide Stats Toggle */}
+          <button
+            onClick={() => setShowStats(prev => !prev)}
+            title={showStats ? 'Hide Stats' : 'Show Stats'}
+            className="bg-white border border-indigo-100 p-2.5 rounded-xl shadow-sm shadow-indigo-50 text-indigo-500 hover:border-indigo-400 hover:text-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/10 cursor-pointer transition-all"
+          >
+            {showStats ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+          </button>
         </div>
       </div>
 
@@ -331,7 +382,7 @@ const Dashboard: React.FC = () => {
           <div className="relative z-10 flex justify-between items-start">
             <div className="overflow-hidden">
               <p className="text-slate-500 text-[8px] md:text-[10px] font-black uppercase tracking-widest mb-0.5 md:mb-1 truncate">Clients</p>
-              <h3 className="text-xl md:text-3xl font-black text-slate-800 truncate">{totalRegisteredClients}</h3>
+              <h3 className="text-xl md:text-3xl font-black text-slate-800 truncate">{showStats ? totalRegisteredClients : '••••'}</h3>
             </div>
             <div className="p-1.5 md:p-2 bg-blue-100 text-blue-600 rounded-lg shadow-inner border border-blue-200 shrink-0">
               <Users className="w-4 h-4 md:w-5 md:h-5" />
@@ -347,7 +398,7 @@ const Dashboard: React.FC = () => {
           <div className="relative z-10 flex justify-between items-start">
             <div className="overflow-hidden">
               <p className="text-slate-400 text-[8px] md:text-[10px] font-black uppercase tracking-widest mb-0.5 md:mb-1 truncate">Revenue</p>
-              <h3 className="text-[17px] sm:text-xl md:text-3xl font-black tracking-tight text-white whitespace-nowrap overflow-hidden text-ellipsis">₹{totalRevenue.toLocaleString()}</h3>
+              <h3 className="text-[17px] sm:text-xl md:text-3xl font-black tracking-tight text-white whitespace-nowrap overflow-hidden text-ellipsis">{showStats ? `₹${totalRevenue.toLocaleString()}` : '₹••••'}</h3>
             </div>
             <div className="p-1.5 md:p-2 bg-white/10 backdrop-blur-md rounded-lg border border-white/20 shadow-inner shrink-0">
               <IndianRupee className="w-4 h-4 md:w-5 md:h-5 text-emerald-400" />
@@ -364,7 +415,7 @@ const Dashboard: React.FC = () => {
           <div className="relative z-10 flex justify-between items-start">
             <div className="overflow-hidden">
               <p className="text-slate-500 text-[8px] md:text-[10px] font-black uppercase tracking-widest mb-0.5 md:mb-1 truncate">Outstanding</p>
-              <h3 className="text-[17px] sm:text-xl md:text-3xl font-black text-slate-800 whitespace-nowrap overflow-hidden text-ellipsis">₹{totalOutstanding.toLocaleString()}</h3>
+              <h3 className="text-[17px] sm:text-xl md:text-3xl font-black text-slate-800 whitespace-nowrap overflow-hidden text-ellipsis">{showStats ? `₹${totalOutstanding.toLocaleString()}` : '₹••••'}</h3>
             </div>
             <div className="p-1.5 md:p-2 bg-red-100 text-red-600 rounded-lg shadow-inner border border-red-200 shrink-0">
               <AlertCircle className="w-4 h-4 md:w-5 md:h-5" />
@@ -379,7 +430,7 @@ const Dashboard: React.FC = () => {
           <div className="relative z-10 flex justify-between items-start">
             <div className="overflow-hidden">
               <p className="text-slate-500 text-[8px] md:text-[10px] font-black uppercase tracking-widest mb-0.5 md:mb-1 truncate">Services</p>
-              <h3 className="text-[17px] sm:text-xl md:text-3xl font-black text-slate-800 truncate">{filteredEntries.length}</h3>
+              <h3 className="text-[17px] sm:text-xl md:text-3xl font-black text-slate-800 truncate">{showStats ? filteredEntries.length : '••••'}</h3>
             </div>
             <div className="p-1.5 md:p-2 bg-orange-100 text-orange-600 rounded-lg shadow-inner border border-orange-200 shrink-0">
               <ShoppingBag className="w-4 h-4 md:w-5 md:h-5" />
@@ -387,6 +438,206 @@ const Dashboard: React.FC = () => {
           </div>
           <div className="mt-2 md:mt-3 flex items-center text-[8px] md:text-[10px] font-bold text-slate-400 flex-wrap gap-1">
             <span className="text-orange-600 bg-orange-50 px-1 py-0.5 rounded">Volume</span>
+          </div>
+        </div>
+      </div>
+
+      {/* CUSTOMER MAP — 3D India choropleth */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-[0_10px_30px_-12px_rgba(15,23,42,0.18)] overflow-hidden">
+        {/* Map entrance motion */}
+        <style>{`
+          @keyframes mapRise {
+            from { opacity: 0; transform: rotateX(72deg) rotateZ(-14deg) translateY(46px) scale(0.9); }
+            to   { opacity: 1; transform: rotateX(26deg) rotateZ(-4deg) translateY(0) scale(1); }
+          }
+          @keyframes mapStateIn {
+            from { opacity: 0; }
+            to   { opacity: 1; }
+          }
+          .map-3d {
+            transform: rotateX(26deg) rotateZ(-4deg);
+            transform-style: preserve-3d;
+            animation: mapRise 1.1s cubic-bezier(0.22, 1, 0.36, 1) both;
+          }
+          .map-state {
+            opacity: 0;
+            animation: mapStateIn 0.45s ease-out forwards;
+          }
+          @media (prefers-reduced-motion: reduce) {
+            .map-3d { animation: none; opacity: 1; }
+            .map-state { animation: none; opacity: 1; }
+          }
+        `}</style>
+
+        <div className="flex flex-wrap items-center gap-3 px-4 md:px-5 py-3.5 border-b border-slate-100">
+          <div className="mr-auto">
+            <h3 className="text-base md:text-lg font-black text-slate-800 tracking-tight flex items-center gap-2">
+              <MapPin className="w-4 h-4 text-indigo-600" />
+              Customers Across India
+            </h3>
+            <p className="text-[11px] font-bold text-slate-400 mt-0.5">
+              Tap a state to see its customer count
+            </p>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="text-right">
+              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">States</p>
+              <p className="text-lg font-black text-slate-800 tabular-nums leading-none">{showStats ? statesCovered : '••'}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Mapped</p>
+              <p className="text-lg font-black text-indigo-600 tabular-nums leading-none">{showStats ? mappedCustomers : '••••'}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3">
+          {/* Map */}
+          <div className="lg:col-span-2 relative bg-gradient-to-b from-slate-50 to-indigo-50/40 px-2 py-4 md:py-6 overflow-hidden">
+            <div style={{ perspective: '1400px' }}>
+              <svg
+                viewBox={INDIA_VIEWBOX}
+                className="map-3d w-full h-[320px] md:h-[460px] mx-auto select-none"
+                role="img"
+                aria-label="Customer count by state"
+              >
+                <defs>
+                  <filter id="mapDrop" x="-20%" y="-20%" width="150%" height="150%">
+                    <feDropShadow dx="0" dy="16" stdDeviation="14" floodColor="#312e81" floodOpacity="0.28" />
+                  </filter>
+                </defs>
+
+                {/* Extruded side walls: the same outlines stacked underneath, darkening with depth */}
+                <g filter="url(#mapDrop)">
+                  {Array.from({ length: 9 }).map((_, layer) => (
+                    <g key={layer} transform={`translate(0 ${(9 - layer) * 2.6})`}>
+                      {INDIA_STATES.map(s => {
+                        const count = stateCounts[s.name] || 0;
+                        return (
+                          <path
+                            key={s.name}
+                            d={s.d}
+                            fill={count ? '#1e1b4b' : '#991b1b'}
+                            opacity={0.5}
+                          />
+                        );
+                      })}
+                    </g>
+                  ))}
+                </g>
+
+                {/* Top face — states fade in one after another, busiest first */}
+                <g>
+                  {INDIA_STATES.map((s, i) => {
+                    const count = stateCounts[s.name] || 0;
+                    const isSelected = selectedState === s.name;
+                    // States with customers lead the reveal; empty ones trail behind.
+                    const delay = (count > 0 ? 300 : 620) + i * 16;
+                    return (
+                      <path
+                        key={s.name}
+                        d={s.d}
+                        fill={isSelected ? '#f59e0b' : stateFill(count)}
+                        stroke={isSelected ? '#b45309' : '#ffffff'}
+                        strokeWidth={isSelected ? 3 : 1.2}
+                        strokeLinejoin="round"
+                        onClick={() => setSelectedState(prev => (prev === s.name ? null : s.name))}
+                        className="map-state cursor-pointer transition-[fill,stroke,opacity] duration-150 hover:opacity-80"
+                        style={{
+                          animationDelay: `${delay}ms`,
+                          ...(isSelected ? { filter: 'drop-shadow(0 0 10px rgba(245,158,11,0.8))' } : {})
+                        }}
+                      >
+                        <title>{`${s.name}: ${count} customer${count === 1 ? '' : 's'}`}</title>
+                      </path>
+                    );
+                  })}
+                </g>
+              </svg>
+            </div>
+
+            {/* Legend */}
+            <div className="flex items-center justify-center gap-4 mt-1 flex-wrap">
+              <span className="flex items-center gap-1.5">
+                <span className="w-3.5 h-2 rounded-sm ring-1 ring-red-200" style={{ background: '#fecaca' }} />
+                <span className="text-[9px] font-black uppercase tracking-widest text-red-400">No Customers</span>
+              </span>
+
+              <span className="flex items-center gap-2">
+                <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Low</span>
+                <span className="flex rounded-full overflow-hidden ring-1 ring-slate-200">
+                  {['#c7d2fe', '#818cf8', '#6366f1', '#4f46e5', '#4338ca', '#3730a3'].map(c => (
+                    <span key={c} className="w-6 h-2" style={{ background: c }} />
+                  ))}
+                </span>
+                <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">High</span>
+              </span>
+            </div>
+          </div>
+
+          {/* Side panel */}
+          <div className="border-t lg:border-t-0 lg:border-l border-slate-100 p-4 md:p-5 flex flex-col">
+            {selectedState ? (
+              <div className="rounded-2xl bg-gradient-to-br from-slate-900 to-indigo-950 p-4 text-white shadow-lg mb-4">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-[9px] font-black uppercase tracking-widest text-indigo-300 mb-1">Selected State</p>
+                    <h4 className="text-base font-black tracking-tight truncate">{selectedState}</h4>
+                  </div>
+                  <button
+                    onClick={() => setSelectedState(null)}
+                    className="p-1 rounded-lg bg-white/10 border border-white/15 text-slate-300 hover:text-white shrink-0"
+                    title="Clear selection"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                <div className="mt-3 flex items-end justify-between">
+                  <div>
+                    <p className="text-3xl font-black tabular-nums leading-none">{showStats ? selectedCount : '••'}</p>
+                    <p className="text-[10px] font-bold text-slate-400 mt-1">
+                      customer{selectedCount === 1 ? '' : 's'}
+                    </p>
+                  </div>
+                  <p className="text-[11px] font-black text-emerald-300 tabular-nums">
+                    {mappedCustomers > 0 ? ((selectedCount / mappedCustomers) * 100).toFixed(1) : '0.0'}% of all
+                  </p>
+                </div>
+                <div className="mt-3 h-1.5 rounded-full bg-white/10 overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-indigo-400 to-violet-400"
+                    style={{ width: `${maxStateCount > 0 ? (selectedCount / maxStateCount) * 100 : 0}%` }}
+                  />
+                </div>
+              </div>
+            ) : (
+              <p className="text-xs font-bold text-slate-400 mb-3">
+                Top states by customer count
+              </p>
+            )}
+
+            <div className="space-y-1.5 overflow-y-auto max-h-[300px] pr-1">
+              {rankedStates.length === 0 && (
+                <p className="text-xs text-slate-400 font-medium">No location data in this period.</p>
+              )}
+              {rankedStates.map(([state, count]) => (
+                <button
+                  key={state}
+                  onClick={() => setSelectedState(prev => (prev === state ? null : state))}
+                  className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl border transition-all text-left ${selectedState === state
+                    ? 'bg-amber-50 border-amber-200'
+                    : 'bg-white border-slate-100 hover:border-indigo-200 hover:bg-indigo-50/40'
+                    }`}
+                >
+                  <span
+                    className="w-2.5 h-2.5 rounded-sm shrink-0 ring-1 ring-black/5"
+                    style={{ background: selectedState === state ? '#f59e0b' : stateFill(count) }}
+                  />
+                  <span className="text-xs font-bold text-slate-700 truncate mr-auto">{state}</span>
+                  <span className="text-xs font-black text-slate-900 tabular-nums shrink-0">{showStats ? count : '••'}</span>
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </div>

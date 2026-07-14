@@ -58,6 +58,11 @@ const AppointmentBooking: React.FC = () => {
         } catch (e) { }
 
         loadData();
+
+        // Live updates: pick up appointments booked from another device/branch.
+        return api.subscribe((key) => {
+            if (key === 'appointments' || key === 'options') loadData();
+        });
     }, []);
 
     // Update newAppt.time whenever parts change
