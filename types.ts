@@ -108,6 +108,28 @@ export interface ServiceCall {
   nextCallDate?: string;
 }
 
+export interface InventoryItem {
+  id: string;
+  itemCode: string;
+  itemName: string;
+  itemCategory: string;
+  openingStock: number;
+  maxStock: number;
+  inHandStock: number;
+  currentStock: number;
+  totalInStock: number;
+  liveStock: number;
+}
+
+export interface StockInEntry {
+  id: string;
+  itemCode: string;
+  itemName: string;
+  itemCategory: string;
+  quantity: number;
+  remark: string;
+}
+
 export interface PaymentHistory {
   id: string;
   date: string; // Col A

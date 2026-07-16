@@ -14,6 +14,8 @@ function doGet(e) {
   if (action == 'getAppointments') return getAppointments(ss);
   if (action == 'getPaymentHistory') return getPaymentHistory(ss);
   if (action == 'getServiceCalls') return getServiceCalls(ss);
+  if (action == 'getInventory') return getInventory(ss);
+  if (action == 'getStockIn') return getStockIn(ss);
 
   return response({error: "Invalid GET action: " + action});
 }
@@ -315,6 +317,44 @@ function doPost(e) {
         return response({status: "success", id: 'sc_' + lr});
       } catch (err) {
         return response({error: "Failed to save service call: " + err.toString()});
+      }
+  }
+
+  // --- STOCK IN (adds a stock-in row; INVENTORY sheet formulas recompute live stock) ---
+  if (action == 'addStockIn') {
+      try {
+        const siSheet = getSheet(ss, "STOCK IN");
+        // Sheet columns: ITEM CODE | ITEM NAME | ITEM CATEGORY | STOCK IN QUANTITY | REMARK
+        siSheet.appendRow([
+          String(data.itemCode || ''),
+          String(data.itemName || ''),
+          String(data.itemCategory || ''),
+          Number(data.quantity || 0),
+          String(data.remark || '')
+        ]);
+        return response({status: "success", id: 'si_' + siSheet.getLastRow()});
+      } catch (err) {
+        return response({error: "Failed to add stock in: " + err.toString()});
+      }
+  }
+
+  // --- INVENTORY: update MAX STOCK (col E) for an item ---
+  if (action == 'updateInventoryMax') {
+      try {
+        const sheet = ss.getSheetByName("INVENTORY");
+        if (!sheet || sheet.getLastRow() <= 1) return response({error: "INVENTORY sheet is empty"});
+        const codes = sheet.getRange(2, 1, sheet.getLastRow() - 1, 1).getValues();
+        let row = -1;
+        for (var i = 0; i < codes.length; i++) {
+          if (String(codes[i][0]) === String(data.itemCode)) { row = i + 2; break; }
+        }
+        if (row > 0) {
+          sheet.getRange(row, 5).setValue(Number(data.maxStock || 0)); // Col E = MAX STOCK
+          return response({status: "success"});
+        }
+        return response({error: "Item not found: " + data.itemCode});
+      } catch (err) {
+        return response({error: "Failed to update max stock: " + err.toString()});
       }
   }
 
@@ -745,4 +785,38 @@ function getServiceCalls(ss) {
       entryId: String(row[8] || ''),
       nextCallDate: fromSheetDate(row[9])
     })).reverse().filter(r => r.clientName));
+}
+
+function getInventory(ss) {
+    const sheet = ss.getSheetByName("INVENTORY");
+    if (!sheet || sheet.getLastRow() <= 1) return response([]);
+    // Columns A-I: ITEM CODE | ITEM NAME | ITEM CATEGORY | OPENING | MAX | IN HAND | CURRENT | TOTAL IN | LIVE STOCK
+    const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 9).getValues();
+    return response(data.map((row, index) => ({
+      id: 'inv_' + (index + 2),
+      itemCode: row[0],
+      itemName: row[1],
+      itemCategory: row[2],
+      openingStock: Number(row[3] || 0),
+      maxStock: Number(row[4] || 0),
+      inHandStock: Number(row[5] || 0),
+      currentStock: Number(row[6] || 0),
+      totalInStock: Number(row[7] || 0),
+      liveStock: Number(row[8] || 0)
+    })).filter(r => r.itemCode || r.itemName));
+}
+
+function getStockIn(ss) {
+    const sheet = ss.getSheetByName("STOCK IN");
+    if (!sheet || sheet.getLastRow() <= 1) return response([]);
+    // Columns A-E: ITEM CODE | ITEM NAME | ITEM CATEGORY | STOCK IN QUANTITY | REMARK
+    const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 5).getValues();
+    return response(data.map((row, index) => ({
+      id: 'si_' + (index + 2),
+      itemCode: row[0],
+      itemName: row[1],
+      itemCategory: row[2],
+      quantity: Number(row[3] || 0),
+      remark: String(row[4] || '')
+    })).reverse().filter(r => r.itemCode || r.itemName));
 }

@@ -434,6 +434,65 @@ export const api = {
     return { status: 'success' };
   },
 
+  // --- INVENTORY (INVENTORY + STOCK IN sheets) ---
+  getInventory: async (): Promise<any[]> => {
+    if (isLive) {
+      try {
+        const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getInventory&t=${Date.now()}`);
+        const data = await response.json();
+        if (data && data.error) throw new Error(data.error);
+        if (Array.isArray(data)) return data;
+      } catch (e) {
+        console.warn("Failed to fetch inventory", e);
+        throw e;
+      }
+    }
+    return [];
+  },
+
+  getStockIn: async (): Promise<any[]> => {
+    if (isLive) {
+      try {
+        const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getStockIn&t=${Date.now()}`);
+        const data = await response.json();
+        if (data && data.error) throw new Error(data.error);
+        if (Array.isArray(data)) return data;
+      } catch (e) {
+        console.warn("Failed to fetch stock-in", e);
+        throw e;
+      }
+    }
+    return [];
+  },
+
+  addStockIn: async (payload: any) => {
+    if (isLive) {
+      const res = await fetch(GOOGLE_SCRIPT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'addStockIn', ...payload })
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      return data;
+    }
+    return { status: 'success' };
+  },
+
+  updateInventoryMax: async (itemCode: string, maxStock: number) => {
+    if (isLive) {
+      const res = await fetch(GOOGLE_SCRIPT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'updateInventoryMax', itemCode, maxStock })
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      return data;
+    }
+    return { status: 'success' };
+  },
+
   // --- APPOINTMENTS (WITH BRANCH FILTER) ---
   getAppointments: async (forceRefresh = false) => {
     let allAppts: Appointment[] = [];
