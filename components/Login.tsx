@@ -72,15 +72,15 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   };
 
   return (
-    <div className="min-h-screen w-full flex flex-col relative overflow-hidden font-sans bg-[#060811] text-white selection:bg-[#B51A2B] selection:text-white">
+    <div className="min-h-screen w-full flex flex-col relative overflow-x-hidden overflow-y-auto lg:overflow-hidden font-sans bg-[#060811] text-white selection:bg-[#B51A2B] selection:text-white">
 
       <BokehBackground />
 
       {/* Main Content Wrapper with Bottom Padding to prevent footer overlap */}
       <div className="relative z-10 w-full max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center flex-grow py-4 place-content-center">
 
-        {/* LEFT PANEL: SLIDE FROM LEFT */}
-        <div className="flex flex-col items-center lg:items-start space-y-12 animate-slide-left">
+        {/* LEFT PANEL: SLIDE FROM LEFT (hidden on mobile so the login card fits one screen) */}
+        <div className="hidden lg:flex flex-col items-center lg:items-start space-y-12 animate-slide-left">
           <div className="inline-flex items-center gap-3 bg-white/5 border border-white/10 px-5 py-2.5 rounded-2xl backdrop-blur-xl shadow-2xl">
             <div className="p-1.5 bg-[#B51A2B] rounded-lg shadow-lg shadow-[#B51A2B]/30">
               <Sparkles className="w-4 h-4 text-white animate-pulse" />
