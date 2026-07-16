@@ -66,6 +66,65 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
     }
   }, [location.pathname]);
 
+  // PULL-TO-REFRESH (mobile / installed app)
+  // The app scrolls inside <main>, not the document, so the browser's native
+  // pull-to-refresh never fires. We recreate it: pull down from the top past a
+  // threshold and release to reload fresh data.
+  const [pullY, setPullY] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const pullRef = useRef(0);
+
+  useEffect(() => {
+    const el = mainContentRef.current;
+    if (!el) return;
+
+    const THRESHOLD = 70;   // release beyond this to trigger a refresh
+    const MAX_PULL = 110;   // cap how far the indicator travels
+    let startY = 0;
+    let pulling = false;
+
+    const onStart = (e: TouchEvent) => {
+      if (isRefreshing) return;
+      pulling = el.scrollTop <= 0;
+      if (pulling) startY = e.touches[0].clientY;
+    };
+
+    const onMove = (e: TouchEvent) => {
+      if (!pulling || isRefreshing) return;
+      const dy = e.touches[0].clientY - startY;
+      if (dy > 0 && el.scrollTop <= 0) {
+        e.preventDefault();                       // stop the native rubber-band
+        const dist = Math.min(dy * 0.5, MAX_PULL); // resistance
+        pullRef.current = dist;
+        setPullY(dist);
+      }
+    };
+
+    const onEnd = () => {
+      if (!pulling) return;
+      pulling = false;
+      if (pullRef.current >= THRESHOLD) {
+        setIsRefreshing(true);
+        setPullY(THRESHOLD);
+        setTimeout(() => window.location.reload(), 500);
+      } else {
+        pullRef.current = 0;
+        setPullY(0);
+      }
+    };
+
+    el.addEventListener('touchstart', onStart, { passive: true });
+    el.addEventListener('touchmove', onMove, { passive: false });
+    el.addEventListener('touchend', onEnd, { passive: true });
+    el.addEventListener('touchcancel', onEnd, { passive: true });
+    return () => {
+      el.removeEventListener('touchstart', onStart);
+      el.removeEventListener('touchmove', onMove);
+      el.removeEventListener('touchend', onEnd);
+      el.removeEventListener('touchcancel', onEnd);
+    };
+  }, [isRefreshing]);
+
   // Sync profile form with user data when modal opens
   useEffect(() => {
     if (isProfileModalOpen && user) {
@@ -368,6 +427,25 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
 
       <div className="flex-1 flex flex-col h-full overflow-hidden relative bg-[#F0F4F8]">
         <div className="h-1 w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 absolute top-0 left-0 z-50"></div>
+
+        {/* PULL-TO-REFRESH INDICATOR (mobile) */}
+        {(pullY > 0 || isRefreshing) && (
+          <div
+            className="lg:hidden absolute top-0 left-0 right-0 flex justify-center pointer-events-none z-[60]"
+            style={{
+              transform: `translateY(${(isRefreshing ? 60 : pullY) - 4}px)`,
+              transition: isRefreshing ? 'transform 0.2s ease' : 'none',
+              opacity: Math.min((isRefreshing ? 70 : pullY) / 50, 1)
+            }}
+          >
+            <div className="w-10 h-10 rounded-full bg-white shadow-lg border border-slate-200 flex items-center justify-center">
+              <Loader2
+                className={`w-5 h-5 text-indigo-600 ${isRefreshing ? 'animate-spin' : ''}`}
+                style={{ transform: isRefreshing ? undefined : `rotate(${pullY * 3}deg)` }}
+              />
+            </div>
+          </div>
+        )}
 
         <header className="hidden lg:flex items-center justify-between px-6 py-2 bg-white/80 backdrop-blur-md border-b border-slate-200/50 sticky top-0 z-40 shrink-0 h-14 shadow-sm">
           <div className="flex items-center text-slate-400 text-[10px] font-black uppercase bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-200 shadow-inner"><Calendar className="w-3 h-3 mr-1.5 text-indigo-500" />{todayDate}</div>
