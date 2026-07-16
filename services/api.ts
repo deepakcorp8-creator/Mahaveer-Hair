@@ -398,6 +398,42 @@ export const api = {
     return [];
   },
 
+  // --- SERVICE CALLS (Feedback calling) ---
+  getServiceCalls: async (): Promise<any[]> => {
+    if (isLive) {
+      try {
+        const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getServiceCalls&t=${Date.now()}`);
+        const data = await response.json();
+        if (data && data.error) throw new Error(data.error);
+        if (Array.isArray(data)) {
+          return data.map((s: any) => ({
+            ...s,
+            serviceDate: normalizeToISO(s.serviceDate),
+            nextCallDate: s.nextCallDate ? normalizeToISO(s.nextCallDate) : ''
+          }));
+        }
+      } catch (e) {
+        console.warn("Failed to fetch service calls", e);
+        throw e; // Propagate to UI
+      }
+    }
+    return [];
+  },
+
+  addServiceCall: async (payload: any) => {
+    if (isLive) {
+      const res = await fetch(GOOGLE_SCRIPT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'addServiceCall', ...payload })
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      return data;
+    }
+    return { status: 'success' };
+  },
+
   // --- APPOINTMENTS (WITH BRANCH FILTER) ---
   getAppointments: async (forceRefresh = false) => {
     let allAppts: Appointment[] = [];

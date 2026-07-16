@@ -13,6 +13,7 @@ function doGet(e) {
   if (action == 'getUsers') return getUsers(ss);
   if (action == 'getAppointments') return getAppointments(ss);
   if (action == 'getPaymentHistory') return getPaymentHistory(ss);
+  if (action == 'getServiceCalls') return getServiceCalls(ss);
 
   return response({error: "Invalid GET action: " + action});
 }
@@ -287,6 +288,34 @@ function doPost(e) {
               return response({status: "success", screenshotUrl: screenshotUrl});
           }
       } catch(e) { return response({error: e.message}); }
+  }
+
+  // --- SERVICE CALLS (Feedback calling after service) ---
+  if (action == 'addServiceCall') {
+      try {
+        const scSheet = getSheet(ss, "SERVICE CALL");
+        // Sheet columns: TIMESTAMP | SERVICE DATE | NAME | CONTACT | ADDRESS | SERVICE TYPE | CALL STATUS | REMARK
+        // Extra (hidden) columns appended for linking/scheduling: ENTRY ID (I) | NEXT CALL DATE (J)
+        scSheet.appendRow([
+          new Date(),
+          toSheetDate(data.serviceDate),
+          String(data.clientName || ''),
+          String(data.contact || ''),
+          String(data.address || ''),
+          String(data.serviceType || ''),
+          String(data.callStatus || ''),
+          String(data.remark || ''),
+          String(data.entryId || ''),
+          toSheetDate(data.nextCallDate) || ''
+        ]);
+        const lr = scSheet.getLastRow();
+        scSheet.getRange(lr, 1).setNumberFormat("dd/mm/yyyy hh:mm");
+        scSheet.getRange(lr, 2).setNumberFormat("dd/mm/yyyy");
+        if (data.nextCallDate) scSheet.getRange(lr, 10).setNumberFormat("dd/mm/yyyy");
+        return response({status: "success", id: 'sc_' + lr});
+      } catch (err) {
+        return response({error: "Failed to save service call: " + err.toString()});
+      }
   }
 
   return response({error: "Unknown action: " + action});
@@ -694,6 +723,26 @@ function getPaymentHistory(ss) {
       // Col G is index 6
       paidAmount: Number(row[6] || 0),
       remark: row[8],
-      paymentMethod: row[11] || 'Received' 
+      paymentMethod: row[11] || 'Received'
     })).reverse().filter(p => p.paidAmount > 0));
+}
+
+function getServiceCalls(ss) {
+    const sheet = getSheet(ss, "SERVICE CALL");
+    if (!sheet || sheet.getLastRow() <= 1) return response([]);
+    // Read 10 columns: TIMESTAMP | SERVICE DATE | NAME | CONTACT | ADDRESS | SERVICE TYPE | CALL STATUS | REMARK | ENTRY ID | NEXT CALL DATE
+    const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 10).getValues();
+    return response(data.map((row, index) => ({
+      id: 'sc_' + (index + 2),
+      timestamp: fromSheetDate(row[0]),
+      serviceDate: fromSheetDate(row[1]),
+      clientName: row[2],
+      contact: row[3],
+      address: row[4],
+      serviceType: row[5],
+      callStatus: row[6],
+      remark: String(row[7] || ''),
+      entryId: String(row[8] || ''),
+      nextCallDate: fromSheetDate(row[9])
+    })).reverse().filter(r => r.clientName));
 }

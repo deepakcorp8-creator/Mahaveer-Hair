@@ -94,6 +94,20 @@ export interface ServicePackage {
   oldServiceCount?: number; // Count of services completed before this system
 }
 
+export interface ServiceCall {
+  id: string;
+  timestamp?: string;   // When the feedback call was logged
+  serviceDate: string;  // Original DATA BASE service date
+  clientName: string;
+  contact: string;
+  address: string;
+  serviceType: string;
+  callStatus: string;   // Feedback outcome e.g. SATISFIED / NO RESPONSE
+  remark: string;
+  entryId: string;      // Links back to the DATA BASE row (row_N)
+  nextCallDate?: string;
+}
+
 export interface PaymentHistory {
   id: string;
   date: string; // Col A
