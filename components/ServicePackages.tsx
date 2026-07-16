@@ -19,6 +19,10 @@ const ServicePackages: React.FC = () => {
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [editingPackage, setEditingPackage] = useState<ServicePackage | null>(null);
 
+    // Redesign: create-form-as-modal + card history modal
+    const [isNewModalOpen, setIsNewModalOpen] = useState(false);
+    const [historyPkg, setHistoryPkg] = useState<ServicePackage | null>(null);
+
     // --- NEW STATES FOR RENEWAL & ADDON ---
     const [isAddOnModalOpen, setIsAddOnModalOpen] = useState(false);
     const [isRenewModalOpen, setIsRenewModalOpen] = useState(false);
@@ -123,6 +127,7 @@ const ServicePackages: React.FC = () => {
                     oldServiceCount: 0
                 });
                 await loadData();
+                setIsNewModalOpen(false);
                 alert("✅ Package created successfully!");
             } else {
                 alert("⚠️ Please fill in Client Name and Package Name");
@@ -386,203 +391,122 @@ const ServicePackages: React.FC = () => {
         }
     };
 
-    // Helper to render card
-    const renderCard = (pkg: ServicePackage) => {
+    // --- 3D tilt (no state; direct DOM transform) ---
+    const tilt = (e: React.MouseEvent<HTMLDivElement>) => {
+        const el = e.currentTarget;
+        const r = el.getBoundingClientRect();
+        const px = (e.clientX - r.left) / r.width - 0.5;
+        const py = (e.clientY - r.top) / r.height - 0.5;
+        el.style.transform = `perspective(800px) rotateY(${px * 11}deg) rotateX(${-py * 11}deg) translateY(-5px)`;
+        el.style.setProperty('--mx', (px + 0.5) * 100 + '%');
+        el.style.setProperty('--my', (py + 0.5) * 100 + '%');
+    };
+    const untilt = (e: React.MouseEvent<HTMLDivElement>) => { e.currentTarget.style.transform = ''; };
+    const statTilt = (e: React.MouseEvent<HTMLButtonElement>) => {
+        const el = e.currentTarget;
+        const r = el.getBoundingClientRect();
+        const px = (e.clientX - r.left) / r.width - 0.5;
+        const py = (e.clientY - r.top) / r.height - 0.5;
+        el.style.transform = `perspective(700px) rotateY(${px * 8}deg) rotateX(${-py * 8}deg) translateY(-4px)`;
+    };
+    const statUntilt = (e: React.MouseEvent<HTMLButtonElement>) => { e.currentTarget.style.transform = ''; };
+
+    const fmtShort = (d?: string) => {
+        if (!d) return '—';
+        const dt = new Date(d);
+        if (isNaN(dt.getTime())) return String(d);
+        return `${String(dt.getMonth() + 1).padStart(2, '0')} / ${String(dt.getFullYear()).slice(-2)}`;
+    };
+    const fmtLong = (d?: string) => {
+        if (!d) return '—';
+        const dt = new Date(d);
+        if (isNaN(dt.getTime())) return String(d);
+        return dt.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    };
+
+    // Helper to render a credit-card style membership
+    const renderCard = (pkg: ServicePackage, idx: number = 0) => {
         const stats = getPackageUsage(pkg);
         const isPending = pkg.status === 'PENDING' || !pkg.status;
         const isOldPackage = pkg.packageType === 'OLD';
+        const isExpired = !isPending && stats.isExpired;
         const isExpiringSoon = !isPending && stats.remaining <= 2 && !stats.isExpired;
+        const variant = isPending ? 'pending' : isExpired ? 'expired' : isExpiringSoon ? 'low' : '';
+        const total = Number(pkg.totalServices) || 0;
+        const pctUsed = total > 0 ? Math.min((stats.used / total) * 100, 100) : 0;
+        const trackCls = isExpired ? 'exp' : isExpiringSoon ? 'low' : '';
 
         return (
-            <div key={pkg.id} className={`
-            relative overflow-hidden rounded-[1.5rem] border transition-all duration-500 hover:-translate-y-2 hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.1)] group bg-white animate-in fade-in slide-in-from-bottom-4
-            ${isPending
-                    ? 'border-amber-200'
-                    : isExpiringSoon
-                        ? 'border-rose-200 ring-1 ring-rose-100'
-                        : 'border-slate-100 hover:border-indigo-200'}
-        `}>
+            <div key={pkg.id} className="sp-pkg" style={{ animationDelay: `${(idx % 12) * 55}ms` }}>
+                <div className={`sp-card ${variant}`} onMouseMove={tilt} onMouseLeave={untilt} onClick={() => setHistoryPkg(pkg)}>
+                    <div className="sp-glow"></div>
 
-                {/* Ambient Background Gradient */}
-                <div className={`absolute top-0 right-0 w-40 h-40 rounded-full blur-[60px] opacity-20 pointer-events-none transition-colors duration-500
-                ${isPending ? 'bg-amber-400' : isExpiringSoon ? 'bg-rose-500' : 'bg-indigo-400'}
-            `}></div>
-
-                <div className="p-6 h-full flex flex-col justify-between relative z-10">
-
-                    {/* Header: Client Name Top, Package Badge Below */}
-                    <div className="flex justify-between items-start mb-5">
-                        <div className="flex items-start gap-4 w-full">
-                            {/* Icon Box */}
-                            <div className={`
-                            w-12 h-12 rounded-2xl flex-shrink-0 flex items-center justify-center shadow-lg transform group-hover:scale-110 transition-transform duration-300
-                            ${isPending
-                                    ? 'bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-amber-200'
-                                    : isExpiringSoon
-                                        ? 'bg-gradient-to-br from-rose-500 to-pink-600 text-white shadow-rose-200'
-                                        : 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-indigo-200'}
-                        `}>
-                                {isPending ? <Clock className="w-6 h-6" /> : isExpiringSoon ? <BatteryWarning className="w-6 h-6 animate-pulse" /> : <PackageCheck className="w-6 h-6" />}
-                            </div>
-
-                            {/* Text Content */}
-                            <div className="min-w-0 flex-1">
-                                <h3 className="font-black text-slate-800 text-lg leading-tight tracking-tight mb-1 truncate">
-                                    {pkg.clientName}
-                                </h3>
-                                <div className="flex flex-wrap gap-2">
-                                    <div className={`inline-flex items-center px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider border shadow-sm
-                                    ${isPending
-                                            ? 'bg-amber-50 text-amber-700 border-amber-100'
-                                            : 'bg-indigo-50 text-indigo-700 border-indigo-100'}
-                                `}>
-                                        {pkg.packageName}
-                                    </div>
-                                    {isOldPackage && (
-                                        <div className="inline-flex items-center px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider border shadow-sm bg-slate-100 text-slate-600 border-slate-200">
-                                            OLD PKG
-                                        </div>
-                                    )}
-                                    {isExpiringSoon && (
-                                        <div className="inline-flex items-center px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider border shadow-sm bg-rose-50 text-rose-600 border-rose-100 animate-pulse">
-                                            LOW BALANCE
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Body */}
-                    <div className="flex-1">
-                        {/* INFO FOR ADMIN - Old Package Details */}
-                        {isOldPackage && (
-                            <div className="mb-3 px-3 py-2 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
-                                <span className="text-[10px] font-bold text-slate-500 uppercase flex items-center">
-                                    <Rewind className="w-3 h-3 mr-1" /> Prev. Done
-                                </span>
-                                <span className="text-xs font-black text-slate-800">{pkg.oldServiceCount} Services</span>
-                            </div>
-                        )}
-
-                        {isPending ? (
-                            <div className="bg-white/80 rounded-xl p-3 border border-amber-100 text-center mb-4">
-                                <p className="text-[10px] font-black uppercase text-amber-600 tracking-wider mb-2 flex items-center justify-center">
-                                    <AlertTriangle className="w-3 h-3 mr-1" /> Awaiting Approval
-                                </p>
-                                {currentUser?.role === Role.ADMIN ? (
-                                    <div className="flex gap-2">
-                                        <button
-                                            onClick={(e) => handlePackageApproval(e, pkg.id, 'APPROVE')}
-                                            className="flex-1 py-2 rounded-lg bg-emerald-500 text-white text-xs font-bold hover:bg-emerald-600 transition-colors shadow-sm"
-                                        >
-                                            Approve
-                                        </button>
-                                        <button
-                                            onClick={(e) => handlePackageApproval(e, pkg.id, 'REJECT')}
-                                            className="flex-1 py-2 rounded-lg bg-white border border-red-200 text-red-500 text-xs font-bold hover:bg-red-50 transition-colors"
-                                        >
-                                            Reject
-                                        </button>
-                                    </div>
-                                ) : (
-                                    <p className="text-xs text-slate-400 italic">Pending admin review</p>
-                                )}
-                            </div>
-                        ) : (
-                            <div className="mb-4">
-                                <div className="flex justify-between items-end mb-2">
-                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Service Usage</span>
-                                    <span className={`text-sm font-black ${stats.isExpired ? 'text-red-500' : isExpiringSoon ? 'text-rose-600' : 'text-slate-700'}`}>
-                                        {stats.used} <span className="text-slate-400 text-xs font-bold">/ {pkg.totalServices}</span>
-                                    </span>
-                                </div>
-                                <div className="h-2.5 w-full bg-slate-100 rounded-full overflow-hidden border border-slate-200/50">
-                                    <div
-                                        className={`h-full rounded-full transition-all duration-1000 ease-out relative shadow-sm
-                                    ${stats.isExpired ? 'bg-red-500' : isExpiringSoon ? 'bg-gradient-to-r from-rose-400 to-red-500' : 'bg-gradient-to-r from-indigo-500 to-purple-500'}`}
-                                        style={{ width: `${Math.min((stats.used / pkg.totalServices) * 100, 100)}%` }}
-                                    ></div>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Footer */}
-                    <div className="pt-4 border-t border-slate-100 flex flex-col gap-3">
-                        <div className="flex justify-between items-center">
-                            <div className="flex items-center gap-1.5 text-slate-600">
-                                <div className="bg-slate-100 p-1 rounded-md text-slate-500"><IndianRupee className="w-3 h-3" /></div>
-                                <div>
-                                    <span className="text-[9px] uppercase font-black text-slate-400 block tracking-wider leading-none mb-0.5">Cost</span>
-                                    <span className="text-xs font-black text-slate-800 leading-none">₹{pkg.totalCost}</span>
-                                </div>
-                            </div>
-                            <div className="flex items-center gap-1.5 text-slate-600">
-                                <div className="text-right">
-                                    <span className="text-[9px] uppercase font-black text-slate-400 block tracking-wider leading-none mb-0.5">Started</span>
-                                    <span className="text-xs font-bold text-slate-600 leading-none">{pkg.startDate}</span>
-                                </div>
-                                <div className="bg-slate-100 p-1 rounded-md text-slate-500"><CalendarRange className="w-3 h-3" /></div>
-                            </div>
-                        </div>
-
-                        {/* NEW ACTION BUTTONS FOR ACTIVE PACKAGES */}
-                        {!isPending && (
-                            <div className="flex gap-2 pt-1">
-                                <button
-                                    onClick={() => openAddOnModal(pkg)}
-                                    className="flex-1 py-2 rounded-lg bg-blue-50 text-blue-600 font-bold text-xs hover:bg-blue-100 transition-colors border border-blue-100 flex items-center justify-center"
-                                >
-                                    <PlusCircle className="w-3.5 h-3.5 mr-1.5" /> Add-on
-                                </button>
-                                <button
-                                    onClick={() => openRenewModal(pkg)}
-                                    className="flex-1 py-2 rounded-lg bg-emerald-50 text-emerald-600 font-bold text-xs hover:bg-emerald-100 transition-colors border border-emerald-100 flex items-center justify-center"
-                                >
-                                    <RefreshCw className="w-3.5 h-3.5 mr-1.5" /> Renew
-                                </button>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Edit & Delete Buttons (Absolute) */}
                     {currentUser?.role === Role.ADMIN && (
-                        <div className="absolute top-4 right-4 flex gap-1">
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    setEditingPackage(pkg);
-                                    setIsEditModalOpen(true);
-                                }}
-                                className="text-slate-300 hover:text-indigo-600 transition-colors p-1.5 hover:bg-slate-50 rounded-full"
-                                title="Edit Package"
-                            >
-                                <Pencil className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                                onClick={(e) => handleDelete(e, pkg.id)}
-                                className="text-slate-300 hover:text-red-600 transition-colors p-1.5 hover:bg-red-50 rounded-full"
-                                title="Delete Package"
-                            >
-                                <Trash2 className="w-3.5 h-3.5" />
-                            </button>
+                        <div className="sp-tools">
+                            <button title="Edit Package" onClick={(e) => { e.stopPropagation(); setEditingPackage(pkg); setIsEditModalOpen(true); }}><Pencil className="w-3.5 h-3.5" /></button>
+                            <button title="Delete Package" onClick={(e) => handleDelete(e, pkg.id)}><Trash2 className="w-3.5 h-3.5" /></button>
                         </div>
                     )}
 
+                    <div className="sp-row">
+                        <div className="sp-brand">MAHAVEER<small>HAIR · MEMBERSHIP</small></div>
+                        <div className="sp-tier">
+                            {isOldPackage && <span className="sp-oldtag">Old</span>}
+                            {isPending ? <span className="sp-status pend"><b></b>Pending</span>
+                                : isExpired ? <span className="sp-status exp"><b></b>Full</span>
+                                    : isExpiringSoon ? <span className="sp-status low"><b></b>Low</span>
+                                        : <span className="sp-name">{pkg.packageName}</span>}
+                        </div>
+                    </div>
+
+                    <div className="sp-midrow">
+                        <div className="sp-chip"></div>
+                        <div className="sp-memno">MHS •••• {String(total).padStart(2, '0')}</div>
+                    </div>
+
+                    <div className="sp-usage">
+                        <div className="sp-cap"><span>{isPending ? 'Awaiting approval' : (isOldPackage ? `Usage · ${pkg.oldServiceCount || 0} carried` : 'Service Usage')}</span><b>{isPending ? `— / ${total}` : `${stats.used} / ${total}`}</b></div>
+                        <div className={`sp-track ${trackCls}`}><span style={{ width: `${isPending ? 0 : pctUsed}%` }}></span></div>
+                    </div>
+
+                    <div className="sp-foot">
+                        <div className="sp-holder"><small>Card Holder</small>{pkg.clientName}</div>
+                        <div className="sp-meta"><div className="k">{isPending ? 'Requested' : 'Since'}</div><div className="v">{fmtShort(pkg.startDate)}</div></div>
+                    </div>
+                    <div className="sp-hint">Tap for history</div>
                 </div>
+
+                {isPending ? (
+                    currentUser?.role === Role.ADMIN ? (
+                        <div className="sp-tray">
+                            <button className="sp-btn approve" onClick={(e) => handlePackageApproval(e, pkg.id, 'APPROVE')}><CheckCircle2 className="w-3.5 h-3.5" /> Approve</button>
+                            <button className="sp-btn reject" onClick={(e) => handlePackageApproval(e, pkg.id, 'REJECT')}><X className="w-3.5 h-3.5" /> Reject</button>
+                        </div>
+                    ) : (
+                        <div className="sp-pendnote"><AlertTriangle className="w-3.5 h-3.5" /> Pending admin review</div>
+                    )
+                ) : (
+                    <div className="sp-tray">
+                        <button className="sp-btn addon" onClick={() => openAddOnModal(pkg)}><PlusCircle className="w-3.5 h-3.5" /> Add-on</button>
+                        <button className="sp-btn renew" onClick={() => openRenewModal(pkg)}><RefreshCw className="w-3.5 h-3.5" /> Renew</button>
+                    </div>
+                )}
             </div>
         );
     };
 
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in duration-500 pb-20">
+        <div className="max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500 pb-20 -mt-2">
 
-            {/* Create Package Form - ADJUSTED SCROLLING */}
-            <div className="lg:col-span-1">
-                <div className="bg-white rounded-[2rem] shadow-[0_20px_50px_-12px_rgba(0,0,0,0.1)] border border-slate-200 sticky top-6 max-h-[calc(100vh-6rem)] overflow-y-auto backdrop-blur-md">
-                    <div className="px-8 py-8 bg-gradient-to-br from-slate-900 to-indigo-900 relative overflow-hidden shrink-0">
+            <style>{SP_STYLES}</style>
+
+            {/* Create Package Form — MODAL */}
+            {isNewModalOpen && (
+            <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-start md:items-center justify-center p-4 overflow-y-auto">
+                <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden my-6 animate-in fade-in zoom-in-95">
+                    <div className="px-7 py-6 bg-gradient-to-br from-slate-900 to-indigo-900 relative overflow-hidden shrink-0">
                         <div className="absolute top-0 right-0 w-40 h-40 bg-white/5 rounded-full -mr-10 -mt-10 blur-3xl"></div>
+                        <button onClick={() => setIsNewModalOpen(false)} className="absolute top-4 right-4 z-20 text-white/70 hover:text-white hover:bg-white/10 p-2 rounded-full transition-colors"><X className="w-5 h-5" /></button>
                         <div className="relative z-10 flex items-center text-white">
                             <div className="p-3 bg-white/10 rounded-2xl mr-4 border border-white/10 backdrop-blur-sm shadow-inner">
                                 <PackageCheck className="w-6 h-6 text-indigo-200" />
@@ -594,7 +518,7 @@ const ServicePackages: React.FC = () => {
                         </div>
                     </div>
 
-                    <form onSubmit={handleSubmit} className="p-8 space-y-6">
+                    <form onSubmit={handleSubmit} className="p-7 space-y-5 max-h-[70vh] overflow-y-auto">
                         <div className="relative z-20">
                             <SearchableSelect
                                 label="Select Client"
@@ -716,96 +640,32 @@ const ServicePackages: React.FC = () => {
                     </form>
                 </div>
             </div>
+            )}
 
-            {/* Main Content Area: Packages List */}
-            <div className="lg:col-span-2 space-y-8">
+            {/* Main Content Area */}
+            <div className="space-y-8">
 
-                {/* INTERACTIVE STATS DASHBOARD */}
-                <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 md:gap-4">
-                    <button
-                        onClick={() => setViewFilter('ALL')}
-                        className={`relative p-5 rounded-[2rem] border text-left transition-all duration-300 group hover:-translate-y-1 overflow-hidden
-                ${viewFilter === 'ALL' ? 'bg-white border-blue-200 ring-2 ring-blue-100 shadow-xl' : 'bg-white border-slate-100 hover:border-blue-200 hover:shadow-lg'}`}
-                    >
-                        <div className={`absolute top-0 right-0 w-20 h-20 bg-blue-50 rounded-full -mr-6 -mt-6 transition-transform group-hover:scale-125 duration-500 ${viewFilter === 'ALL' ? 'scale-110' : ''}`}></div>
-                        <div className="relative z-10">
-                            <div className="flex items-center gap-2 mb-2">
-                                <div className={`p-2 rounded-xl ${viewFilter === 'ALL' ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-500'}`}>
-                                    <Layers className="w-4 h-4" />
-                                </div>
-                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total</span>
-                            </div>
-                            <h3 className="text-3xl font-black text-slate-800">{stats.total}</h3>
-                        </div>
-                    </button>
-
-                    <button
-                        onClick={() => setViewFilter('PENDING')}
-                        className={`relative p-5 rounded-[2rem] border text-left transition-all duration-300 group hover:-translate-y-1 overflow-hidden
-                ${viewFilter === 'PENDING' ? 'bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-xl shadow-orange-200 border-transparent' : 'bg-white border-slate-100 hover:border-amber-200 hover:shadow-lg'}`}
-                    >
-                        <div className="absolute top-0 right-0 w-20 h-20 bg-white/20 rounded-full -mr-6 -mt-6 blur-md pointer-events-none"></div>
-                        <div className="relative z-10">
-                            <div className="flex items-center gap-2 mb-2">
-                                <div className={`p-2 rounded-xl backdrop-blur-sm ${viewFilter === 'PENDING' ? 'bg-white/20 text-white' : 'bg-amber-50 text-amber-600'}`}>
-                                    <AlertTriangle className="w-4 h-4" />
-                                </div>
-                                <span className={`text-[10px] font-black uppercase tracking-widest ${viewFilter === 'PENDING' ? 'text-white/80' : 'text-slate-400'}`}>Pending</span>
-                            </div>
-                            <h3 className={`text-3xl font-black ${viewFilter === 'PENDING' ? 'text-white' : 'text-slate-800'}`}>{stats.pending}</h3>
-                        </div>
-                    </button>
-
-                    <button
-                        onClick={() => setViewFilter('ACTIVE')}
-                        className={`relative p-5 rounded-[2rem] border text-left transition-all duration-300 group hover:-translate-y-1 overflow-hidden
-                ${viewFilter === 'ACTIVE' ? 'bg-white border-emerald-200 ring-2 ring-emerald-100 shadow-xl' : 'bg-white border-slate-100 hover:border-emerald-200 hover:shadow-lg'}`}
-                    >
-                        <div className={`absolute top-0 right-0 w-20 h-20 bg-emerald-50 rounded-full -mr-6 -mt-6 transition-transform group-hover:scale-125 duration-500 ${viewFilter === 'ACTIVE' ? 'scale-110' : ''}`}></div>
-                        <div className="relative z-10">
-                            <div className="flex items-center gap-2 mb-2">
-                                <div className={`p-2 rounded-xl ${viewFilter === 'ACTIVE' ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}>
-                                    <CheckCircle2 className="w-4 h-4" />
-                                </div>
-                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Active</span>
-                            </div>
-                            <h3 className="text-3xl font-black text-slate-800">{stats.active}</h3>
-                        </div>
-                    </button>
-
-                    <button
-                        onClick={() => setViewFilter('EXPIRING')}
-                        className={`relative p-5 rounded-[2rem] border text-left transition-all duration-300 group hover:-translate-y-1 overflow-hidden
-                ${viewFilter === 'EXPIRING' ? 'bg-gradient-to-br from-rose-500 to-pink-600 text-white shadow-xl shadow-rose-200 border-transparent' : 'bg-white border-slate-100 hover:border-rose-200 hover:shadow-lg'}`}
-                    >
-                        <div className="absolute top-0 right-0 w-20 h-20 bg-white/20 rounded-full -mr-6 -mt-6 blur-md pointer-events-none"></div>
-                        <div className="relative z-10">
-                            <div className="flex items-center gap-2 mb-2">
-                                <div className={`p-2 rounded-xl backdrop-blur-sm ${viewFilter === 'EXPIRING' ? 'bg-white/20 text-white' : 'bg-rose-50 text-rose-600'}`}>
-                                    <BatteryWarning className={`w-4 h-4 ${stats.expiring > 0 ? 'animate-pulse' : ''}`} />
-                                </div>
-                                <span className={`text-[10px] font-black uppercase tracking-widest ${viewFilter === 'EXPIRING' ? 'text-white/80' : 'text-slate-400'}`}>Expiring Soon</span>
-                            </div>
-                            <h3 className={`text-3xl font-black ${viewFilter === 'EXPIRING' ? 'text-white' : 'text-slate-800'}`}>{stats.expiring}</h3>
-                        </div>
-                    </button>
-
-                    <button
-                        onClick={() => setViewFilter('EXPIRED')}
-                        className={`relative p-5 rounded-[2rem] border text-left transition-all duration-300 group hover:-translate-y-1 overflow-hidden
-                ${viewFilter === 'EXPIRED' ? 'bg-gradient-to-br from-red-500 to-rose-700 text-white shadow-xl shadow-red-200 border-transparent' : 'bg-white border-slate-100 hover:border-red-200 hover:shadow-lg'}`}
-                    >
-                        <div className="absolute top-0 right-0 w-20 h-20 bg-white/20 rounded-full -mr-6 -mt-6 blur-md pointer-events-none"></div>
-                        <div className="relative z-10">
-                            <div className="flex items-center gap-2 mb-2">
-                                <div className={`p-2 rounded-xl backdrop-blur-sm ${viewFilter === 'EXPIRED' ? 'bg-white/20 text-white' : 'bg-red-50 text-red-600'}`}>
-                                    <Trash2 className="w-4 h-4" />
-                                </div>
-                                <span className={`text-[10px] font-black uppercase tracking-widest ${viewFilter === 'EXPIRED' ? 'text-white/80' : 'text-slate-400'}`}>Expired</span>
-                            </div>
-                            <h3 className={`text-3xl font-black ${viewFilter === 'EXPIRED' ? 'text-white' : 'text-slate-800'}`}>{stats.expired}</h3>
-                        </div>
-                    </button>
+                {/* 3D STATS DASHBOARD (also acts as filters) */}
+                <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 md:gap-4" style={{ perspective: '1000px' }}>
+                    {([
+                        { key: 'ALL', label: 'Total', value: stats.total, c: '#8b5cf6' },
+                        { key: 'PENDING', label: 'Pending', value: stats.pending, c: '#f59e0b' },
+                        { key: 'ACTIVE', label: 'Active', value: stats.active, c: '#10b981' },
+                        { key: 'EXPIRING', label: 'Expiring', value: stats.expiring, c: '#f43f5e' },
+                        { key: 'EXPIRED', label: 'Expired', value: stats.expired, c: '#94a3b8' },
+                    ] as const).map((s, i) => (
+                        <button
+                            key={s.key}
+                            onClick={() => setViewFilter(s.key as any)}
+                            onMouseMove={statTilt}
+                            onMouseLeave={statUntilt}
+                            className={`sp-stat ${viewFilter === s.key ? 'active' : ''}`}
+                            style={{ ['--c' as any]: s.c, animationDelay: `${i * 60}ms` }}
+                        >
+                            <div className="sp-stat-top"><span className="sp-stat-chip"><i></i></span><span className="sp-stat-lbl">{s.label}</span></div>
+                            <div className="sp-stat-num">{s.value}</div>
+                        </button>
+                    ))}
                 </div>
 
                 {/* HEADER & SEARCH */}
@@ -822,15 +682,23 @@ const ServicePackages: React.FC = () => {
                             )}
                         </div>
                     </div>
-                    <div className="relative group w-full md:w-auto">
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
-                        <input
-                            type="text"
-                            placeholder="Search package..."
-                            className="w-full md:w-72 pl-10 pr-6 py-3.5 rounded-2xl border border-slate-200 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 font-bold transition-all text-slate-700"
-                            value={searchTerm}
-                            onChange={e => setSearchTerm(e.target.value)}
-                        />
+                    <div className="flex items-center gap-2.5 w-full md:w-auto">
+                        <div className="relative group flex-1 md:flex-none">
+                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
+                            <input
+                                type="text"
+                                placeholder="Search package..."
+                                className="w-full md:w-64 pl-10 pr-6 py-3.5 rounded-2xl border border-slate-200 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 font-bold transition-all text-slate-700"
+                                value={searchTerm}
+                                onChange={e => setSearchTerm(e.target.value)}
+                            />
+                        </div>
+                        <button
+                            onClick={() => setIsNewModalOpen(true)}
+                            className="flex items-center gap-2 px-4 md:px-5 py-3.5 rounded-2xl text-white font-black text-sm whitespace-nowrap shadow-lg shadow-indigo-300/50 transition-all hover:-translate-y-0.5 active:scale-95 bg-gradient-to-br from-indigo-600 via-purple-600 to-violet-600"
+                        >
+                            <Plus className="w-4 h-4" /> New Package
+                        </button>
                     </div>
                 </div>
 
@@ -854,8 +722,8 @@ const ServicePackages: React.FC = () => {
                                 </button>
                             )}
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                            {pendingPackages.map(pkg => renderCard(pkg))}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                            {pendingPackages.map((pkg, i) => renderCard(pkg, i))}
                         </div>
                     </div>
                 )}
@@ -873,8 +741,8 @@ const ServicePackages: React.FC = () => {
                         </div>
 
                         {activePackages.length > 0 ? (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                {activePackages.map(pkg => renderCard(pkg))}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                                {activePackages.map((pkg, i) => renderCard(pkg, i))}
                             </div>
                         ) : (
                             <div className="py-12 text-center bg-white rounded-2xl border-2 border-dashed border-slate-200">
@@ -1099,8 +967,168 @@ const ServicePackages: React.FC = () => {
                 </div>
             )}
 
+            {/* --- HISTORY MODAL --- */}
+            {historyPkg && (() => {
+                const pkg = historyPkg;
+                const u = getPackageUsage(pkg);
+                const isPending = pkg.status === 'PENDING' || !pkg.status;
+                const nm = String(pkg.clientName || '').trim().toLowerCase();
+                const hist = (entries || [])
+                    .filter(e => String(e.clientName || '').trim().toLowerCase() === nm)
+                    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                    .slice(0, 15);
+                return (
+                    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-start md:items-center justify-center p-4 overflow-y-auto" onClick={() => setHistoryPkg(null)}>
+                        <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden my-6 animate-in fade-in zoom-in-95" onClick={e => e.stopPropagation()}>
+                            <div className="px-7 py-6 bg-gradient-to-br from-slate-900 to-indigo-900 relative overflow-hidden text-white">
+                                <button onClick={() => setHistoryPkg(null)} className="absolute top-4 right-4 text-white/70 hover:text-white hover:bg-white/10 p-2 rounded-full transition-colors"><X className="w-5 h-5" /></button>
+                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-200/70 mb-1">Membership History</p>
+                                <h3 className="text-2xl font-black tracking-tight">{pkg.clientName}</h3>
+                                <div className="flex items-center gap-2 mt-2 flex-wrap">
+                                    <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-white/15">{pkg.packageName}</span>
+                                    <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-white/15">{isPending ? 'Pending' : u.isExpired ? 'Full' : 'Active'}</span>
+                                    {pkg.packageType === 'OLD' && <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-white/15">Old Pkg</span>}
+                                </div>
+                            </div>
+                            <div className="p-6">
+                                <div className="grid grid-cols-3 gap-2 mb-5">
+                                    <div className="bg-slate-50 rounded-xl border border-slate-100 p-3 text-center">
+                                        <p className="text-[9px] font-black uppercase tracking-wide text-slate-400 mb-0.5">Used</p>
+                                        <p className="text-base font-black text-slate-800 tabular-nums leading-none">{u.used}/{pkg.totalServices}</p>
+                                    </div>
+                                    <div className="bg-slate-50 rounded-xl border border-slate-100 p-3 text-center">
+                                        <p className="text-[9px] font-black uppercase tracking-wide text-slate-400 mb-0.5">Left</p>
+                                        <p className="text-base font-black text-emerald-600 tabular-nums leading-none">{u.remaining}</p>
+                                    </div>
+                                    <div className="bg-slate-50 rounded-xl border border-slate-100 p-3 text-center">
+                                        <p className="text-[9px] font-black uppercase tracking-wide text-slate-400 mb-0.5">Cost</p>
+                                        <p className="text-base font-black text-slate-800 tabular-nums leading-none">₹{pkg.totalCost}</p>
+                                    </div>
+                                </div>
+                                <p className="text-[11px] font-black uppercase tracking-widest text-slate-400 mb-3 flex items-center gap-1.5"><History className="w-3.5 h-3.5" /> Service Timeline</p>
+                                {hist.length === 0 ? (
+                                    <p className="text-center text-sm text-slate-400 font-semibold py-6 bg-slate-50 rounded-xl">No service records found for this client.</p>
+                                ) : (
+                                    <div className="relative pl-6 space-y-4 max-h-64 overflow-y-auto before:absolute before:left-[7px] before:top-1 before:bottom-1 before:w-0.5 before:bg-slate-100">
+                                        {hist.map((e, i) => (
+                                            <div key={e.id || i} className="relative">
+                                                <span className="absolute -left-6 top-1 w-3 h-3 rounded-full bg-indigo-500 ring-2 ring-white shadow-[0_0_0_2px_rgba(99,102,241,0.35)]"></span>
+                                                <p className="font-black text-slate-700 text-sm leading-tight">{e.serviceType}{e.patchMethod ? ` · ${e.patchMethod}` : ''}</p>
+                                                <p className="text-[11px] text-slate-400 font-semibold tabular-nums">{fmtLong(e.date)}{e.technician ? ` · ${e.technician}` : ''}{e.workStatus ? ` · ${e.workStatus}` : ''}</p>
+                                            </div>
+                                        ))}
+                                        <div className="relative">
+                                            <span className="absolute -left-6 top-1 w-3 h-3 rounded-full bg-slate-300 ring-2 ring-white"></span>
+                                            <p className="font-black text-slate-600 text-sm leading-tight">Package Started</p>
+                                            <p className="text-[11px] text-slate-400 font-semibold tabular-nums">{fmtLong(pkg.startDate)}</p>
+                                        </div>
+                                    </div>
+                                )}
+                                {!isPending && (
+                                    <div className="flex gap-2 mt-5">
+                                        <button onClick={() => { const p = pkg; setHistoryPkg(null); openAddOnModal(p); }} className="flex-1 py-2.5 rounded-xl bg-blue-50 text-blue-600 font-black text-xs hover:bg-blue-100 border border-blue-100 flex items-center justify-center gap-1.5"><PlusCircle className="w-3.5 h-3.5" /> Add-on</button>
+                                        <button onClick={() => { const p = pkg; setHistoryPkg(null); openRenewModal(p); }} className="flex-1 py-2.5 rounded-xl bg-emerald-50 text-emerald-600 font-black text-xs hover:bg-emerald-100 border border-emerald-100 flex items-center justify-center gap-1.5"><RefreshCw className="w-3.5 h-3.5" /> Renew</button>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                );
+            })()}
+
         </div>
     );
 };
+
+const SP_STYLES = `
+  @keyframes spRise { from { opacity:0; transform:translateY(22px) rotateX(12deg);} to { opacity:1; transform:none; } }
+  @keyframes spCardIn { to { opacity:1; transform:none; } }
+
+  .sp-stat{ position:relative; overflow:hidden; border-radius:18px; padding:15px 16px 16px; color:#eef1f7; text-align:left; cursor:pointer;
+     background:linear-gradient(150deg,#262c3d 0%,#171b28 100%); border:1px solid rgba(255,255,255,.08);
+     box-shadow:0 16px 32px -18px rgba(10,12,25,.75), inset 0 1px 0 rgba(255,255,255,.07);
+     transform-style:preserve-3d; transition:transform .3s cubic-bezier(.22,1,.36,1), box-shadow .3s, border-color .3s;
+     opacity:0; animation:spRise .6s cubic-bezier(.22,1,.36,1) forwards; }
+  .sp-stat::before{ content:""; position:absolute; z-index:0; top:-45%; right:-25%; width:120px; height:120px; border-radius:50%; background:radial-gradient(circle, var(--c), transparent 68%); opacity:.55; }
+  .sp-stat::after{ content:""; position:absolute; left:0; right:0; bottom:0; height:3px; background:linear-gradient(90deg, transparent, var(--c), transparent); }
+  .sp-stat:hover{ box-shadow:0 26px 46px -20px rgba(10,12,25,.9), 0 0 30px -12px var(--c); }
+  .sp-stat.active{ border-color:var(--c); box-shadow:0 0 0 2px var(--c), 0 22px 42px -18px rgba(10,12,25,.85); }
+  .sp-stat-top{ position:relative; z-index:1; display:flex; align-items:center; gap:9px; }
+  .sp-stat-chip{ width:26px; height:26px; border-radius:9px; display:grid; place-items:center; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12); }
+  .sp-stat-chip i{ width:9px; height:9px; border-radius:3px; background:var(--c); box-shadow:0 0 9px var(--c); }
+  .sp-stat-lbl{ font-size:10px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; color:#aab2c5; }
+  .sp-stat-num{ position:relative; z-index:1; font-size:30px; font-weight:900; letter-spacing:-.02em; margin-top:9px; font-variant-numeric:tabular-nums; text-shadow:0 2px 14px rgba(0,0,0,.45); }
+
+  .sp-pkg{ display:flex; flex-direction:column; gap:9px; opacity:0; transform:translateY(30px) rotateX(14deg); transform-origin:50% 100%; animation:spCardIn .6s cubic-bezier(.22,1,.36,1) forwards; }
+  .sp-card{ position:relative; aspect-ratio:1.585/1; border-radius:18px; padding:15px; color:#f4f1ff; overflow:hidden; isolation:isolate;
+     background:linear-gradient(135deg,#241b52 0%,#4c1d95 52%,#6d28d9 100%);
+     box-shadow:0 18px 42px -20px rgba(40,20,90,.78), inset 0 0 0 1px rgba(255,255,255,.09), inset 0 1px 0 rgba(255,255,255,.18);
+     cursor:pointer; transform-style:preserve-3d;
+     transition:transform .3s cubic-bezier(.22,1,.36,1), box-shadow .3s; display:flex; flex-direction:column; justify-content:space-between; }
+  .sp-card:hover{ box-shadow:0 32px 62px -24px rgba(60,30,120,.72), inset 0 0 0 1px rgba(255,255,255,.15), inset 0 1px 0 rgba(255,255,255,.26); }
+  .sp-card::before{ content:""; position:absolute; inset:0; z-index:0; background:
+     linear-gradient(180deg, rgba(255,255,255,.16), transparent 20%),
+     radial-gradient(120% 90% at 85% 8%, rgba(255,255,255,.22), transparent 55%),
+     radial-gradient(90% 80% at 8% 100%, rgba(230,180,94,.2), transparent 60%); }
+  .sp-card::after{ content:""; position:absolute; top:0; bottom:0; left:-60%; width:38%; z-index:0; pointer-events:none;
+     background:linear-gradient(100deg, transparent, rgba(255,255,255,.28), transparent); transform:skewX(-18deg); opacity:0; }
+  .sp-card:hover::after{ animation:spSheen 1s cubic-bezier(.22,1,.36,1); }
+  @keyframes spSheen{ 0%{ left:-60%; opacity:0; } 18%{ opacity:1; } 100%{ left:130%; opacity:0; } }
+  .sp-card > *{ position:relative; z-index:1; }
+  .sp-card .sp-glow{ position:absolute; inset:0; z-index:0; background:radial-gradient(150px 150px at var(--mx,50%) var(--my,50%), rgba(255,255,255,.18), transparent 60%); opacity:0; transition:opacity .3s; }
+  .sp-card:hover .sp-glow{ opacity:1; }
+  .sp-card.low{ background:linear-gradient(135deg,#3a1140,#7a1550 55%,#b21e59); }
+  .sp-card.expired{ background:linear-gradient(135deg,#2a0f18,#6b1522 55%,#9f1d33); }
+  .sp-card.pending{ background:linear-gradient(135deg,#262d3f,#414b60 55%,#55617d); }
+
+  .sp-row{ display:flex; align-items:flex-start; justify-content:space-between; }
+  .sp-brand{ font-weight:850; letter-spacing:.14em; font-size:11px; }
+  .sp-brand small{ display:block; font-size:7px; letter-spacing:.3em; font-weight:700; opacity:.7; margin-top:2px; }
+  .sp-tier{ display:flex; align-items:center; gap:7px; }
+  .sp-name{ font-size:10px; font-weight:850; letter-spacing:.12em; text-transform:uppercase; background:linear-gradient(90deg,#f6dfa4,#e6b45e,#c98f34); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .sp-oldtag{ font-size:7.5px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; padding:2px 6px; border-radius:5px; background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.2); }
+  .sp-status{ font-size:8px; font-weight:850; letter-spacing:.1em; text-transform:uppercase; padding:3px 7px; border-radius:999px; display:inline-flex; align-items:center; gap:4px; }
+  .sp-status.low{ background:rgba(255,255,255,.16); color:#ffe1ec; }
+  .sp-status.exp{ background:rgba(0,0,0,.28); color:#ffd9d9; }
+  .sp-status.pend{ background:rgba(245,158,11,.92); color:#3a2600; }
+  .sp-status b{ width:5px; height:5px; border-radius:50%; background:currentColor; }
+  .sp-chip{ width:34px; height:26px; border-radius:6px; background:linear-gradient(135deg,#f6dfa4,#e6b45e 55%,#b9852f); position:relative; box-shadow:inset 0 1px 1px rgba(255,255,255,.5); }
+  .sp-chip::before{ content:""; position:absolute; inset:4px 6px; border:1px solid rgba(120,80,20,.55); border-radius:2px; }
+  .sp-chip::after{ content:""; position:absolute; top:4px; bottom:4px; left:50%; width:1px; background:rgba(120,80,20,.55); box-shadow:-6px 0 rgba(120,80,20,.4),6px 0 rgba(120,80,20,.4); }
+  .sp-midrow{ display:flex; align-items:center; justify-content:space-between; }
+  .sp-memno{ font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace; font-size:12.5px; letter-spacing:.14em; font-weight:600; opacity:.92; font-variant-numeric:tabular-nums; }
+  .sp-usage .sp-cap{ display:flex; justify-content:space-between; align-items:center; font-size:8px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; opacity:.85; margin-bottom:5px; }
+  .sp-usage .sp-cap b{ font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace; font-size:11px; letter-spacing:0; opacity:1; }
+  .sp-track{ height:6px; border-radius:999px; background:rgba(255,255,255,.2); overflow:hidden; }
+  .sp-track > span{ display:block; height:100%; border-radius:999px; background:linear-gradient(90deg,#f6dfa4,#e6b45e); }
+  .sp-track.low > span{ background:linear-gradient(90deg,#fb7185,#f43f5e); }
+  .sp-track.exp > span{ background:#ff5b6e; }
+  .sp-foot{ display:flex; align-items:flex-end; justify-content:space-between; }
+  .sp-holder{ font-size:12.5px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; }
+  .sp-holder small{ display:block; font-size:7px; letter-spacing:.22em; opacity:.6; font-weight:700; margin-bottom:2px; }
+  .sp-meta{ text-align:right; }
+  .sp-meta .k{ font-size:7px; letter-spacing:.18em; opacity:.6; font-weight:700; text-transform:uppercase; }
+  .sp-meta .v{ font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace; font-size:10.5px; font-weight:600; font-variant-numeric:tabular-nums; }
+  .sp-hint{ position:absolute; bottom:6px; left:50%; transform:translateX(-50%); font-size:7px; letter-spacing:.18em; text-transform:uppercase; opacity:0; transition:opacity .3s; font-weight:700; z-index:1; }
+  .sp-card:hover .sp-hint{ opacity:.5; }
+  .sp-tools{ position:absolute; top:11px; right:11px; display:flex; gap:5px; opacity:0; transition:opacity .25s; z-index:2; }
+  .sp-card:hover .sp-tools{ opacity:1; }
+  .sp-tools button{ width:26px; height:26px; border-radius:7px; border:none; cursor:pointer; background:rgba(255,255,255,.16); color:#fff; display:grid; place-items:center; backdrop-filter:blur(4px); }
+
+  .sp-tray{ display:flex; gap:8px; }
+  .sp-btn{ flex:1; display:flex; align-items:center; justify-content:center; gap:6px; padding:9px; border-radius:11px; font-weight:800; font-size:11.5px; cursor:pointer; border:1px solid transparent; transition:transform .12s, background .2s; }
+  .sp-btn:active{ transform:scale(.97); }
+  .sp-btn.addon{ background:#efe9fd; color:#6d28d9; border-color:#ddd0fb; }
+  .sp-btn.renew{ background:#e7f7f0; color:#059669; border-color:#c9efe0; }
+  .sp-btn.approve{ background:#10b981; color:#04150e; }
+  .sp-btn.reject{ background:#fdeaec; color:#e11d48; border-color:#f9d4da; }
+  .sp-pendnote{ display:flex; align-items:center; justify-content:center; gap:6px; padding:9px; border-radius:11px; font-weight:800; font-size:11px; color:#b45309; background:#fef6e7; border:1px solid #fbe6bf; }
+
+  @media (prefers-reduced-motion: reduce){
+    .sp-stat, .sp-pkg{ animation:none; opacity:1; transform:none; }
+    .sp-card, .sp-stat{ transition:none; }
+    .sp-card:hover::after{ animation:none; }
+  }
+`;
 
 export default ServicePackages;
