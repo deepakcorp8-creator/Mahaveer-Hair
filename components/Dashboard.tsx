@@ -371,7 +371,7 @@ const Dashboard: React.FC = () => {
             title={showStats ? 'Hide Stats' : 'Show Stats'}
             className="bg-white border border-indigo-100 p-2.5 rounded-xl shadow-sm shadow-indigo-50 text-indigo-500 hover:border-indigo-400 hover:text-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/10 cursor-pointer transition-all"
           >
-            {showStats ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+            {showStats ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
           </button>
         </div>
       </div>
