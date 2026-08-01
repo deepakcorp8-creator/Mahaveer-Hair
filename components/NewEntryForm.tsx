@@ -227,6 +227,23 @@ const NewEntryForm: React.FC = () => {
         setIsAddClientModalOpen(true);
     };
 
+    const handleAddNewTechnician = async (name: string) => {
+        const trimmed = String(name || '').trim();
+        if (!trimmed) return;
+        // Avoid duplicates (case-insensitive)
+        const exists = technicians.some(t => String(t.name || '').toLowerCase() === trimmed.toLowerCase());
+        const newTech: Technician = { name: trimmed, contact: '' };
+        if (!exists) {
+            setTechnicians(prev => [...prev, newTech]); // Show immediately in dropdown
+            try {
+                await api.addTechnician(newTech); // Persist so it appears next time
+            } catch (err) {
+                console.error("Failed to add technician", err);
+            }
+        }
+        setFormData(prev => ({ ...prev, technician: trimmed }));
+    };
+
     const handleAddClientSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (isClientSubmitting) return;
@@ -623,7 +640,7 @@ const NewEntryForm: React.FC = () => {
                                 <div><label className={labelClass}>Service Type</label><div className="relative"><select name="serviceType" value={formData.serviceType} onChange={handleChange} className={`${inputClass} appearance-none cursor-pointer`}><option value="SERVICE">SERVICE</option><option value="NEW">NEW</option><option value="WASHING">WASHING</option><option value="DEMO">DEMO</option><option value="MUNDAN">MUNDAN</option></select><div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">▼</div></div></div>
                                 {formData.serviceType === 'NEW' && (<div className="animate-in fade-in slide-in-from-top-2 duration-300"><SearchableSelect label="Patch Size" options={itemOptions} value={formData.patchSize || ''} onChange={(val) => setFormData(prev => ({ ...prev, patchSize: val }))} placeholder="Select Patch Size..." /></div>)}
                                 <div><label className={labelClass}>Patch Method</label><div className="relative"><select name="patchMethod" value={formData.patchMethod} onChange={handleChange} className={`${inputClass} appearance-none cursor-pointer`}><option value="TAPING">TAPING</option><option value="BONDING">BONDING</option><option value="CLIPPING">CLIPPING</option></select><div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">▼</div></div></div>
-                                <div className="md:col-span-2"><SearchableSelect label="Technician Assigned" options={technicianOptions} value={formData.technician || ''} onChange={(val) => setFormData(prev => ({ ...prev, technician: val }))} placeholder="Select Technician..." /></div>
+                                <div className="md:col-span-2"><SearchableSelect label="Technician Assigned" options={technicianOptions} value={formData.technician || ''} onChange={(val) => setFormData(prev => ({ ...prev, technician: val }))} onCreateNew={handleAddNewTechnician} createLabel="Add New Technician" placeholder="Select Technician..." /></div>
                                 <div className="md:col-span-2"><label className={labelClass}>Remarks / Notes</label><textarea name="remark" value={formData.remark} onChange={handleChange} rows={2} className={inputClass} placeholder="Additional details..." /></div>
                             </div>
                         </div>

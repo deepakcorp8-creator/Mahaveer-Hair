@@ -1,5 +1,5 @@
 
-import { Entry, Client, Appointment, DashboardStats, ServicePackage, User, Role } from '../types';
+import { Entry, Client, Appointment, DashboardStats, ServicePackage, User, Role, Technician } from '../types';
 import { MOCK_CLIENTS, MOCK_ENTRIES, MOCK_APPOINTMENTS, MOCK_ITEMS, MOCK_TECHNICIANS, MOCK_PACKAGES, GOOGLE_SCRIPT_URL } from '../constants';
 
 // Helper to check if we have a valid URL
@@ -212,6 +212,21 @@ export const api = {
       MOCK_CLIENTS.push(client);
     }
     return client;
+  },
+
+  addTechnician: async (technician: Technician) => {
+    invalidate('options');
+    if (isLive) {
+      const res = await fetch(GOOGLE_SCRIPT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'addTechnician', ...technician })
+      });
+      return await res.json();
+    } else {
+      MOCK_TECHNICIANS.push(technician);
+    }
+    return technician;
   },
 
   updateClient: async (client: Client, originalName: string) => {

@@ -14,6 +14,7 @@ interface SearchableSelectProps {
   value: string;
   onChange: (value: string, option?: Option) => void;
   onCreateNew?: (value: string) => void; // NEW PROP
+  createLabel?: string; // e.g. "Add New Client" | "Add New Technician"
   placeholder?: string;
   label?: string;
   required?: boolean;
@@ -24,6 +25,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
   value,
   onChange,
   onCreateNew,
+  createLabel = "Add New Client",
   placeholder = "Select...",
   label,
   required
@@ -175,7 +177,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
                   <p>No existing match.</p>
                   <p className="text-xs mt-2 text-indigo-600 font-black bg-indigo-50 px-4 py-2 rounded-xl border-2 border-indigo-100 group-hover/add:bg-indigo-600 group-hover/add:text-white group-hover/add:border-indigo-600 transition-all flex items-center gap-2">
                     <UserPlus className="w-3.5 h-3.5" />
-                    Add New Client: "{value}"
+                    {createLabel}: "{value}"
                   </p>
                 </div>
               ) : (

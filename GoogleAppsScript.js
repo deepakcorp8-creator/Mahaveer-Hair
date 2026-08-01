@@ -148,6 +148,17 @@ function doPost(e) {
     return response({status: "success"});
   }
 
+  if (action == 'addTechnician') {
+    const techSheet = getSheet(ss, "EMPLOYEE DETAILS");
+    // Columns: A = TECHNICIAN NAME, B = CONTACT NO, C = DOB
+    const techRow = [data.name, data.contact, toSheetDate(data.dob)];
+    const nextTech = getSafeLastRow(techSheet, 1) + 1;
+    techSheet.getRange(nextTech, 1, 1, techRow.length).setValues([techRow]);
+    // FORCE DATE FORMAT (DOB is col 3)
+    techSheet.getRange(nextTech, 3).setNumberFormat("dd/mm/yyyy");
+    return response({status: "success"});
+  }
+
   if (action == 'editClient') {
       const clientSheet = getSheet(ss, "CLIENT MASTER");
       const clients = clientSheet.getDataRange().getValues();
