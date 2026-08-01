@@ -241,23 +241,23 @@ const ReportsAnalytics: React.FC = () => {
         );
     };
 
-    const card3D = "bg-white rounded-[2rem] shadow-[0_10px_40px_-10px_rgba(0,0,0,0.08)] border border-slate-100 transition-all duration-500 hover:shadow-[0_25px_60px_-15px_rgba(99,102,241,0.15)] hover:border-indigo-100 overflow-hidden backdrop-blur-sm";
+    const card3D = "bg-white rounded-xl shadow-[0_2px_12px_-4px_rgba(0,0,0,0.08)] border border-slate-200 transition-all duration-300 hover:shadow-[0_8px_24px_-8px_rgba(99,102,241,0.15)] hover:border-indigo-200 overflow-hidden";
 
     return (
-        <div className="space-y-8 animate-in fade-in duration-700 pb-20 relative">
+        <div className="space-y-5 animate-in fade-in duration-700 pb-20 relative">
             {/* Background Decoration */}
             <div className="absolute top-0 right-0 -mr-40 -mt-40 w-96 h-96 bg-indigo-500/5 rounded-full blur-3xl pointer-events-none"></div>
             <div className="absolute top-40 left-0 -ml-20 w-72 h-72 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none"></div>
 
             {/* 1. HEADER SECTION */}
-            <div className="bg-white/80 backdrop-blur-xl p-6 rounded-[2rem] shadow-sm border border-white/50 relative z-10 flex flex-col md:flex-row justify-between items-center gap-4 transition-all duration-500 hover:shadow-md">
-                <div className="flex items-center gap-5 px-2">
-                    <div className="p-4 bg-gradient-to-br from-indigo-600 to-violet-600 text-white rounded-2xl shadow-lg shadow-indigo-200 ring-4 ring-indigo-50">
-                        <Activity className="w-7 h-7" />
+            <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 relative z-10 flex flex-col md:flex-row justify-between items-center gap-4 transition-all duration-300 hover:shadow-md">
+                <div className="flex items-center gap-3 px-1">
+                    <div className="p-2.5 bg-gradient-to-br from-indigo-600 to-violet-600 text-white rounded-lg shadow-md shadow-indigo-200">
+                        <Activity className="w-5 h-5" />
                     </div>
                     <div>
-                        <h2 className="text-3xl font-black text-slate-800 tracking-tight">Analytics</h2>
-                        <p className="text-xs font-bold text-slate-500 uppercase tracking-[0.2em] mt-1">Business Intelligence</p>
+                        <h2 className="text-xl font-black text-slate-800 tracking-tight">Analytics</h2>
+                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mt-0.5">Business Intelligence</p>
                     </div>
                 </div>
             </div>
@@ -344,28 +344,26 @@ const ReportsAnalytics: React.FC = () => {
             ) : (
                 <div className="space-y-8">
                     {/* 2. SUMMARY CARDS */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         {/* Revenue Card */}
-                        <div className="bg-gradient-to-br from-[#4f46e5] to-[#4338ca] rounded-[2.5rem] p-8 text-white shadow-2xl shadow-indigo-500/40 relative overflow-hidden group min-h-[240px] flex flex-col justify-between hover:scale-[1.02] transition-transform duration-500">
-                            {/* Animated Background Elements */}
-                            <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-[1.5s] ease-out"></div>
-                            <div className="absolute bottom-0 left-0 w-40 h-40 bg-indigo-400/20 rounded-full blur-2xl -ml-10 -mb-10 group-hover:scale-125 transition-transform duration-[1.5s]"></div>
+                        <div className="bg-gradient-to-br from-[#4f46e5] to-[#4338ca] rounded-xl p-5 text-white shadow-lg shadow-indigo-500/20 relative overflow-hidden group min-h-[150px] flex flex-col justify-between hover:shadow-xl transition-shadow duration-300">
+                            {/* Background Element */}
+                            <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full blur-3xl -mr-12 -mt-12"></div>
 
                             <div className="relative z-10">
-                                <div className="flex items-center gap-3 mb-6 opacity-90">
-                                    <div className="p-2 bg-white/10 rounded-xl backdrop-blur-md border border-white/10 shadow-inner"><IndianRupee className="w-4 h-4" /></div>
-                                    <span className="text-xs font-black uppercase tracking-[0.2em] text-indigo-100">Total Revenue</span>
+                                <div className="flex items-center gap-2 mb-3 opacity-90">
+                                    <div className="p-1.5 bg-white/10 rounded-lg border border-white/10"><IndianRupee className="w-3.5 h-3.5" /></div>
+                                    <span className="text-[10px] font-black uppercase tracking-[0.15em] text-indigo-100">Total Revenue</span>
                                 </div>
-                                <h3 className="text-6xl font-black tracking-tighter drop-shadow-lg mb-2">
-                                    ₹{(totalRevenuePeriod / 100000).toFixed(2)}<span className="text-3xl opacity-60 ml-2 font-bold">L</span>
+                                <h3 className="text-3xl font-black tracking-tight mb-1">
+                                    ₹{(totalRevenuePeriod / 100000).toFixed(2)}<span className="text-lg opacity-60 ml-1 font-bold">L</span>
                                 </h3>
-                                <div className="h-1 w-24 bg-gradient-to-r from-indigo-300 to-transparent rounded-full mb-4"></div>
-                                <p className="text-sm font-bold text-indigo-200">₹{totalRevenuePeriod.toLocaleString()} <span className="opacity-60 font-normal">Precise amount</span></p>
+                                <p className="text-xs font-bold text-indigo-200">₹{totalRevenuePeriod.toLocaleString()} <span className="opacity-60 font-normal">Precise</span></p>
                             </div>
 
                             <div className="mt-auto relative z-10">
-                                <div className="inline-flex items-center text-[10px] font-bold bg-indigo-900/30 border border-indigo-400/30 px-4 py-2 rounded-xl backdrop-blur-md shadow-lg">
-                                    <TrendingUp className="w-3.5 h-3.5 mr-2 text-emerald-300" />
+                                <div className="inline-flex items-center text-[9px] font-bold bg-indigo-900/30 border border-indigo-400/30 px-2.5 py-1.5 rounded-lg">
+                                    <TrendingUp className="w-3 h-3 mr-1.5 text-emerald-300" />
                                     {filterType === 'ALL' ? 'Lifetime Earnings' : 'Period Earnings'}
                                 </div>
                             </div>
@@ -373,225 +371,170 @@ const ReportsAnalytics: React.FC = () => {
 
                         {/* Best Performing Tech (Volume) */}
                         <div
-                            className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-[0_20px_40px_-10px_rgba(0,0,0,0.05)] flex flex-col justify-between group hover:border-emerald-200 hover:shadow-[0_30px_60px_-15px_rgba(16,185,129,0.15)] transition-all duration-500 cursor-pointer min-h-[240px] hover:-translate-y-1 relative overflow-hidden"
+                            className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm flex flex-col justify-between group hover:border-emerald-300 hover:shadow-md transition-all duration-300 cursor-pointer min-h-[150px] relative overflow-hidden"
                             onClick={() => bestPerformingTech && handleTechClick(bestPerformingTech.name)}
                         >
-                            <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-50 rounded-bl-[100px] -mr-8 -mt-8 transition-transform group-hover:scale-110 duration-700"></div>
-
                             <div className="flex justify-between items-start relative z-10">
-                                <div>
-                                    <div className="flex items-center gap-3 mb-6">
-                                        <div className="p-2 bg-emerald-50 text-emerald-600 rounded-xl shadow-sm"><Crown className="w-4 h-4" /></div>
-                                        <span className="text-emerald-600 font-black text-xs uppercase tracking-widest">Top Performer</span>
+                                <div className="min-w-0">
+                                    <div className="flex items-center gap-2 mb-3">
+                                        <div className="p-1.5 bg-emerald-50 text-emerald-600 rounded-lg"><Crown className="w-3.5 h-3.5" /></div>
+                                        <span className="text-emerald-600 font-black text-[10px] uppercase tracking-widest">Top Performer</span>
                                     </div>
-                                    <h3 className="text-3xl font-black text-slate-800 leading-tight mb-2 tracking-tight">{bestPerformingTech?.name || 'N/A'}</h3>
-                                    <p className="text-sm font-bold text-slate-400">Most Services Done</p>
+                                    <h3 className="text-lg font-black text-slate-800 leading-tight mb-0.5 tracking-tight truncate">{bestPerformingTech?.name || 'N/A'}</h3>
+                                    <p className="text-xs font-bold text-slate-400">Most Services Done</p>
                                 </div>
-                                <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-500 text-white flex items-center justify-center shadow-lg shadow-emerald-200 group-hover:scale-110 group-hover:rotate-6 transition-all duration-500">
-                                    <Users className="w-8 h-8" />
+                                <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-emerald-400 to-teal-500 text-white flex items-center justify-center shadow-sm shrink-0 group-hover:scale-105 transition-transform duration-300">
+                                    <Users className="w-5 h-5" />
                                 </div>
                             </div>
-                            <div className="mt-auto pt-6 border-t border-slate-50 relative z-10">
+                            <div className="mt-auto pt-3 border-t border-slate-100 relative z-10">
                                 <div className="flex justify-between items-end">
                                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Jobs Completed</span>
-                                    <span className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-teal-500">{bestPerformingTech?.count || 0}</span>
+                                    <span className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-teal-500">{bestPerformingTech?.count || 0}</span>
                                 </div>
                             </div>
                         </div>
 
                         {/* Most Visited Client */}
                         <div
-                            className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-[0_20px_40px_-10px_rgba(0,0,0,0.05)] flex flex-col justify-between group hover:border-amber-200 hover:shadow-[0_30px_60px_-15px_rgba(245,158,11,0.15)] transition-all duration-500 cursor-pointer min-h-[240px] hover:-translate-y-1 relative overflow-hidden"
+                            className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm flex flex-col justify-between group hover:border-amber-300 hover:shadow-md transition-all duration-300 cursor-pointer min-h-[150px] relative overflow-hidden"
                             onClick={() => mostVisitedClient && openClientByName(mostVisitedClient.name)}
                         >
-                            <div className="absolute top-0 right-0 w-32 h-32 bg-amber-50 rounded-bl-[100px] -mr-8 -mt-8 transition-transform group-hover:scale-110 duration-700"></div>
-
                             <div className="flex justify-between items-start relative z-10">
-                                <div>
-                                    <div className="flex items-center gap-3 mb-6">
-                                        <div className="p-2 bg-amber-50 text-amber-600 rounded-xl shadow-sm"><Trophy className="w-4 h-4" /></div>
-                                        <span className="text-amber-600 font-black text-xs uppercase tracking-widest">Loyal Client</span>
+                                <div className="min-w-0">
+                                    <div className="flex items-center gap-2 mb-3">
+                                        <div className="p-1.5 bg-amber-50 text-amber-600 rounded-lg"><Trophy className="w-3.5 h-3.5" /></div>
+                                        <span className="text-amber-600 font-black text-[10px] uppercase tracking-widest">Loyal Client</span>
                                     </div>
-                                    <h3 className="text-3xl font-black text-slate-800 leading-tight mb-2 tracking-tight truncate w-44">{mostVisitedClient?.name || 'N/A'}</h3>
-                                    <p className="text-sm font-bold text-slate-400">Most Active Customer</p>
+                                    <h3 className="text-lg font-black text-slate-800 leading-tight mb-0.5 tracking-tight truncate">{mostVisitedClient?.name || 'N/A'}</h3>
+                                    <p className="text-xs font-bold text-slate-400">Most Active Customer</p>
                                 </div>
-                                <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 text-white flex items-center justify-center shadow-lg shadow-amber-200 group-hover:scale-110 group-hover:-rotate-6 transition-all duration-500">
-                                    <User className="w-8 h-8" />
+                                <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 text-white flex items-center justify-center shadow-sm shrink-0 group-hover:scale-105 transition-transform duration-300">
+                                    <User className="w-5 h-5" />
                                 </div>
                             </div>
-                            <div className="mt-auto pt-6 border-t border-slate-50 relative z-10">
+                            <div className="mt-auto pt-3 border-t border-slate-100 relative z-10">
                                 <div className="flex justify-between items-end">
                                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Visits</span>
-                                    <span className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-600 to-orange-500">{mostVisitedClient?.visits || 0}</span>
+                                    <span className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-600 to-orange-500">{mostVisitedClient?.visits || 0}</span>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
-                        {/* 3. PRODUCT MIX (PIE) - UPDATED TO SHOW PERCENTAGES */}
-                        <div className={`${card3D} p-8 lg:col-span-1 flex flex-col group`}>
+                        {/* 3. PRODUCT MIX (BAR) */}
+                        <div className={`${card3D} p-5 lg:col-span-2 flex flex-col group`}>
                             <div className="flex items-center justify-between mb-4">
                                 <div>
-                                    <h3 className="font-black text-xl text-slate-800 flex items-center gap-3">
-                                        <div className="p-2 bg-indigo-50 rounded-xl text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-colors duration-500"><ShoppingBag className="w-5 h-5" /></div>
+                                    <h3 className="font-black text-base text-slate-800 flex items-center gap-2.5">
+                                        <div className="p-1.5 bg-indigo-50 rounded-lg text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-colors duration-300"><ShoppingBag className="w-4 h-4" /></div>
                                         Product Mix
                                     </h3>
-                                    <p className="text-xs text-slate-400 font-bold mt-1.5 ml-1 uppercase tracking-wide">Breakdown by Product</p>
+                                    <p className="text-[10px] text-slate-400 font-bold mt-1 ml-1 uppercase tracking-wide">Breakdown by Product</p>
                                 </div>
                             </div>
 
-                            <div className="flex-1 min-h-[400px] relative">
+                            <div className="flex-1 min-h-[340px] relative">
                                 <ResponsiveContainer width="100%" height="100%">
-                                    <PieChart>
-                                        <Pie
-                                            data={pieData}
-                                            cx="50%"
-                                            cy="45%"
-                                            innerRadius={90}
-                                            outerRadius={125}
-                                            paddingAngle={3}
-                                            dataKey="value"
-                                            nameKey="displayName"
-                                            cornerRadius={8}
-                                            isAnimationActive={true}
-                                            animationBegin={0}
-                                            animationDuration={1500}
-                                            animationEasing="ease-out"
-                                            label={({ cx, cy, midAngle, innerRadius, outerRadius, percent, index }) => {
-                                                const RADIAN = Math.PI / 180;
-                                                const radius = outerRadius + 25;
-                                                const x = cx + radius * Math.cos(-midAngle * RADIAN);
-                                                const y = cy + radius * Math.sin(-midAngle * RADIAN);
-
-                                                return (
-                                                    <text
-                                                        x={x}
-                                                        y={y}
-                                                        fill={COLORS[index % COLORS.length]}
-                                                        textAnchor={x > cx ? 'start' : 'end'}
-                                                        dominantBaseline="central"
-                                                        className="text-xs font-bold"
-                                                        style={{ fontWeight: 800, fontSize: '11px', textTransform: 'uppercase' }}
-                                                    >
-                                                        {`${(percent * 100).toFixed(0)}%`}
-                                                    </text>
-                                                );
-                                            }}
-                                            labelLine={{ stroke: '#cbd5e1', strokeWidth: 1 }}
-                                        >
-                                            {pieData.map((entry, index) => (
-                                                <Cell
-                                                    key={`cell-${index}`}
-                                                    fill={COLORS[index % COLORS.length]}
-                                                    stroke="rgba(255,255,255,0.2)"
-                                                    strokeWidth={2}
-                                                    className="hover:opacity-80 transition-opacity cursor-pointer focus:outline-none"
-                                                />
-                                            ))}
-                                        </Pie>
+                                    <BarChart data={pieData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                                        <XAxis 
+                                            dataKey="displayName" 
+                                            axisLine={false} 
+                                            tickLine={false} 
+                                            tick={{ fill: '#64748b', fontSize: 11, fontWeight: 600 }} 
+                                            dy={10} 
+                                        />
+                                        <YAxis 
+                                            axisLine={false} 
+                                            tickLine={false} 
+                                            tick={{ fill: '#94a3b8', fontSize: 11 }} 
+                                        />
                                         <Tooltip
-                                            contentStyle={{ borderRadius: '20px', border: 'none', boxShadow: '0 20px 40px -10px rgba(0,0,0,0.2)', fontWeight: 'bold', padding: '12px 20px' }}
-                                            itemStyle={{ color: '#1e293b', fontSize: '12px' }}
+                                            contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)', fontWeight: 'bold' }}
+                                            itemStyle={{ color: '#1e293b' }}
                                             formatter={(value: number, name: string, props: any) => {
-                                                // Extract percentage from payload if available, or calc it
                                                 const total = totalItems;
                                                 const percent = ((value / total) * 100).toFixed(1);
                                                 return [`${value} Units (${percent}%)`, 'Quantity'];
                                             }}
+                                            cursor={{ fill: 'rgba(241, 245, 249, 0.5)' }}
                                         />
-                                        <Legend
-                                            verticalAlign="bottom"
-                                            layout="horizontal"
-                                            iconType="circle"
-                                            iconSize={10}
-                                            wrapperStyle={{
-                                                fontSize: '11px',
-                                                fontWeight: '600',
-                                                color: '#64748b',
-                                                paddingTop: '20px',
-                                                maxHeight: '120px',
-                                                overflowY: 'auto',
-                                                bottom: 0
-                                            }}
-                                        />
-                                    </PieChart>
+                                        <Bar dataKey="value" radius={[6, 6, 0, 0]} maxBarSize={60}>
+                                            {pieData.map((entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                            ))}
+                                        </Bar>
+                                    </BarChart>
                                 </ResponsiveContainer>
-                                {/* Center Text */}
-                                <div className="absolute top-[45%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none animate-in fade-in zoom-in duration-1000 delay-500 fill-mode-backwards">
-                                    <span className="text-4xl font-black text-slate-800 block tracking-tighter drop-shadow-sm">{totalItems}</span>
-                                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">Total Units</span>
-                                </div>
                             </div>
                         </div>
 
                         {/* 4. TECHNICIAN LEADERBOARD - IMPROVED LIST */}
-                        <div className={`${card3D} p-0 lg:col-span-2 flex flex-col group`}>
-                            <div className="p-8 border-b border-slate-50 bg-slate-50/30 flex justify-between items-center backdrop-blur-sm">
+                        <div className={`${card3D} p-0 lg:col-span-1 flex flex-col group`}>
+                            <div className="p-5 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
                                 <div>
-                                    <h3 className="font-black text-xl text-slate-800 flex items-center gap-3">
-                                        <div className="p-2 bg-emerald-50 rounded-xl text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-colors duration-500"><TrendingUp className="w-5 h-5" /></div>
+                                    <h3 className="font-black text-base text-slate-800 flex items-center gap-2.5">
+                                        <div className="p-1.5 bg-emerald-50 rounded-lg text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-colors duration-300"><TrendingUp className="w-4 h-4" /></div>
                                         Revenue Leaderboard
                                     </h3>
-                                    <p className="text-xs text-slate-400 font-bold mt-1.5 ml-1 uppercase tracking-wide">Top earning technicians</p>
+                                    <p className="text-[10px] text-slate-400 font-bold mt-1 ml-1 uppercase tracking-wide">Top earning technicians</p>
                                 </div>
-                                <div className="hidden sm:inline-flex items-center text-[10px] font-black bg-white border border-slate-200 px-4 py-2 rounded-xl text-slate-500 shadow-sm uppercase tracking-wider gap-2">
-                                    <Crown className="w-3 h-3 text-amber-500" /> Top 5 Ranked
+                                <div className="hidden sm:inline-flex items-center text-[9px] font-black bg-white border border-slate-200 px-2.5 py-1.5 rounded-lg text-slate-500 shadow-sm uppercase tracking-wider gap-1.5">
+                                    <Crown className="w-3 h-3 text-amber-500" /> Top 5
                                 </div>
                             </div>
 
-                            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                            <div className="flex-1 overflow-y-auto p-3 space-y-2">
                                 {topRevenueTechs.map((tech, idx) => (
                                     <div
                                         key={tech.name}
                                         onClick={() => handleTechClick(tech.name)}
-                                        className="group/item relative p-5 rounded-2xl border border-slate-100 bg-white hover:border-indigo-100 hover:bg-slate-50/50 transition-all cursor-pointer flex items-center justify-between shadow-sm hover:shadow-lg hover:shadow-indigo-500/5 hover:-translate-x-1"
+                                        className="group/item relative p-3 rounded-lg border border-slate-100 bg-white hover:border-indigo-200 hover:bg-slate-50/50 transition-all cursor-pointer flex items-center justify-between shadow-sm hover:shadow-md"
                                     >
-                                        <div className="flex items-center gap-6">
-                                            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center font-black text-xl shadow-sm border-2 transform transition-transform group-hover/item:scale-110 duration-300
-                                                ${idx === 0 ? 'bg-amber-100/50 text-amber-600 border-amber-100 ring-4 ring-amber-50' :
+                                        <div className="flex items-center gap-3">
+                                            <div className={`w-9 h-9 rounded-lg flex items-center justify-center font-black text-sm shadow-sm border transition-transform group-hover/item:scale-105 duration-300
+                                                ${idx === 0 ? 'bg-amber-100/50 text-amber-600 border-amber-200 ring-2 ring-amber-50' :
                                                     idx === 1 ? 'bg-slate-100/50 text-slate-600 border-slate-200' :
-                                                        idx === 2 ? 'bg-orange-100/50 text-orange-700 border-orange-100' :
+                                                        idx === 2 ? 'bg-orange-100/50 text-orange-700 border-orange-200' :
                                                             'bg-white text-slate-300 border-slate-100'}`}>
                                                 {idx + 1}
                                             </div>
-                                            <div>
-                                                <h4 className="font-black text-slate-800 text-lg group-hover/item:text-indigo-700 transition-colors">{tech.name}</h4>
-                                                <div className="flex items-center gap-4 mt-1.5">
-                                                    <span className="text-xs font-bold text-slate-400 flex items-center gap-1.5">
-                                                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
-                                                        {tech.count} Service Jobs
+                                            <div className="min-w-0">
+                                                <h4 className="font-black text-slate-800 text-sm group-hover/item:text-indigo-700 transition-colors truncate">{tech.name}</h4>
+                                                <div className="flex items-center gap-2 mt-0.5">
+                                                    <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1">
+                                                        <span className="w-1 h-1 rounded-full bg-indigo-500"></span>
+                                                        {tech.count} Jobs
                                                     </span>
-                                                    {idx === 0 && <span className="text-[9px] font-black bg-gradient-to-r from-amber-100 to-amber-50 text-amber-700 px-2.5 py-1 rounded-lg border border-amber-200/50 uppercase tracking-wide flex items-center gap-1.5"><Crown className="w-3 h-3" /> Market Leader</span>}
+                                                    {idx === 0 && <span className="text-[8px] font-black bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded border border-amber-200/50 uppercase tracking-wide flex items-center gap-1"><Crown className="w-2.5 h-2.5" /> Leader</span>}
                                                 </div>
                                             </div>
                                         </div>
-                                        <div className="text-right">
-                                            <p className="font-black text-xl text-slate-900 group-hover/item:text-indigo-600 transition-colors tracking-tight">₹{tech.revenue.toLocaleString()}</p>
-                                            <div className="flex items-center justify-end text-[10px] font-bold text-indigo-500 opacity-0 group-hover/item:opacity-100 transition-all transform translate-x-4 group-hover/item:translate-x-0 mt-2 gap-1">
-                                                View Profile <ArrowRight className="w-3 h-3" />
-                                            </div>
+                                        <div className="text-right shrink-0">
+                                            <p className="font-black text-sm text-slate-900 group-hover/item:text-indigo-600 transition-colors tracking-tight">₹{tech.revenue.toLocaleString()}</p>
                                         </div>
                                     </div>
                                 ))}
-                                {topRevenueTechs.length === 0 && <div className="p-12 text-center text-slate-400 font-bold opacity-50">No data available for this period.</div>}
+                                {topRevenueTechs.length === 0 && <div className="p-8 text-center text-slate-400 font-bold opacity-50 text-sm">No data available for this period.</div>}
                             </div>
                         </div>
                     </div>
 
                     {/* 5. TOP 5 CLIENTS (BAR CHART) - Cleaned Up */}
-                    <div className={`${card3D} p-8 group`}>
-                        <div className="flex items-center justify-between mb-8">
+                    <div className={`${card3D} p-5 group`}>
+                        <div className="flex items-center justify-between mb-5">
                             <div>
-                                <h3 className="font-black text-xl text-slate-800 flex items-center gap-3">
-                                    <div className="p-2 bg-violet-50 rounded-xl text-violet-600 group-hover:bg-violet-600 group-hover:text-white transition-colors duration-500"><Star className="w-5 h-5" /></div>
+                                <h3 className="font-black text-base text-slate-800 flex items-center gap-2.5">
+                                    <div className="p-1.5 bg-violet-50 rounded-lg text-violet-600 group-hover:bg-violet-600 group-hover:text-white transition-colors duration-300"><Star className="w-4 h-4" /></div>
                                     Top 5 High-Value Clients
                                 </h3>
-                                <p className="text-xs text-slate-400 font-bold mt-1.5 ml-1 uppercase tracking-wide">Highest spending customers</p>
+                                <p className="text-[10px] text-slate-400 font-bold mt-1 ml-1 uppercase tracking-wide">Highest spending customers</p>
                             </div>
                         </div>
-                        <div className="h-[400px] w-full">
+                        <div className="h-[340px] w-full">
                             <ResponsiveContainer width="100%" height="100%">
                                 <BarChart
                                     data={topRevenueClients}

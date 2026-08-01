@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { api } from "../services/api";
 import { Entry } from "../types";
 import {
@@ -25,6 +25,25 @@ import { generateInvoice } from "../utils/invoiceGenerator";
 const ClientHistory: React.FC = () => {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Copy Contact Logic
+  const [copiedContactId, setCopiedContactId] = useState<string | null>(null);
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const startContactLongPress = (id: string, contactNo: string) => {
+    longPressTimer.current = setTimeout(() => {
+      navigator.clipboard?.writeText(contactNo);
+      setCopiedContactId(id);
+      setTimeout(() => setCopiedContactId(null), 1500);
+    }, 600);
+  };
+
+  const cancelContactLongPress = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  };
 
   // Filters
   const [startDate, setStartDate] = useState(
@@ -418,8 +437,18 @@ const ClientHistory: React.FC = () => {
                         {entry.clientName}
                       </div>
                       <div className="flex items-center gap-2 mt-1">
-                        <span className="text-[11px] font-bold text-slate-500 bg-white shadow-sm px-2 py-0.5 rounded border border-slate-200">
-                          {entry.contactNo}
+                        <span 
+                          onTouchStart={() => startContactLongPress(entry.id || String(idx), String(entry.contactNo))}
+                          onTouchEnd={cancelContactLongPress}
+                          onTouchMove={cancelContactLongPress}
+                          onMouseDown={() => startContactLongPress(entry.id || String(idx), String(entry.contactNo))}
+                          onMouseUp={cancelContactLongPress}
+                          onMouseLeave={cancelContactLongPress}
+                          onContextMenu={(e) => e.preventDefault()}
+                          className={`text-[11px] font-bold select-none cursor-pointer tracking-wider tabular-nums shadow-sm px-2 py-0.5 rounded border transition-colors ${copiedContactId === (entry.id || String(idx)) ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-white text-slate-500 border-slate-200'}`}
+                          title="Long press to copy"
+                        >
+                          {copiedContactId === (entry.id || String(idx)) ? 'Copied!' : entry.contactNo}
                         </span>
                       </div>
                     </td>
@@ -452,7 +481,7 @@ const ClientHistory: React.FC = () => {
                       </div>
                     </td>
                     <td className="px-8 py-5 text-center">
-                      <div className="flex items-center justify-center gap-3 opacity-0 group-hover:opacity-100 transition-all transform translate-y-1 group-hover:translate-y-0">
+                      <div className="flex items-center justify-center gap-3 opacity-100 lg:opacity-0 group-hover:opacity-100 transition-all transform translate-y-0 lg:translate-y-1 group-hover:translate-y-0">
                         {entry.invoiceUrl &&
                           entry.invoiceUrl.startsWith("http") && (
                             <a

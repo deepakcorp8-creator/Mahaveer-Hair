@@ -8,7 +8,8 @@ const DEFAULT_USER_PERMISSIONS = [
     '/appointments',
     '/history',
     '/packages',
-    '/clients'
+    '/clients',
+    '/calling'
 ];
 
 export const authService = {

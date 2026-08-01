@@ -24,6 +24,7 @@ const CALL_STATUS_OPTIONS = [
     'SERVICE BOOKED',
     'NOT INTERESTED',
     'WRONG NUMBER',
+    'ALREADY DONE',
 ];
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -40,6 +41,7 @@ const STATUS_STYLES: { [k: string]: string } = {
     'NO RESPONSE': 'bg-amber-100 text-amber-700 ring-amber-200',
     'CALL LATER': 'bg-indigo-100 text-indigo-700 ring-indigo-200',
     'WRONG NUMBER': 'bg-slate-200 text-slate-600 ring-slate-300',
+    'ALREADY DONE': 'bg-cyan-100 text-cyan-700 ring-cyan-200',
 };
 
 const todayMidnight = () => {
@@ -549,58 +551,96 @@ const ServiceCalling: React.FC = () => {
                             subtitle={`Services older than ${CALL_AFTER_DAYS} days will appear here for feedback calls.`}
                         />
                     ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-4">
-                            {filteredDue.slice(0, visibleCount).map((entry, i) => {
+                        <div className="grid grid-cols-1 gap-4">
+                            {filteredDue.slice(0, visibleCount).map((entry, idx) => {
                                 const age = daysSince(entry.date);
                                 return (
-                                    <div key={entry.id} className="group bg-white rounded-2xl border border-slate-200/80 shadow-[0_4px_20px_-8px_rgba(15,23,42,0.15)] hover:shadow-[0_10px_30px_-10px_rgba(16,185,129,0.35)] hover:border-emerald-300 transition-all overflow-hidden sc-rise" style={{ animationDelay: `${(i % 12) * 40}ms` }}>
-                                        <div className="p-4">
-                                            <div className="flex items-start gap-3">
-                                                <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-black text-lg shadow-md shrink-0">
-                                                    {getInitial(entry.clientName)}
+                                    <div key={entry.id} className={`sc-rise relative bg-white rounded-2xl p-3.5 md:p-4 pl-4 md:pl-5 border border-slate-200/70 shadow-[0_2px_8px_-2px_rgba(15,23,42,0.08)] hover:shadow-[0_10px_28px_-10px_rgba(16,185,129,0.28)] hover:border-emerald-200 hover:-translate-y-0.5 transition-all duration-200 flex flex-col md:flex-row md:items-center gap-3 md:gap-4 group overflow-hidden`} style={{ animationDelay: `${(idx % 12) * 40}ms` }}>
+                                        <span className={`absolute left-0 top-0 bottom-0 w-1.5 rounded-r-full bg-gradient-to-b from-emerald-300 to-teal-500`} />
+
+                                        <div className="flex items-center gap-3 w-full md:w-[25%] shrink-0">
+                                            <div className="w-11 h-11 rounded-xl flex items-center justify-center text-lg font-black shrink-0 ring-1 shadow-inner bg-gradient-to-br from-emerald-50 to-teal-100 text-emerald-700 ring-emerald-200">
+                                                {getInitial(entry.clientName)}
+                                            </div>
+                                            <div className="overflow-hidden flex-1">
+                                                <div className="flex items-center gap-2">
+                                                    <h4 className="font-black text-slate-800 text-sm truncate leading-tight tracking-tight">{entry.clientName || 'Unknown'}</h4>
+                                                    {ageBadge(age)}
                                                 </div>
-                                                <div className="min-w-0 flex-1">
-                                                    <div className="flex items-center gap-2 flex-wrap">
-                                                        <h3 className="font-black text-slate-800 text-sm truncate">{entry.clientName || 'Unknown'}</h3>
-                                                        {ageBadge(age)}
-                                                    </div>
+                                                <div className={`inline-flex items-center gap-1.5 mt-1 rounded-full p-0.5 pr-2.5 border transition-colors ${copiedId === String(entry.id)
+                                                    ? 'bg-emerald-50 border-emerald-200'
+                                                    : 'bg-slate-50 border-slate-200/80 hover:border-emerald-200 hover:bg-emerald-50/40'
+                                                    }`}>
+                                                    <a
+                                                        href={`tel:${entry.contactNo}`}
+                                                        title="Call"
+                                                        onClick={(e) => e.stopPropagation()}
+                                                        className="w-6 h-6 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 text-white flex items-center justify-center shadow-sm shadow-emerald-300/60 ring-1 ring-white/40 hover:from-emerald-500 hover:to-emerald-700 hover:scale-105 active:scale-95 transition-all shrink-0"
+                                                    >
+                                                        <PhoneCall className="w-3 h-3" />
+                                                    </a>
                                                     <button
                                                         onClick={() => copyContact(entry.id, entry.contactNo)}
-                                                        className="flex items-center gap-1 text-xs text-slate-500 font-semibold mt-0.5 hover:text-emerald-600"
+                                                        className={`text-[11px] font-bold select-none tracking-wider tabular-nums ${copiedId === String(entry.id) ? 'text-emerald-700' : 'text-slate-600'}`}
                                                     >
-                                                        <Phone className="w-3 h-3" /> {entry.contactNo || '—'}
-                                                        {copiedId === entry.id ? <CheckCircle2 className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3 opacity-40" />}
+                                                        {copiedId === String(entry.id) ? 'Copied!' : (entry.contactNo || '—')}
                                                     </button>
                                                 </div>
                                             </div>
-
-                                            <div className="mt-3 grid grid-cols-2 gap-2 text-[11px]">
-                                                <InfoChip icon={<Scissors className="w-3 h-3" />} label={entry.serviceType} />
-                                                <InfoChip icon={<CalendarCheck className="w-3 h-3" />} label={prettyDate(entry.date)} />
-                                                {entry.technician && <InfoChip icon={<User className="w-3 h-3" />} label={entry.technician} />}
-                                                {entry.branch && <InfoChip icon={<MapPin className="w-3 h-3" />} label={entry.branch} />}
-                                            </div>
-
-                                            {entry.address && (
-                                                <p className="mt-2 text-[11px] text-slate-500 flex items-start gap-1 line-clamp-2">
-                                                    <MapPin className="w-3 h-3 mt-0.5 shrink-0" /> {entry.address}
-                                                </p>
-                                            )}
                                         </div>
 
-                                        <div className="flex border-t border-slate-100 divide-x divide-slate-100">
-                                            <a href={`tel:${entry.contactNo}`} className="flex-1 flex items-center justify-center gap-1.5 py-3 text-xs font-black text-emerald-600 hover:bg-emerald-50 transition-all">
-                                                <Phone className="w-3.5 h-3.5" /> Call
-                                            </a>
+                                        <div className="flex-1 w-full grid grid-cols-2 md:grid-cols-4 gap-2.5 md:gap-2 items-center border-t md:border-t-0 border-dashed border-slate-100 pt-3 md:pt-0">
+                                            <div className="text-xs">
+                                                <p className="md:hidden text-[8px] font-black uppercase tracking-widest text-slate-400 mb-1">Service</p>
+                                                <div className="flex items-center gap-1.5 font-bold text-slate-600">
+                                                    <Scissors className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                                                    <span className="truncate">{entry.serviceType}</span>
+                                                </div>
+                                            </div>
+                                            <div className="text-xs">
+                                                <p className="md:hidden text-[8px] font-black uppercase tracking-widest text-slate-400 mb-1">Date</p>
+                                                <div className="flex items-center gap-1.5 font-bold text-slate-600">
+                                                    <CalendarCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                                                    <span className="tabular-nums">{prettyDate(entry.date)}</span>
+                                                </div>
+                                            </div>
+                                            <div className="text-xs">
+                                                <p className="md:hidden text-[8px] font-black uppercase tracking-widest text-slate-400 mb-1">Technician</p>
+                                                <div className="flex items-center gap-1.5 font-bold text-slate-600">
+                                                    <User className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                                                    <span className="truncate">{entry.technician || '—'}</span>
+                                                </div>
+                                            </div>
+                                            <div className="text-xs relative group/tooltip">
+                                                <p className="md:hidden text-[8px] font-black uppercase tracking-widest text-slate-400 mb-1">Branch</p>
+                                                <div className="flex items-center gap-1.5 font-bold text-slate-600">
+                                                    <MapPin className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                                                    <span className="truncate">{entry.branch || '—'}</span>
+                                                </div>
+                                                {entry.address && (
+                                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden md:group-hover/tooltip:block z-[60] w-40 p-1.5 bg-slate-800 text-white text-[10px] rounded shadow-lg">
+                                                        {entry.address}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center gap-2 w-full md:w-auto justify-end border-t md:border-t-0 border-slate-100 pt-3 md:pt-0 shrink-0">
                                             <a
                                                 href={`https://wa.me/91${String(entry.contactNo || '').replace(/\D/g, '').slice(-10)}`}
                                                 target="_blank" rel="noopener noreferrer"
-                                                className="flex-1 flex items-center justify-center gap-1.5 py-3 text-xs font-black text-green-600 hover:bg-green-50 transition-all"
+                                                className="flex items-center justify-center gap-1.5 flex-1 md:flex-none px-3 py-2 md:p-2.5 rounded-xl bg-green-50 text-green-600 border border-green-100 hover:bg-green-100 hover:border-green-200 active:scale-95 transition-all"
+                                                title="WhatsApp"
                                             >
-                                                <MessageCircle className="w-3.5 h-3.5" /> WhatsApp
+                                                <MessageCircle className="w-4 h-4" />
+                                                <span className="md:hidden text-xs font-black">WhatsApp</span>
                                             </a>
-                                            <button onClick={() => openModal(entry)} className="flex-1 flex items-center justify-center gap-1.5 py-3 text-xs font-black text-slate-700 hover:bg-slate-50 transition-all">
-                                                <MessageSquare className="w-3.5 h-3.5" /> Feedback
+                                            <button
+                                                onClick={() => openModal(entry)}
+                                                className="flex items-center justify-center gap-1.5 flex-1 md:flex-none px-4 py-2 md:py-2.5 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-600 text-white font-black text-xs hover:from-emerald-500 hover:to-teal-700 active:scale-95 transition-all shadow-sm shadow-emerald-200 ring-1 ring-white/30"
+                                            >
+                                                <MessageSquare className="w-4 h-4 md:hidden" />
+                                                Feedback
                                             </button>
                                         </div>
                                     </div>
