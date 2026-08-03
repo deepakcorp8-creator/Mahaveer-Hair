@@ -33,6 +33,9 @@ interface ProtectedRouteProps {
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ user, children, path }) => {
   if (user.role === Role.ADMIN) return children;
 
+  // Service Calling is always accessible to both admin and user
+  if (path === '/calling') return children;
+
   // Auth service now guarantees permissions array is populated (even with defaults)
   const userPerms = user.permissions || [];
 

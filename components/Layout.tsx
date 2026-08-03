@@ -258,6 +258,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
 
   const menuItems = allMenuItems.filter(item => {
     if (user.role === Role.ADMIN) return true;
+    if (item.path === '/calling') return true; // Always visible to both admin and user
     if (item.adminOnly) return false;
     if (user.permissions && user.permissions.includes(item.path)) return true;
     return false;
