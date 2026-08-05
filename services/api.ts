@@ -14,12 +14,14 @@ let DATA_CACHE: {
   packages: ServicePackage[] | null;
   entries: Entry[] | null;
   appointments: Appointment[] | null;
+  serviceCalls: any[] | null;
   lastFetch: { [key: string]: number };
 } = {
   options: null,
   packages: null,
   entries: null,
   appointments: null,
+  serviceCalls: null,
   lastFetch: {}
 };
 
@@ -45,6 +47,7 @@ const hydrateCache = () => {
         packages: saved.packages ?? null,
         entries: saved.entries ?? null,
         appointments: saved.appointments ?? null,
+        serviceCalls: saved.serviceCalls ?? null,
         lastFetch: saved.lastFetch || {}
       };
     }
@@ -60,6 +63,7 @@ const persistCache = () => {
       packages: DATA_CACHE.packages,
       entries: DATA_CACHE.entries,
       appointments: DATA_CACHE.appointments,
+      serviceCalls: DATA_CACHE.serviceCalls,
       lastFetch: DATA_CACHE.lastFetch
     }));
   } catch (e) {
@@ -414,25 +418,43 @@ export const api = {
   },
 
   // --- SERVICE CALLS (Feedback calling) ---
-  getServiceCalls: async (): Promise<any[]> => {
-    if (isLive) {
-      try {
-        const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getServiceCalls&t=${Date.now()}`);
-        const data = await response.json();
-        if (data && data.error) throw new Error(data.error);
-        if (Array.isArray(data)) {
-          return data.map((s: any) => ({
-            ...s,
-            serviceDate: normalizeToISO(s.serviceDate),
-            nextCallDate: s.nextCallDate ? normalizeToISO(s.nextCallDate) : ''
-          }));
-        }
-      } catch (e) {
-        console.warn("Failed to fetch service calls", e);
-        throw e; // Propagate to UI
+  getServiceCalls: async (forceRefresh = false): Promise<any[]> => {
+    const fetchCalls = () => fetchOnce('serviceCalls', async () => {
+      const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getServiceCalls`);
+      const data = await response.json();
+      if (data && data.error) throw new Error(data.error);
+      if (Array.isArray(data)) {
+        const mapped = data.map((s: any) => ({
+          ...s,
+          serviceDate: normalizeToISO(s.serviceDate),
+          nextCallDate: s.nextCallDate ? normalizeToISO(s.nextCallDate) : ''
+        }));
+        // Store in cache
+        DATA_CACHE.serviceCalls = mapped;
+        DATA_CACHE.lastFetch['serviceCalls'] = Date.now();
+        persistCache();
+        notifyUpdated('serviceCalls');
+        return mapped;
       }
+      return DATA_CACHE.serviceCalls || [];
+    });
+
+    if (!isLive) return [];
+
+    // Serve from cache instantly if fresh enough
+    if (!forceRefresh && DATA_CACHE.serviceCalls && cacheAge('serviceCalls') < MAX_SERVE_STALE) {
+      // Quietly refresh in background if stale
+      if (cacheAge('serviceCalls') > STALE_AFTER) fetchCalls().catch(() => { });
+      return DATA_CACHE.serviceCalls;
     }
-    return [];
+
+    try {
+      return await fetchCalls();
+    } catch (e) {
+      console.warn('Failed to fetch service calls', e);
+      if (DATA_CACHE.serviceCalls) return DATA_CACHE.serviceCalls;
+      throw e;
+    }
   },
 
   addServiceCall: async (payload: any) => {
@@ -444,6 +466,10 @@ export const api = {
       });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
+      // Bust the cache so next load pulls fresh data
+      DATA_CACHE.serviceCalls = null;
+      delete DATA_CACHE.lastFetch['serviceCalls'];
+      persistCache();
       return data;
     }
     return { status: 'success' };
