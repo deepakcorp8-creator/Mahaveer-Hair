@@ -24,7 +24,7 @@ const Dashboard: React.FC = () => {
   const [selectedMonth, setSelectedMonth] = useState(MONTHS[new Date().getMonth() + 1]);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedBranch, setSelectedBranch] = useState('ALL');
-  const [showStats, setShowStats] = useState(false);
+  const [showStats, setShowStats] = useState(() => localStorage.getItem('showStats') === 'true');
   const [selectedState, setSelectedState] = useState<string | null>(null);
 
   // --- INCENTIVE STATE ---
@@ -367,7 +367,7 @@ const Dashboard: React.FC = () => {
 
           {/* Show/Hide Stats Toggle */}
           <button
-            onClick={() => setShowStats(prev => !prev)}
+            onClick={() => setShowStats(prev => { const next = !prev; localStorage.setItem('showStats', String(next)); return next; })}
             title={showStats ? 'Hide Stats' : 'Show Stats'}
             className="bg-white border border-indigo-100 p-2.5 rounded-xl shadow-sm shadow-indigo-50 text-indigo-500 hover:border-indigo-400 hover:text-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/10 cursor-pointer transition-all"
           >

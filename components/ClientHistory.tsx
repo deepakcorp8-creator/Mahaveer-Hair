@@ -19,6 +19,8 @@ import {
   ListFilter,
   X,
   RefreshCw,
+  Pencil,
+  Save,
 } from "lucide-react";
 import { generateInvoice } from "../utils/invoiceGenerator";
 
@@ -26,7 +28,58 @@ const ClientHistory: React.FC = () => {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Edit Modal State
+  const [editEntry, setEditEntry] = useState<Entry | null>(null);
+  const [editForm, setEditForm] = useState<Partial<Entry>>({});
+  const [editSaving, setEditSaving] = useState(false);
+
+  const openEdit = (entry: Entry) => {
+    setEditEntry(entry);
+    setEditForm({
+      amount: entry.amount,
+      paymentMethod: entry.paymentMethod,
+      remark: entry.remark,
+      technician: entry.technician,
+      serviceType: entry.serviceType,
+      branch: entry.branch,
+      workStatus: entry.workStatus,
+      pendingAmount: entry.pendingAmount ?? 0,
+    });
+  };
+
+  const closeEdit = () => {
+    setEditEntry(null);
+    setEditForm({});
+  };
+
+  const saveEdit = async () => {
+    if (!editEntry) return;
+    setEditSaving(true);
+    try {
+      const updated: Entry = { ...editEntry, ...editForm } as Entry;
+      await api.updateEntry(updated);
+      setEntries((prev) =>
+        prev.map((e) => (e.id === updated.id ? updated : e))
+      );
+      closeEdit();
+    } catch (err) {
+      console.error(err);
+      alert("Failed to save. Please try again.");
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
   // Copy Contact Logic
+  const [showStats, setShowStatsLocal] = useState(() => localStorage.getItem('showStats') === 'true');
+
+  // Sync with localStorage changes (e.g. toggled in Dashboard)
+  useEffect(() => {
+    const onStorage = () => setShowStatsLocal(localStorage.getItem('showStats') === 'true');
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
+
   const [copiedContactId, setCopiedContactId] = useState<string | null>(null);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -183,6 +236,7 @@ const ClientHistory: React.FC = () => {
     "absolute top-0 right-0 w-32 h-32 rounded-full blur-[60px] opacity-20 transition-all group-hover:opacity-40 pointer-events-none";
 
   return (
+    <>
     <div className="flex flex-col space-y-8 animate-in fade-in duration-500 pb-20">
       <div className="flex flex-col lg:flex-row justify-between items-end gap-6">
         <div className="flex items-center gap-5">
@@ -220,7 +274,7 @@ const ClientHistory: React.FC = () => {
             </p>
             <p className="font-black text-2xl text-slate-800 flex items-center">
               <span className="text-emerald-500 mr-1">₹</span>
-              {totalAmount.toLocaleString()}
+              {showStats ? totalAmount.toLocaleString() : '••••'}
             </p>
           </div>
           <div
@@ -481,7 +535,7 @@ const ClientHistory: React.FC = () => {
                       </div>
                     </td>
                     <td className="px-8 py-5 text-center">
-                      <div className="flex items-center justify-center gap-3 opacity-100 lg:opacity-0 group-hover:opacity-100 transition-all transform translate-y-0 lg:translate-y-1 group-hover:translate-y-0">
+                      <div className="flex items-center justify-center gap-3">
                         {entry.invoiceUrl &&
                           entry.invoiceUrl.startsWith("http") && (
                             <a
@@ -500,6 +554,13 @@ const ClientHistory: React.FC = () => {
                           title="Print Invoice"
                         >
                           <Printer className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => openEdit(entry)}
+                          className="p-2.5 rounded-xl bg-amber-50 text-amber-600 hover:bg-amber-500 hover:text-white border border-amber-200 transition-all shadow-sm"
+                          title="Edit Entry"
+                        >
+                          <Pencil className="w-4 h-4" />
                         </button>
                       </div>
                     </td>
@@ -540,6 +601,164 @@ const ClientHistory: React.FC = () => {
         </div>
       )}
     </div>
+
+      {/* EDIT MODAL */}
+      {editEntry && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+          onClick={(e) => { if (e.target === e.currentTarget) closeEdit(); }}
+        >
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg border border-slate-200 overflow-hidden animate-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-7 py-5 border-b border-slate-100 bg-gradient-to-r from-amber-500 to-orange-500">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-white/20 rounded-xl">
+                  <Pencil className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="font-black text-white text-lg leading-tight">Edit Entry</h3>
+                  <p className="text-amber-100 text-xs font-medium">{editEntry.clientName} &bull; {editEntry.date}</p>
+                </div>
+              </div>
+              <button
+                onClick={closeEdit}
+                className="p-2 rounded-xl bg-white/20 hover:bg-white/30 text-white transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-7 space-y-5 max-h-[70vh] overflow-y-auto">
+              {/* Amount */}
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Amount (₹)</label>
+                <input
+                  type="number"
+                  value={editForm.amount ?? ""}
+                  onChange={(e) => setEditForm((f) => ({ ...f, amount: Number(e.target.value) }))}
+                  className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold text-slate-700 outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-400/10 transition-all"
+                />
+              </div>
+
+              {/* Pending Amount */}
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Pending Amount (₹)</label>
+                <input
+                  type="number"
+                  value={editForm.pendingAmount ?? ""}
+                  onChange={(e) => setEditForm((f) => ({ ...f, pendingAmount: Number(e.target.value) }))}
+                  className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold text-slate-700 outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-400/10 transition-all"
+                />
+              </div>
+
+              {/* Payment Method */}
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Payment Method</label>
+                <select
+                  value={editForm.paymentMethod ?? ""}
+                  onChange={(e) => setEditForm((f) => ({ ...f, paymentMethod: e.target.value as Entry["paymentMethod"] }))}
+                  className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold text-slate-700 outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-400/10 transition-all"
+                >
+                  <option value="CASH">CASH</option>
+                  <option value="UPI">UPI</option>
+                  <option value="CARD">CARD</option>
+                  <option value="PENDING">PENDING</option>
+                  <option value="MIXED">MIXED</option>
+                  <option value="MIXED (CASH+UPI)">MIXED (CASH+UPI)</option>
+                </select>
+              </div>
+
+              {/* Service Type */}
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Service Type</label>
+                <select
+                  value={editForm.serviceType ?? ""}
+                  onChange={(e) => setEditForm((f) => ({ ...f, serviceType: e.target.value as Entry["serviceType"] }))}
+                  className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold text-slate-700 outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-400/10 transition-all"
+                >
+                  <option value="SERVICE">SERVICE</option>
+                  <option value="NEW">NEW</option>
+                  <option value="DEMO">DEMO</option>
+                  <option value="MUNDAN">MUNDAN</option>
+                  <option value="WASHING">WASHING</option>
+                </select>
+              </div>
+
+              {/* Branch */}
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Branch</label>
+                <select
+                  value={editForm.branch ?? ""}
+                  onChange={(e) => setEditForm((f) => ({ ...f, branch: e.target.value as Entry["branch"] }))}
+                  className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold text-slate-700 outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-400/10 transition-all"
+                >
+                  <option value="RPR">Raipur (RPR)</option>
+                  <option value="JDP">Jagdalpur (JDP)</option>
+                  <option value="RPR-MOWA">Mowa (RPR-MOWA)</option>
+                </select>
+              </div>
+
+              {/* Work Status */}
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Work Status</label>
+                <select
+                  value={editForm.workStatus ?? ""}
+                  onChange={(e) => setEditForm((f) => ({ ...f, workStatus: e.target.value as Entry["workStatus"] }))}
+                  className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold text-slate-700 outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-400/10 transition-all"
+                >
+                  <option value="DONE">DONE</option>
+                  <option value="PENDING">PENDING</option>
+                  <option value="FOLLOWUP">FOLLOWUP</option>
+                  <option value="PENDING_APPROVAL">PENDING APPROVAL</option>
+                  <option value="REJECTED">REJECTED</option>
+                </select>
+              </div>
+
+              {/* Technician */}
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Technician</label>
+                <input
+                  type="text"
+                  value={editForm.technician ?? ""}
+                  onChange={(e) => setEditForm((f) => ({ ...f, technician: e.target.value }))}
+                  className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold text-slate-700 outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-400/10 transition-all"
+                />
+              </div>
+
+              {/* Remark */}
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Remark</label>
+                <textarea
+                  rows={3}
+                  value={editForm.remark ?? ""}
+                  onChange={(e) => setEditForm((f) => ({ ...f, remark: e.target.value }))}
+                  className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold text-slate-700 outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-400/10 transition-all resize-none"
+                />
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex items-center justify-end gap-3 px-7 py-5 border-t border-slate-100 bg-slate-50">
+              <button
+                onClick={closeEdit}
+                className="px-6 py-3 rounded-2xl border-2 border-slate-200 text-slate-600 font-bold hover:bg-slate-100 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={saveEdit}
+                disabled={editSaving}
+                className="flex items-center gap-2 px-7 py-3 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-black shadow-lg shadow-amber-300/40 hover:shadow-amber-400/50 hover:scale-105 transition-all disabled:opacity-60 disabled:cursor-not-allowed disabled:scale-100"
+              >
+                <Save className="w-4 h-4" />
+                {editSaving ? "Saving..." : "Save Changes"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 };
 
