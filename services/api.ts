@@ -1,9 +1,23 @@
 
 import { Entry, Client, Appointment, DashboardStats, ServicePackage, User, Role, Technician } from '../types';
-import { MOCK_CLIENTS, MOCK_ENTRIES, MOCK_APPOINTMENTS, MOCK_ITEMS, MOCK_TECHNICIANS, MOCK_PACKAGES, GOOGLE_SCRIPT_URL } from '../constants';
+import { MOCK_CLIENTS, MOCK_ENTRIES, MOCK_APPOINTMENTS, MOCK_ITEMS, MOCK_TECHNICIANS, MOCK_PACKAGES, GOOGLE_SCRIPT_URL, API_SECRET } from '../constants';
 
 // Helper to check if we have a valid URL
 const isLive = GOOGLE_SCRIPT_URL && GOOGLE_SCRIPT_URL.startsWith('http');
+
+// Secure Request Helpers
+const callScriptGet = (action: string, extraQuery: string = '') => {
+  const sep = extraQuery ? (extraQuery.startsWith('&') ? '' : '&') : '';
+  return fetch(`${GOOGLE_SCRIPT_URL}?action=${action}&secret=${encodeURIComponent(API_SECRET)}${sep}${extraQuery}`);
+};
+
+const callScriptPost = (payload: Record<string, any>) => {
+  return fetch(GOOGLE_SCRIPT_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ secret: API_SECRET, ...payload })
+  });
+};
 
 // --- LOCAL CACHE & STATE MANAGEMENT ---
 const LOCAL_NEW_ENTRIES: Entry[] = [];
@@ -165,7 +179,7 @@ export const api = {
   // --- OPTION HELPERS ---
   getOptions: async (forceRefresh = false) => {
     const fetchOptions = () => fetchOnce('options', async () => {
-      const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getOptions`);
+      const response = await callScriptGet('getOptions');
       const data = await response.json();
       if (data && data.clients) {
         return commit('options', {
@@ -206,11 +220,7 @@ export const api = {
   addClient: async (client: Client) => {
     invalidate('options');
     if (isLive) {
-      const res = await fetch(GOOGLE_SCRIPT_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: 'addClient', ...client })
-      });
+      const res = await callScriptPost({ action: 'addClient', ...client });
       return await res.json();
     } else {
       MOCK_CLIENTS.push(client);
@@ -221,11 +231,7 @@ export const api = {
   addTechnician: async (technician: Technician) => {
     invalidate('options');
     if (isLive) {
-      const res = await fetch(GOOGLE_SCRIPT_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: 'addTechnician', ...technician })
-      });
+      const res = await callScriptPost({ action: 'addTechnician', ...technician });
       return await res.json();
     } else {
       MOCK_TECHNICIANS.push(technician);
@@ -236,11 +242,7 @@ export const api = {
   updateClient: async (client: Client, originalName: string) => {
     invalidate('options');
     if (isLive) {
-      await fetch(GOOGLE_SCRIPT_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: 'editClient', ...client, originalName })
-      });
+      await callScriptPost({ action: 'editClient', ...client, originalName });
     }
     return true;
   },
@@ -255,11 +257,7 @@ export const api = {
     LOCAL_NEW_ENTRIES.push(newEntry as Entry);
 
     if (isLive) {
-      const res = await fetch(GOOGLE_SCRIPT_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: 'addEntry', ...formatted })
-      });
+      const res = await callScriptPost({ action: 'addEntry', ...formatted });
       const result = await res.json();
 
       if (result.status === 'success' && result.id) {
@@ -281,11 +279,7 @@ export const api = {
     // Send Date directly (YYYY-MM-DD)
     const formatted = { ...entry };
     if (isLive) {
-      await fetch(GOOGLE_SCRIPT_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: 'updateEntry', ...formatted })
-      });
+      await callScriptPost({ action: 'updateEntry', ...formatted });
     }
     return true;
   },
@@ -296,11 +290,7 @@ export const api = {
     if (localIndex !== -1) LOCAL_NEW_ENTRIES.splice(localIndex, 1);
 
     if (isLive) {
-      await fetch(GOOGLE_SCRIPT_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: 'deleteEntry', id: id })
-      });
+      await callScriptPost({ action: 'deleteEntry', id: id });
     }
     return true;
   },
@@ -309,7 +299,7 @@ export const api = {
     let allEntries: Entry[] = [];
 
     const fetchEntries = () => fetchOnce('entries', async () => {
-      const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getEntries`);
+      const response = await callScriptGet('getEntries');
       const data = await response.json();
       if (Array.isArray(data)) {
         const mapped: Entry[] = data.map((e: any) => ({ ...e, date: normalizeToISO(e.date) }));
@@ -355,11 +345,7 @@ export const api = {
     }
 
     if (isLive) {
-      await fetch(GOOGLE_SCRIPT_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: 'updateEntryStatus', id, status })
-      });
+      await callScriptPost({ action: 'updateEntryStatus', id, status });
     }
     return true;
   },
@@ -369,11 +355,7 @@ export const api = {
     const formatted = { ...payload };
     if (isLive) {
       try {
-        const res = await fetch(GOOGLE_SCRIPT_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({ action: 'updatePaymentFollowUp', ...formatted })
-        });
+        const res = await callScriptPost({ action: 'updatePaymentFollowUp', ...formatted });
         const data = await res.json();
 
         if (DATA_CACHE.entries) {
@@ -396,7 +378,7 @@ export const api = {
     // Basic cache logic
     if (isLive) {
       try {
-        const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getPaymentHistory`);
+        const response = await callScriptGet('getPaymentHistory');
         const data = await response.json();
 
         // DETECT BACKEND ERROR (e.g. Action not found)
@@ -420,7 +402,7 @@ export const api = {
   // --- SERVICE CALLS (Feedback calling) ---
   getServiceCalls: async (forceRefresh = false): Promise<any[]> => {
     const fetchCalls = () => fetchOnce('serviceCalls', async () => {
-      const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getServiceCalls`);
+      const response = await callScriptGet('getServiceCalls');
       const data = await response.json();
       if (data && data.error) throw new Error(data.error);
       if (Array.isArray(data)) {
@@ -459,11 +441,7 @@ export const api = {
 
   addServiceCall: async (payload: any) => {
     if (isLive) {
-      const res = await fetch(GOOGLE_SCRIPT_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: 'addServiceCall', ...payload })
-      });
+      const res = await callScriptPost({ action: 'addServiceCall', ...payload });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
       // Bust the cache so next load pulls fresh data
@@ -479,7 +457,7 @@ export const api = {
   getInventory: async (): Promise<any[]> => {
     if (isLive) {
       try {
-        const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getInventory&t=${Date.now()}`);
+        const response = await callScriptGet('getInventory', `t=${Date.now()}`);
         const data = await response.json();
         if (data && data.error) throw new Error(data.error);
         if (Array.isArray(data)) return data;
@@ -494,7 +472,7 @@ export const api = {
   getStockIn: async (): Promise<any[]> => {
     if (isLive) {
       try {
-        const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getStockIn&t=${Date.now()}`);
+        const response = await callScriptGet('getStockIn', `t=${Date.now()}`);
         const data = await response.json();
         if (data && data.error) throw new Error(data.error);
         if (Array.isArray(data)) return data;
@@ -508,11 +486,7 @@ export const api = {
 
   addStockIn: async (payload: any) => {
     if (isLive) {
-      const res = await fetch(GOOGLE_SCRIPT_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: 'addStockIn', ...payload })
-      });
+      const res = await callScriptPost({ action: 'addStockIn', ...payload });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
       return data;
@@ -522,11 +496,7 @@ export const api = {
 
   updateInventoryMax: async (itemCode: string, maxStock: number) => {
     if (isLive) {
-      const res = await fetch(GOOGLE_SCRIPT_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: 'updateInventoryMax', itemCode, maxStock })
-      });
+      const res = await callScriptPost({ action: 'updateInventoryMax', itemCode, maxStock });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
       return data;
@@ -539,7 +509,7 @@ export const api = {
     let allAppts: Appointment[] = [];
 
     const fetchAppts = () => fetchOnce('appointments', async () => {
-      const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getAppointments`);
+      const response = await callScriptGet('getAppointments');
       const data = await response.json();
       if (Array.isArray(data)) {
         const mapped: Appointment[] = data.map((a: any) => ({ ...a, date: normalizeToISO(a.date) }));
@@ -583,11 +553,7 @@ export const api = {
     LOCAL_NEW_APPOINTMENTS.push(newAppt as Appointment);
 
     if (isLive) {
-      const res = await fetch(GOOGLE_SCRIPT_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: 'addAppointment', ...formatted })
-      });
+      const res = await callScriptPost({ action: 'addAppointment', ...formatted });
       const result = await res.json();
       if (result.status === 'success' && result.id) {
         const localIndex = LOCAL_NEW_APPOINTMENTS.findIndex(a => a.id === tempId);
@@ -610,11 +576,7 @@ export const api = {
     }
 
     if (isLive) {
-      fetch(GOOGLE_SCRIPT_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: 'updateAppointmentStatus', id, status })
-      }).catch(e => console.error("BG Appt Update Error", e));
+      callScriptPost({ action: 'updateAppointmentStatus', id, status }).catch(e => console.error("BG Appt Update Error", e));
     }
     return { id, status };
   },
@@ -629,11 +591,7 @@ export const api = {
     }
 
     if (isLive) {
-      await fetch(GOOGLE_SCRIPT_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: 'deleteAppointment', id })
-      });
+      await callScriptPost({ action: 'deleteAppointment', id });
     }
     return true;
   },
@@ -647,7 +605,7 @@ export const api = {
 
     if (isLive) {
       try {
-        const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getPackages&t=${now}`);
+        const response = await callScriptGet('getPackages', `t=${now}`);
         const data = await response.json();
         if (Array.isArray(data)) {
           const formattedData = data.map((pkg: any) => ({
@@ -676,11 +634,7 @@ export const api = {
     const pkgPayload = { ...formatted, status: 'PENDING' };
 
     if (isLive) {
-      const res = await fetch(GOOGLE_SCRIPT_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: 'addPackage', ...pkgPayload })
-      });
+      const res = await callScriptPost({ action: 'addPackage', ...pkgPayload });
       const result = await res.json();
       if (result.error) throw new Error(result.error);
       return true;
@@ -691,11 +645,7 @@ export const api = {
   updatePackageStatus: async (id: string, status: ServicePackage['status']) => {
     invalidate('packages');
     if (isLive) {
-      await fetch(GOOGLE_SCRIPT_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: 'updatePackageStatus', id, status })
-      });
+      await callScriptPost({ action: 'updatePackageStatus', id, status });
     }
     return true;
   },
@@ -703,11 +653,7 @@ export const api = {
   deletePackage: async (id: string) => {
     invalidate('packages');
     if (isLive) {
-      await fetch(GOOGLE_SCRIPT_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: 'deletePackage', id })
-      });
+      await callScriptPost({ action: 'deletePackage', id });
     }
     return true;
   },
@@ -717,11 +663,7 @@ export const api = {
     // Send Date directly
     const formatted = { ...pkg };
     if (isLive) {
-      await fetch(GOOGLE_SCRIPT_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: 'editPackage', ...formatted })
-      });
+      await callScriptPost({ action: 'editPackage', ...formatted });
     }
     return true;
   },
@@ -768,7 +710,7 @@ export const api = {
   getUsers: async () => {
     if (isLive) {
       try {
-        const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getUsers`);
+        const response = await callScriptGet('getUsers');
         const data = await response.json();
         if (Array.isArray(data)) {
           return data.map((u: any) => ({
@@ -787,11 +729,7 @@ export const api = {
     const payload = { ...user, permissions: user.permissions ? user.permissions.join(',') : '' };
     if (isLive) {
       try {
-        await fetch(GOOGLE_SCRIPT_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({ action: 'addUser', ...payload })
-        });
+        await callScriptPost({ action: 'addUser', ...payload });
         return true;
       } catch (e) { return false; }
     }
@@ -801,11 +739,7 @@ export const api = {
   deleteUser: async (username: string) => {
     if (isLive) {
       try {
-        await fetch(GOOGLE_SCRIPT_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({ action: 'deleteUser', username })
-        });
+        await callScriptPost({ action: 'deleteUser', username });
         return true;
       } catch (e) { return false; }
     }
@@ -814,18 +748,14 @@ export const api = {
 
   updateUser: async (payload: any) => {
     if (isLive) {
-      await fetch(GOOGLE_SCRIPT_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: 'updateUser', ...payload, permissions: payload.permissions?.join(',') })
-      });
+      await callScriptPost({ action: 'updateUser', ...payload, permissions: payload.permissions?.join(',') });
     }
     return true;
   },
 
   updateUserProfile: async (payload: any) => {
     if (isLive) {
-      const res = await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'updateUserProfile', ...payload }) });
+      const res = await callScriptPost({ action: 'updateUserProfile', ...payload });
       return await res.json();
     }
     return true;

@@ -31,4 +31,7 @@ export const MOCK_PACKAGES: ServicePackage[] = [];
 // =========================================================================================
 // ⚠️ PASTE YOUR NEW WEB APP URL HERE
 // =========================================================================================
-export const GOOGLE_SCRIPT_URL: string = 'https://script.google.com/macros/s/AKfycbwzeALcNoATmswcWOD22z7D5qNed6LbIBe4cZOGsqjifpjdA0XepMP8qd3JWUSMwXy4CA/exec'; 
+export const GOOGLE_SCRIPT_URL: string = 'https://script.google.com/macros/s/AKfycbwzeALcNoATmswcWOD22z7D5qNed6LbIBe4cZOGsqjifpjdA0XepMP8qd3JWUSMwXy4CA/exec';
+
+// API Secret Key for securing requests between frontend & Google Apps Script
+export const API_SECRET: string = 'MHS_SECURE_TOKEN_2026';

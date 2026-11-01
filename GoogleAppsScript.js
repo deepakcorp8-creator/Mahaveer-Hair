@@ -1,9 +1,30 @@
 
 // =====================================================================================
-// ⚠️ MAHAVEER WEB APP - BACKEND SCRIPT (Date & Time Fix Applied)
+// ⚠️ MAHAVEER WEB APP - BACKEND SCRIPT (Security & Auth Hardened)
 // =====================================================================================
 
+const API_SECRET = 'MHS_SECURE_TOKEN_2026';
+
+function isAuthorized(e, data) {
+  var provided = (data && data.secret) || (e && e.parameter && e.parameter.secret);
+  return provided === API_SECRET;
+}
+
+function escapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 function doGet(e) {
+  if (!isAuthorized(e, null)) {
+    return response({ error: "Unauthorized access: invalid or missing API secret" });
+  }
+
   const action = e.parameter.action;
   const ss = SpreadsheetApp.getActiveSpreadsheet();
 
@@ -29,8 +50,45 @@ function doPost(e) {
   } catch(err) {
     return response({error: "Invalid JSON body"});
   }
+
+  if (!isAuthorized(null, data)) {
+    return response({ error: "Unauthorized access: invalid or missing API secret" });
+  }
   
   const action = data.action;
+
+  // --- AUTHENTICATION ---
+  if (action == 'login') {
+    const userSheet = getSheet(ss, "LOGIN");
+    if (!userSheet || userSheet.getLastRow() <= 1) {
+      return response({ status: "error", message: "No users configured in database" });
+    }
+    const users = userSheet.getDataRange().getValues();
+    const inputUser = String(data.username || '').trim().toLowerCase();
+    const inputPass = String(data.password || '').trim();
+
+    for (let i = 1; i < users.length; i++) {
+      const dbUser = String(users[i][0] || '').trim().toLowerCase();
+      const dbPass = String(users[i][1] || '').trim();
+
+      if (dbUser === inputUser && dbPass === inputPass) {
+        return response({
+          status: "success",
+          user: {
+            username: users[i][0],
+            role: String(users[i][2] || 'USER').toUpperCase(),
+            department: users[i][3] || '',
+            permissions: users[i][4] || '',
+            dpUrl: users[i][5] || '',
+            gender: users[i][6] || '',
+            dob: fromSheetDate(users[i][7]),
+            address: users[i][8] || ''
+          }
+        });
+      }
+    }
+    return response({ status: "error", message: "Invalid username or password" });
+  }
 
   // --- PACKAGES ---
   if (action == 'addPackage') {
@@ -494,16 +552,16 @@ function createInvoice(data) {
               <td width="48%" valign="top">
                 <div class="box">
                   <div class="box-title">Bill To</div>
-                  <div class="box-content">${data.clientName}</div>
-                  <div class="box-sub">${data.address || ''}<br>Ph: ${data.contactNo}</div>
+                  <div class="box-content">${escapeHtml(data.clientName)}</div>
+                  <div class="box-sub">${escapeHtml(data.address || "")}<br>Ph: ${escapeHtml(data.contactNo)}</div>
                 </div>
               </td>
               <td width="4%"></td>
               <td width="48%" valign="top">
                 <div class="box">
                   <div class="box-title">Service Info</div>
-                  <div class="box-content">${data.serviceType} Application</div>
-                  <div class="box-sub">Tech: ${data.technician}<br>Method: ${data.patchMethod}</div>
+                  <div class="box-content">${escapeHtml(data.serviceType)} Application</div>
+                  <div class="box-sub">Tech: ${escapeHtml(data.technician)}<br>Method: ${escapeHtml(data.patchMethod)}</div>
                 </div>
               </td>
             </tr>
@@ -521,8 +579,8 @@ function createInvoice(data) {
             <tbody>
               <tr>
                 <td>
-                  <div class="item-name">${data.serviceType} Service</div>
-                  <div style="color:#666; font-size:10px;">${data.patchSize ? 'Size: ' + data.patchSize : ''} ${data.remark ? '| ' + data.remark : ''}</div>
+                  <div class="item-name">${escapeHtml(data.serviceType)} Service</div>
+                  <div style="color:#666; font-size:10px;">${data.patchSize ? "Size: " + escapeHtml(data.patchSize) : ""} ${data.remark ? "| " + escapeHtml(data.remark) : ""}</div>
                 </td>
                 <td align="center">1</td>
                 <td align="right">Rs. ${data.amount}</td>
@@ -755,7 +813,7 @@ function getUsers(ss) {
     if (!sheet || sheet.getLastRow() <= 1) return response([]);
     const data = sheet.getDataRange().getValues();
     return response(data.slice(1).map(row => ({ 
-      username: row[0], password: row[1], role: row[2], department: row[3], permissions: row[4], dpUrl: row[5], gender: row[6], 
+      username: row[0], /* password omitted for security */ role: row[2], department: row[3], permissions: row[4], dpUrl: row[5], gender: row[6], 
       dob: fromSheetDate(row[7]), 
       address: row[8] 
     })));
