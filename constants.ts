@@ -1,4 +1,3 @@
-
 import { Client, Entry, Item, Technician, Appointment, ServicePackage } from './types';
 
 // Mock Clients (Fallback Data)
@@ -29,9 +28,13 @@ export const MOCK_APPOINTMENTS: Appointment[] = [];
 export const MOCK_PACKAGES: ServicePackage[] = [];
 
 // =========================================================================================
-// ⚠️ PASTE YOUR NEW WEB APP URL HERE
+// ⚠️ ENVIRONMENT CONFIGURATION (Loaded from .env with fallbacks)
 // =========================================================================================
-export const GOOGLE_SCRIPT_URL: string = 'https://script.google.com/macros/s/AKfycbwzeALcNoATmswcWOD22z7D5qNed6LbIBe4cZOGsqjifpjdA0XepMP8qd3JWUSMwXy4CA/exec';
+export const GOOGLE_SCRIPT_URL: string = 
+  (import.meta.env?.VITE_GOOGLE_SCRIPT_URL as string) || 
+  'https://script.google.com/macros/s/AKfycbwzeALcNoATmswcWOD22z7D5qNed6LbIBe4cZOGsqjifpjdA0XepMP8qd3JWUSMwXy4CA/exec';
 
 // API Secret Key for securing requests between frontend & Google Apps Script
-export const API_SECRET: string = 'MHS_SECURE_TOKEN_2026';
+export const API_SECRET: string = 
+  (import.meta.env?.VITE_API_SECRET as string) || 
+  'MHS_SECURE_TOKEN_2026';
